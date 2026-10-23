@@ -4,9 +4,8 @@ import {
   Plus,
   Edit2,
   Eye,
-  MoreVertical,
+  MoreHorizontal,
   X,
-  UploadCloud,
   TrendingUp,
   TrendingDown,
   Package,
@@ -26,6 +25,9 @@ import {
   RotateCcw,
   SlidersHorizontal,
   Sparkles,
+  Calendar,
+  ChevronDown,
+  UploadCloud,
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -33,7 +35,6 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -58,13 +59,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,11 +74,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip"
 import { toast } from "sonner"
 
 export interface ProductItem {
@@ -95,6 +89,7 @@ export interface ProductItem {
   tags?: string
   sku?: string
   volume?: string
+  addedDate?: string
 }
 
 const INITIAL_PRODUCTS: ProductItem[] = [
@@ -111,6 +106,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     tags: "bestseller, seasonal, calm",
     sku: "TEL-PFT-001",
     volume: "330 ml",
+    addedDate: "12 Sept 2025",
   },
   {
     id: "prod-2",
@@ -121,10 +117,11 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     stock: 18,
     status: "Active",
     image: "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&auto=format&fit=crop&q=80",
-    isFeatured: false,
-    tags: "summer, berry, sparkling",
+    isFeatured: true,
+    tags: "antioxidant, berry, refreshing",
     sku: "TEL-WBS-002",
     volume: "250 ml",
+    addedDate: "14 Sept 2025",
   },
   {
     id: "prod-3",
@@ -135,10 +132,11 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     stock: 32,
     status: "Active",
     image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=300&auto=format&fit=crop&q=80",
-    isFeatured: true,
-    tags: "refreshing, zero-alcohol, citrus",
+    isFeatured: false,
+    tags: "citrus, digestive, zero-proof",
     sku: "TEL-LGC-003",
     volume: "500 ml",
+    addedDate: "14 Sept 2025",
   },
   {
     id: "prod-4",
@@ -153,6 +151,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     tags: "citrus, elderflower, mood",
     sku: "TEL-CBT-004",
     volume: "330 ml",
+    addedDate: "15 Sept 2025",
   },
   {
     id: "prod-5",
@@ -167,6 +166,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     tags: "vitamin-c, elixir, immune",
     sku: "TEL-FBE-005",
     volume: "330 ml",
+    addedDate: "15 Sept 2025",
   },
   {
     id: "prod-6",
@@ -181,6 +181,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     tags: "wellness, turmeric, recovery",
     sku: "TEL-GGT-006",
     volume: "330 ml",
+    addedDate: "16 Sept 2025",
   },
   {
     id: "prod-7",
@@ -195,6 +196,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     tags: "creamy, nootropic, focus",
     sku: "TEL-CDB-007",
     volume: "500 ml",
+    addedDate: "17 Sept 2025",
   },
   {
     id: "prod-8",
@@ -209,6 +211,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     tags: "sparkling, floral, antioxidant",
     sku: "TEL-BBS-008",
     volume: "250 ml",
+    addedDate: "18 Sept 2025",
   },
   {
     id: "prod-9",
@@ -223,6 +226,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     tags: "nordic, detox, botanical",
     sku: "TEL-NBE-009",
     volume: "330 ml",
+    addedDate: "18 Sept 2025",
   },
   {
     id: "prod-10",
@@ -237,6 +241,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     tags: "bitters, aperitif, evening",
     sku: "TEL-SCA-010",
     volume: "500 ml",
+    addedDate: "19 Sept 2025",
   },
   {
     id: "prod-11",
@@ -251,6 +256,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     tags: "sleep, relaxation, botanical",
     sku: "TEL-EBN-011",
     volume: "330 ml",
+    addedDate: "20 Sept 2025",
   },
   {
     id: "prod-12",
@@ -265,6 +271,7 @@ const INITIAL_PRODUCTS: ProductItem[] = [
     tags: "superfruit, tangy, energizing",
     sku: "TEL-SSB-012",
     volume: "250 ml",
+    addedDate: "20 Sept 2025",
   },
 ]
 
@@ -282,6 +289,7 @@ export function ProductManagement() {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [categoryFilter, setCategoryFilter] = React.useState("all")
   const [statusFilter, setStatusFilter] = React.useState("all")
+  const [dateFilter, setDateFilter] = React.useState("all")
   const [sortField, setSortField] = React.useState<SortField>("name")
   const [sortDirection, setSortDirection] = React.useState<SortDirection>("asc")
   const [currentPage, setCurrentPage] = React.useState(1)
@@ -292,8 +300,8 @@ export function ProductManagement() {
   const [editingProduct, setEditingProduct] = React.useState<ProductItem | null>(null)
   const [activeTab, setActiveTab] = React.useState<"basic" | "ingredients" | "media">("basic")
 
-  // View Details Modal State
-  const [viewingProduct, setViewingProduct] = React.useState<ProductItem | null>(null)
+  // Drawer Panel Mode: "create" | "edit" | "view"
+  const [panelMode, setPanelMode] = React.useState<"create" | "edit" | "view">("create")
 
   // Single / Bulk Delete Confirmation Dialog State
   const [deleteCandidate, setDeleteCandidate] = React.useState<ProductItem | null>(null)
@@ -310,11 +318,11 @@ export function ProductManagement() {
   const [formTags, setFormTags] = React.useState("")
   const [formVolume, setFormVolume] = React.useState("330 ml")
   const [formImage, setFormImage] = React.useState("")
-  const [formAdditionalImages, setFormAdditionalImages] = React.useState<string[]>([])
 
   // Open Panel for creating new product
   const handleOpenCreate = () => {
     setEditingProduct(null)
+    setPanelMode("create")
     setFormName("")
     setFormCategory("Adaptogenic Tonics")
     setFormPrice("")
@@ -325,10 +333,6 @@ export function ProductManagement() {
     setFormTags("")
     setFormVolume("330 ml")
     setFormImage("https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80")
-    setFormAdditionalImages([
-      "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=120&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=120&auto=format&fit=crop&q=80",
-    ])
     setActiveTab("basic")
     setIsPanelOpen(true)
   }
@@ -336,6 +340,7 @@ export function ProductManagement() {
   // Open Panel for editing existing product
   const handleOpenEdit = (product: ProductItem) => {
     setEditingProduct(product)
+    setPanelMode("edit")
     setFormName(product.name)
     setFormCategory(product.category)
     setFormPrice(product.price.toString())
@@ -346,10 +351,24 @@ export function ProductManagement() {
     setFormTags(product.tags || "")
     setFormVolume(product.volume || "330 ml")
     setFormImage(product.image)
-    setFormAdditionalImages([
-      "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=120&auto=format&fit=crop&q=80",
-      "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=120&auto=format&fit=crop&q=80",
-    ])
+    setActiveTab("basic")
+    setIsPanelOpen(true)
+  }
+
+  // Open Panel for viewing details of an existing product in the slide drawer
+  const handleOpenView = (product: ProductItem) => {
+    setEditingProduct(product)
+    setPanelMode("view")
+    setFormName(product.name)
+    setFormCategory(product.category)
+    setFormPrice(product.price.toString())
+    setFormStock(product.stock.toString())
+    setFormIngredients(product.ingredients)
+    setFormStatus(product.status)
+    setFormFeatured(Boolean(product.isFeatured))
+    setFormTags(product.tags || "")
+    setFormVolume(product.volume || "330 ml")
+    setFormImage(product.image)
     setActiveTab("basic")
     setIsPanelOpen(true)
   }
@@ -360,20 +379,20 @@ export function ProductManagement() {
       ...product,
       id: `prod-${Date.now()}`,
       name: `${product.name} (Copy)`,
-      sku: `TEL-CPY-${Math.floor(100 + Math.random() * 900)}`,
-      status: product.stock > 0 ? "Active" : "Out of Stock",
+      sku: `${product.sku || "TEL"}-COPY`,
+      addedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
     }
     setProducts((prev) => [duplicated, ...prev])
-    toast.success(`Duplicated "${product.name}" successfully!`)
+    toast.success(`Duplicated "${product.name}" successfully`)
   }
 
-  // Toggle Featured status directly
+  // Toggle Featured status
   const handleToggleFeatured = (id: string) => {
     setProducts((prev) =>
       prev.map((p) => {
         if (p.id === id) {
           const updated = !p.isFeatured
-          toast.success(`Product ${updated ? "featured" : "unfeatured"}`)
+          toast.info(updated ? `Marked "${p.name}" as Sale` : `Unmarked "${p.name}" from Sale`)
           return { ...p, isFeatured: updated }
         }
         return p
@@ -381,7 +400,24 @@ export function ProductManagement() {
     )
   }
 
-  // Handle Save (Add or Update)
+  // Quick Status change from table dropdown
+  const handleQuickStatusChange = (id: string, newStatus: ProductItem["status"]) => {
+    setProducts((prev) =>
+      prev.map((p) => {
+        if (p.id === id) {
+          let updatedStock = p.stock
+          if (newStatus === "Out of Stock" && p.stock > 0) updatedStock = 0
+          if (newStatus === "Active" && p.stock === 0) updatedStock = 20
+          if (newStatus === "Low Stock" && (p.stock === 0 || p.stock > 9)) updatedStock = 5
+          return { ...p, status: newStatus, stock: updatedStock }
+        }
+        return p
+      })
+    )
+    toast.success(`Product status updated to ${newStatus}`)
+  }
+
+  // Form Save
   const handleSaveProduct = (e: React.FormEvent) => {
     e.preventDefault()
     if (!formName.trim()) {
@@ -390,8 +426,8 @@ export function ProductManagement() {
     }
 
     const priceNum = parseFloat(formPrice)
-    if (isNaN(priceNum) || priceNum <= 0) {
-      toast.error("Please enter a valid price")
+    if (isNaN(priceNum) || priceNum < 0) {
+      toast.error("Please enter a valid positive price")
       return
     }
 
@@ -400,86 +436,81 @@ export function ProductManagement() {
       stockNum === 0 ? "Out of Stock" : stockNum <= 9 ? "Low Stock" : formStatus
 
     if (editingProduct) {
-      // Update existing
       setProducts((prev) =>
-        prev.map((p) =>
-          p.id === editingProduct.id
+        prev.map((item) =>
+          item.id === editingProduct.id
             ? {
-                ...p,
+                ...item,
                 name: formName.trim(),
                 category: formCategory,
                 price: priceNum,
-                stock: isNaN(stockNum) ? 0 : stockNum,
-                ingredients: formIngredients.trim() || "Artisanal Botanical Infusion",
+                stock: isNaN(stockNum) ? 0 : Math.max(0, stockNum),
+                ingredients: formIngredients.trim(),
                 status: computedStatus,
                 isFeatured: formFeatured,
                 tags: formTags.trim(),
-                volume: formVolume.trim() || "330 ml",
-                image: formImage || p.image,
+                volume: formVolume.trim(),
+                image: formImage.trim() || item.image,
               }
-            : p
+            : item
         )
       )
-      toast.success(`Updated "${formName}" successfully!`)
+      toast.success(`Updated "${formName}" successfully`)
     } else {
-      // Create new
       const newProduct: ProductItem = {
         id: `prod-${Date.now()}`,
         name: formName.trim(),
-        ingredients: formIngredients.trim() || "Fresh Botanical Infusion",
         category: formCategory,
         price: priceNum,
-        stock: isNaN(stockNum) ? 0 : stockNum,
+        stock: isNaN(stockNum) ? 0 : Math.max(0, stockNum),
+        ingredients: formIngredients.trim() || "Wild Botanicals • Spring Water",
         status: computedStatus,
-        image:
-          formImage ||
-          "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
         isFeatured: formFeatured,
         tags: formTags.trim(),
-        sku: `TEL-NEW-${Math.floor(100 + Math.random() * 900)}`,
         volume: formVolume.trim() || "330 ml",
+        image: formImage.trim() || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
+        sku: `TEL-${formCategory.slice(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
+        addedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
       }
       setProducts((prev) => [newProduct, ...prev])
-      toast.success(`Product "${formName}" created successfully!`)
+      toast.success(`Created new drink "${newProduct.name}"`)
     }
 
     setIsPanelOpen(false)
   }
 
-  // Delete handlers
+  // Delete Handlers
   const handleConfirmSingleDelete = () => {
     if (!deleteCandidate) return
     setProducts((prev) => prev.filter((p) => p.id !== deleteCandidate.id))
     setSelectedIds((prev) => prev.filter((id) => id !== deleteCandidate.id))
-    toast.success(`Deleted "${deleteCandidate.name}"`)
+    toast.success(`Deleted "${deleteCandidate.name}" from catalog`)
     setDeleteCandidate(null)
   }
 
   const handleConfirmBulkDelete = () => {
     setProducts((prev) => prev.filter((p) => !selectedIds.includes(p.id)))
-    toast.success(`Deleted ${selectedIds.length} products`)
+    toast.success(`Deleted ${selectedIds.length} items from catalog`)
     setSelectedIds([])
     setIsBulkDeleteOpen(false)
   }
 
-  // Bulk Status Change
   const handleBulkStatusChange = (newStatus: ProductItem["status"]) => {
     setProducts((prev) =>
       prev.map((p) => {
         if (selectedIds.includes(p.id)) {
-          return {
-            ...p,
-            status: newStatus,
-            stock: newStatus === "Out of Stock" ? 0 : p.stock === 0 ? 15 : p.stock,
-          }
+          let updatedStock = p.stock
+          if (newStatus === "Out of Stock") updatedStock = 0
+          if (newStatus === "Active" && p.stock === 0) updatedStock = 15
+          return { ...p, status: newStatus, stock: updatedStock }
         }
         return p
       })
     )
-    toast.success(`Updated ${selectedIds.length} items to "${newStatus}"`)
+    toast.success(`Updated status of ${selectedIds.length} products to ${newStatus}`)
+    setSelectedIds([])
   }
 
-  // Sorting helper
   const handleHeaderSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"))
@@ -489,56 +520,54 @@ export function ProductManagement() {
     }
   }
 
-  // Filtering & Sorting derived list
+  // Filtered & Sorted Products
   const filteredProducts = React.useMemo(() => {
     const query = searchTerm.toLowerCase().trim()
     const list = products.filter((p) => {
       const matchesSearch =
         !query ||
         p.name.toLowerCase().includes(query) ||
+        p.category.toLowerCase().includes(query) ||
         p.ingredients.toLowerCase().includes(query) ||
         (p.sku && p.sku.toLowerCase().includes(query)) ||
         (p.tags && p.tags.toLowerCase().includes(query))
+
       const matchesCategory = categoryFilter === "all" || p.category === categoryFilter
       const matchesStatus = statusFilter === "all" || p.status === statusFilter
       return matchesSearch && matchesCategory && matchesStatus
     })
 
-    return [...list].sort((a, b) => {
-      let comp = 0
+    list.sort((a, b) => {
+      let comparison = 0
       if (sortField === "name") {
-        comp = a.name.localeCompare(b.name)
+        comparison = a.name.localeCompare(b.name)
       } else if (sortField === "price") {
-        comp = a.price - b.price
+        comparison = a.price - b.price
       } else if (sortField === "stock") {
-        comp = a.stock - b.stock
+        comparison = a.stock - b.stock
       } else if (sortField === "category") {
-        comp = a.category.localeCompare(b.category)
+        comparison = a.category.localeCompare(b.category)
       }
-      return sortDirection === "asc" ? comp : -comp
+      return sortDirection === "asc" ? comparison : -comparison
     })
+
+    return list
   }, [products, searchTerm, categoryFilter, statusFilter, sortField, sortDirection])
 
-  // Export CSV
+  // CSV Export
   const handleExportCSV = () => {
-    const listToExport =
-      selectedIds.length > 0
-        ? products.filter((p) => selectedIds.includes(p.id))
-        : filteredProducts
-
-    const headers = ["ID", "Name", "Category", "Price (€)", "Stock", "Status", "Ingredients", "SKU", "Tags"]
-    const rows = listToExport.map((p) => [
+    const headers = ["ID", "SKU", "Name", "Category", "Price", "Stock", "Status", "Volume", "Added Date"]
+    const rows = filteredProducts.map((p) => [
       p.id,
+      p.sku || "",
       `"${p.name.replace(/"/g, '""')}"`,
-      `"${p.category}"`,
+      p.category,
       p.price.toFixed(2),
       p.stock,
       p.status,
-      `"${p.ingredients.replace(/"/g, '""')}"`,
-      `"${p.sku || ""}"`,
-      `"${p.tags || ""}"`,
+      p.volume || "",
+      p.addedDate || "",
     ])
-
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n")
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement("a")
@@ -547,31 +576,35 @@ export function ProductManagement() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
-
-    toast.success(`Exported ${listToExport.length} products to CSV file`)
+    toast.success(`Exported ${filteredProducts.length} items to CSV`)
   }
 
-  // Safe Pagination calculations
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / pageSize))
-  const safeCurrentPage = Math.min(currentPage, totalPages)
+  // Counts for KPI Cards
+  const totalCount = products.length
+  const activeCount = products.filter((p) => p.status === "Active").length
+  const lowStockCount = products.filter((p) => p.status === "Low Stock").length
+  const outOfStockCount = products.filter((p) => p.status === "Out of Stock").length
 
+  // Pagination Calculations
+  const totalPages = Math.ceil(filteredProducts.length / pageSize) || 1
+  const safeCurrentPage = Math.min(currentPage, totalPages)
   const paginatedProducts = React.useMemo(() => {
     const start = (safeCurrentPage - 1) * pageSize
     return filteredProducts.slice(start, start + pageSize)
   }, [filteredProducts, safeCurrentPage, pageSize])
 
-  // Select all checkbox handler
+  // Bulk Selection
   const isAllSelected =
     paginatedProducts.length > 0 &&
     paginatedProducts.every((p) => selectedIds.includes(p.id))
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
+  const handleSelectAll = () => {
+    if (isAllSelected) {
+      const pageIds = paginatedProducts.map((p) => p.id)
+      setSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)))
+    } else {
       const pageIds = paginatedProducts.map((p) => p.id)
       setSelectedIds((prev) => Array.from(new Set([...prev, ...pageIds])))
-    } else {
-      const pageIds = new Set(paginatedProducts.map((p) => p.id))
-      setSelectedIds((prev) => prev.filter((id) => !pageIds.has(id)))
     }
   }
 
@@ -581,92 +614,85 @@ export function ProductManagement() {
     )
   }
 
-  // Clear filters
   const handleResetFilters = () => {
     setSearchTerm("")
     setCategoryFilter("all")
     setStatusFilter("all")
+    setDateFilter("all")
     setCurrentPage(1)
-    toast.info("Filters reset to default")
   }
 
-  const isFiltered = searchTerm !== "" || categoryFilter !== "all" || statusFilter !== "all"
-
-  // Live KPI Metrics
-  const totalCount = products.length
-  const activeCount = products.filter((p) => p.status === "Active").length
-  const lowStockCount = products.filter((p) => p.status === "Low Stock").length
-  const outOfStockCount = products.filter((p) => p.status === "Out of Stock").length
+  const isFiltered = searchTerm || categoryFilter !== "all" || statusFilter !== "all" || dateFilter !== "all"
 
   return (
-    <div className="flex flex-col xl:flex-row min-h-screen bg-[#f8f7f4] text-[#12281c] w-full">
-      {/* LEFT / CENTER: Main Product Management Dashboard */}
-      <div className="flex-1 p-4 md:p-6 lg:p-8 space-y-6 min-w-0 transition-all">
-        {/* Page Header */}
+    <div className="min-h-screen bg-background text-foreground w-full">
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 p-5 md:p-7 lg:p-8 space-y-6 min-w-0 transition-all">
+        {/* HEADER SECTION (Matching Image 1 Clean Header) */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
-              <h1 className="font-serif text-2xl md:text-3xl font-bold tracking-tight text-[#112a1d]">
-                Product Management
-              </h1>
-              <Badge variant="outline" className="text-xs bg-[#eef5f0] text-[#1d5c38] border-[#cde2d3] font-medium">
-                {products.length} Items in Catalog
-              </Badge>
-            </div>
-            <p className="text-xs md:text-sm text-[#617769] mt-1 font-sans">
-              Curate your botanical collection, track live inventory, and manage catalog pricing.
+            <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground font-sans">
+              Products
+            </h1>
+            <p className="text-xs md:text-sm text-muted-foreground mt-1">
+              Manage your product inventory
             </p>
           </div>
 
-          <div className="flex items-center gap-2.5 self-start sm:self-auto">
+          <div className="flex items-center gap-3 self-start sm:self-auto">
+            {/* Export Report Pill Button */}
             <Button
               variant="outline"
               size="sm"
               onClick={handleExportCSV}
-              className="h-9 text-xs font-medium rounded-xl border-[#dcd6cc] bg-white hover:bg-[#f6f2ea] text-[#334b3e] gap-1.5 shadow-2xs"
+              className="h-10 px-4 text-xs font-medium rounded-full border border-border bg-card hover:bg-muted text-foreground gap-2 shadow-2xs transition-colors"
             >
-              <Download className="w-3.5 h-3.5 text-[#5e776a]" />
-              <span>Export CSV</span>
+              <UploadCloud className="w-4 h-4 text-muted-foreground" />
+              <span>Export Report</span>
             </Button>
 
+            {/* + Add New Pill Button */}
             <Button
               onClick={handleOpenCreate}
               size="sm"
-              className="h-9 px-4 bg-[#143926] hover:bg-[#1a4731] text-white text-xs font-semibold rounded-xl gap-1.5 shadow-sm transition-all"
+              className="h-10 px-5 bg-primary hover:opacity-90 text-primary-foreground text-xs font-semibold rounded-full gap-2 shadow-sm transition-all"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Product</span>
+              <span>Add New</span>
             </Button>
           </div>
         </div>
 
-        {/* 4 KPI Metric Cards with Interactive Filter Quick-Actions */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* 4 CLEAN KPI CARDS (Matching Reference Mockup Exactly) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
           {/* Card 1: Total Products */}
           <div
             onClick={() => {
               setStatusFilter("all")
               setCurrentPage(1)
             }}
-            className={`group cursor-pointer bg-white rounded-2xl p-4 md:p-5 border transition-all duration-200 shadow-2xs hover:shadow-xs flex items-center gap-4 ${
-              statusFilter === "all" ? "border-[#143926]/40 ring-1 ring-[#143926]/20 bg-[#fafdfa]" : "border-[#e8e4dc]"
+            className={`cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
+              statusFilter === "all" ? "ring-2 ring-primary/40 bg-muted/15" : ""
             }`}
           >
-            <div className="w-12 h-12 rounded-xl bg-[#e8f5ec] text-[#21653e] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-              <Package className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-2xl bg-[#edf5f0] text-[#1e4630] flex items-center justify-center shrink-0">
+              <Package className="w-5 h-5 stroke-[1.75]" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#637a6b] font-medium block">Total Products</span>
-                <span className="text-[10px] text-[#86998e] opacity-0 group-hover:opacity-100 transition-opacity">View all</span>
-              </div>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl font-bold font-serif text-[#112a1d]">{totalCount}</span>
-                <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
-                  <TrendingUp className="w-3 h-3 mr-0.5" /> 5%
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-muted-foreground">
+                Total Products
+              </span>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-2xl font-bold font-sans tracking-tight text-foreground">
+                  {totalCount}
+                </span>
+                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600">
+                  <TrendingUp className="w-3.5 h-3.5" /> 5%
                 </span>
               </div>
-              <span className="text-[11px] text-[#86998e]">vs. last month</span>
+              <span className="text-[11px] text-muted-foreground mt-0.5">
+                vs. last month
+              </span>
             </div>
           </div>
 
@@ -676,55 +702,59 @@ export function ProductManagement() {
               setStatusFilter("Active")
               setCurrentPage(1)
             }}
-            className={`group cursor-pointer bg-white rounded-2xl p-4 md:p-5 border transition-all duration-200 shadow-2xs hover:shadow-xs flex items-center gap-4 ${
-              statusFilter === "Active" ? "border-emerald-600/50 ring-1 ring-emerald-600/30 bg-[#f4faf6]" : "border-[#e8e4dc]"
+            className={`cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
+              statusFilter === "Active" ? "ring-2 ring-emerald-600/40 bg-emerald-50/20" : ""
             }`}
           >
-            <div className="w-12 h-12 rounded-xl bg-[#e8f5ec] text-[#21653e] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-              <CheckCircle2 className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-2xl bg-[#edf5f0] text-[#1e4630] flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5 stroke-[1.75]" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#637a6b] font-medium block">Active Products</span>
-                <span className="text-[10px] text-emerald-700 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Filter</span>
-              </div>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl font-bold font-serif text-[#112a1d]">{activeCount}</span>
-                <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
-                  <TrendingUp className="w-3 h-3 mr-0.5" /> 8%
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-muted-foreground">
+                Active Products
+              </span>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-2xl font-bold font-sans tracking-tight text-foreground">
+                  {activeCount}
+                </span>
+                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600">
+                  <TrendingUp className="w-3.5 h-3.5" /> 8%
                 </span>
               </div>
-              <span className="text-[11px] text-[#86998e]">
+              <span className="text-[11px] text-muted-foreground mt-0.5">
                 {Math.round((activeCount / (totalCount || 1)) * 100)}% of total stock
               </span>
             </div>
           </div>
 
-          {/* Card 3: Low Stock */}
+          {/* Card 3: Low Stock Alert */}
           <div
             onClick={() => {
               setStatusFilter("Low Stock")
               setCurrentPage(1)
             }}
-            className={`group cursor-pointer bg-white rounded-2xl p-4 md:p-5 border transition-all duration-200 shadow-2xs hover:shadow-xs flex items-center gap-4 ${
-              statusFilter === "Low Stock" ? "border-amber-600/50 ring-1 ring-amber-600/30 bg-[#fdfaf4]" : "border-[#e8e4dc]"
+            className={`cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
+              statusFilter === "Low Stock" ? "ring-2 ring-amber-600/40 bg-amber-50/20" : ""
             }`}
           >
-            <div className="w-12 h-12 rounded-xl bg-[#fff2e2] text-[#bc6719] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-              <AlertTriangle className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-2xl bg-[#fef7ee] text-[#b45309] flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5 stroke-[1.75]" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#637a6b] font-medium block">Low Stock Alert</span>
-                <span className="text-[10px] text-amber-700 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Filter</span>
-              </div>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl font-bold font-serif text-[#112a1d]">{lowStockCount}</span>
-                <span className="inline-flex items-center text-xs font-semibold text-rose-600">
-                  <TrendingDown className="w-3 h-3 mr-0.5" /> 2%
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-muted-foreground">
+                Low Stock Alert
+              </span>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-2xl font-bold font-sans tracking-tight text-foreground">
+                  {lowStockCount}
+                </span>
+                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-rose-500">
+                  <TrendingDown className="w-3.5 h-3.5" /> 2%
                 </span>
               </div>
-              <span className="text-[11px] text-[#86998e]">Needs replenishment</span>
+              <span className="text-[11px] text-muted-foreground mt-0.5">
+                Needs replenishment
+              </span>
             </div>
           </div>
 
@@ -734,194 +764,216 @@ export function ProductManagement() {
               setStatusFilter("Out of Stock")
               setCurrentPage(1)
             }}
-            className={`group cursor-pointer bg-white rounded-2xl p-4 md:p-5 border transition-all duration-200 shadow-2xs hover:shadow-xs flex items-center gap-4 ${
-              statusFilter === "Out of Stock" ? "border-rose-600/50 ring-1 ring-rose-600/30 bg-[#fdf5f6]" : "border-[#e8e4dc]"
+            className={`cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
+              statusFilter === "Out of Stock" ? "ring-2 ring-rose-600/40 bg-rose-50/20" : ""
             }`}
           >
-            <div className="w-12 h-12 rounded-xl bg-[#feecee] text-[#b92b3b] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
-              <AlertOctagon className="w-5 h-5" />
+            <div className="w-12 h-12 rounded-2xl bg-[#fdf2f2] text-[#be123c] flex items-center justify-center shrink-0">
+              <AlertOctagon className="w-5 h-5 stroke-[1.75]" />
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center justify-between">
-                <span className="text-xs text-[#637a6b] font-medium block">Out of Stock</span>
-                <span className="text-[10px] text-rose-700 font-medium opacity-0 group-hover:opacity-100 transition-opacity">Filter</span>
-              </div>
-              <div className="flex items-baseline gap-2 mt-0.5">
-                <span className="text-2xl font-bold font-serif text-[#112a1d]">{outOfStockCount}</span>
-                <span className="inline-flex items-center text-xs font-semibold text-rose-600">
-                  <TrendingDown className="w-3 h-3 mr-0.5" /> 1%
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-muted-foreground">
+                Out of Stock
+              </span>
+              <div className="flex items-baseline gap-1.5 mt-0.5">
+                <span className="text-2xl font-bold font-sans tracking-tight text-foreground">
+                  {outOfStockCount}
+                </span>
+                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-rose-500">
+                  <TrendingDown className="w-3.5 h-3.5" /> 1%
                 </span>
               </div>
-              <span className="text-[11px] text-[#86998e]">Unavailable online</span>
+              <span className="text-[11px] text-muted-foreground mt-0.5">
+                Unavailable online
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Filter and Actions Bar */}
-        <div className="bg-white p-3.5 md:p-4 rounded-2xl border border-[#e8e4dc] shadow-2xs space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-              {/* Search Input with Clear Button */}
-              <div className="relative flex-1 min-w-[200px] max-w-sm">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8a9d91]" />
+        {/* UNIFIED CONTAINER: CONTROLS & TABLE COMBINED (Single Borderless Card) */}
+        <div className="bg-card rounded-2xl shadow-xs overflow-hidden">
+          {/* Top Controls: Search & Filter Pills */}
+          <div className="p-5 pb-4 space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              {/* Pill Search Input */}
+              <div className="relative w-full sm:w-72 md:w-80">
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search products, botanicals, SKU..."
+                  placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => {
                     setSearchTerm(e.target.value)
                     setCurrentPage(1)
                   }}
-                  className="pl-9 pr-8 h-9.5 text-xs bg-[#fbfaf8] border-[#e5dfd5] rounded-xl focus-visible:ring-[#163826] text-[#142e20]"
+                  className="pl-9 pr-8 h-10 text-xs bg-card border border-border rounded-full shadow-2xs focus-visible:ring-primary text-foreground placeholder:text-muted-foreground"
                 />
                 {searchTerm && (
                   <button
                     type="button"
                     onClick={() => setSearchTerm("")}
-                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#8a9d91] hover:text-[#112a1d] transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}
               </div>
 
-              {/* Category Filter */}
-              <Select
-                value={categoryFilter}
-                onValueChange={(val) => {
-                  setCategoryFilter(val)
-                  setCurrentPage(1)
-                }}
-              >
-                <SelectTrigger className="h-9.5 text-xs bg-[#fbfaf8] border-[#e5dfd5] rounded-xl text-[#334b3e] min-w-[145px]">
-                  <SelectValue placeholder="All Categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Categories</SelectItem>
-                  <SelectItem value="Adaptogenic Tonics">Adaptogenic Tonics</SelectItem>
-                  <SelectItem value="Wild Berry Spritz">Wild Berry Spritz</SelectItem>
-                  <SelectItem value="Zero-Proof Spirits">Zero-Proof Spirits</SelectItem>
-                  <SelectItem value="Herbal Elixirs">Herbal Elixirs</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {/* Status Filter */}
-              <Select
-                value={statusFilter}
-                onValueChange={(val) => {
-                  setStatusFilter(val)
-                  setCurrentPage(1)
-                }}
-              >
-                <SelectTrigger className="h-9.5 text-xs bg-[#fbfaf8] border-[#e5dfd5] rounded-xl text-[#334b3e] min-w-[125px]">
-                  <SelectValue placeholder="All Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Low Stock">Low Stock</SelectItem>
-                  <SelectItem value="Out of Stock">Out of Stock</SelectItem>
-                </SelectContent>
-              </Select>
-
-              {/* Reset Filters button if any active */}
-              {isFiltered && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleResetFilters}
-                  className="h-9 px-2.5 text-xs text-[#718679] hover:text-[#143926] hover:bg-[#f2efe9] rounded-xl gap-1"
+              {/* Pill Filters on Right */}
+              <div className="flex flex-wrap items-center gap-2.5">
+                {/* Date Filter Pill */}
+                <Select
+                  value={dateFilter}
+                  onValueChange={(val) => {
+                    setDateFilter(val)
+                    setCurrentPage(1)
+                  }}
                 >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Reset</span>
+                  <SelectTrigger className="h-10 text-xs font-medium bg-card border border-border rounded-full text-foreground px-4 shadow-2xs min-w-[155px]">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
+                      <SelectValue placeholder="12 Sept - 20 Sept" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border rounded-xl">
+                    <SelectItem value="all">All Dates</SelectItem>
+                    <SelectItem value="12-20-sept">12 Sept - 20 Sept</SelectItem>
+                    <SelectItem value="this-month">This Month</SelectItem>
+                    <SelectItem value="last-30">Last 30 Days</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Category Filter Pill */}
+                <Select
+                  value={categoryFilter}
+                  onValueChange={(val) => {
+                    setCategoryFilter(val)
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-10 text-xs font-medium bg-card border border-border rounded-full text-foreground px-4 shadow-2xs min-w-[130px]">
+                    <SelectValue placeholder="Category" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border rounded-xl">
+                    <SelectItem value="all">Category: All</SelectItem>
+                    <SelectItem value="Adaptogenic Tonics">Adaptogenic Tonics</SelectItem>
+                    <SelectItem value="Wild Berry Spritz">Wild Berry Spritz</SelectItem>
+                    <SelectItem value="Zero-Proof Spirits">Zero-Proof Spirits</SelectItem>
+                    <SelectItem value="Herbal Elixirs">Herbal Elixirs</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Status Filter Pill */}
+                <Select
+                  value={statusFilter}
+                  onValueChange={(val) => {
+                    setStatusFilter(val)
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-10 text-xs font-medium bg-card border border-border rounded-full text-foreground px-4 shadow-2xs min-w-[120px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border rounded-xl">
+                    <SelectItem value="all">Status: All</SelectItem>
+                    <SelectItem value="Active">Active</SelectItem>
+                    <SelectItem value="Low Stock">Low Stock</SelectItem>
+                    <SelectItem value="Out of Stock">Out of Stock</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Reset Filter Button if active */}
+                {isFiltered && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleResetFilters}
+                    className="h-10 px-3.5 text-xs text-muted-foreground hover:text-foreground rounded-full gap-1.5"
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                    <span>Reset</span>
+                  </Button>
+                )}
+
+                {/* Side Panel Toggle Button */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsPanelOpen(!isPanelOpen)}
+                  className={`h-10 px-4 text-xs font-medium rounded-full border border-border transition-colors gap-2 shadow-2xs ${
+                    isPanelOpen ? "bg-muted text-foreground" : "bg-card text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>{isPanelOpen ? "Hide Panel" : "Side Panel"}</span>
                 </Button>
-              )}
+              </div>
             </div>
 
-            {/* Quick Stats or Right info */}
-            <div className="flex items-center gap-3 text-xs text-[#718679]">
-              <span className="hidden sm:inline-block">
-                Showing <strong className="text-[#142e20]">{filteredProducts.length}</strong> of {products.length} products
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsPanelOpen(!isPanelOpen)}
-                className={`h-9 px-3 text-xs rounded-xl border-[#dcd6cc] transition-colors gap-1.5 ${
-                  isPanelOpen ? "bg-[#eaf4ee] text-[#143926] border-[#bad8c4]" : "bg-white text-[#415a4c]"
-                }`}
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-                <span>{isPanelOpen ? "Hide Panel" : "Show Side Panel"}</span>
-              </Button>
-            </div>
+            {/* Bulk Selection Bar */}
+            {selectedIds.length > 0 && (
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-muted/60 border border-border p-3 px-5 rounded-2xl animate-in fade-in duration-150">
+                <div className="flex items-center gap-2.5 text-xs font-semibold text-foreground">
+                  <div className="w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-[10px]">
+                    <Check className="w-3 h-3" />
+                  </div>
+                  <span>{selectedIds.length} item{selectedIds.length > 1 ? "s" : ""} selected</span>
+                </div>
+
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkStatusChange("Active")}
+                    className="h-8 text-xs bg-card text-emerald-700 border-border rounded-full hover:bg-muted"
+                  >
+                    Mark Active
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleBulkStatusChange("Out of Stock")}
+                    className="h-8 text-xs bg-card text-rose-700 border-border rounded-full hover:bg-muted"
+                  >
+                    Mark Out of Stock
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportCSV}
+                    className="h-8 text-xs bg-card text-foreground border-border rounded-full hover:bg-muted gap-1"
+                  >
+                    <Download className="w-3 h-3" />
+                    <span>Export</span>
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setIsBulkDeleteOpen(true)}
+                    className="h-8 text-xs rounded-full gap-1.5"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    <span>Delete Selected</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedIds([])}
+                    className="h-8 text-xs text-muted-foreground hover:text-foreground rounded-full"
+                  >
+                    Deselect
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Bulk Selection Action Bar (Visible when items selected) */}
-          {selectedIds.length > 0 && (
-            <div className="flex flex-wrap items-center justify-between gap-3 bg-[#eaf4ee] border border-[#bad8c4] p-2.5 px-4 rounded-xl animate-in fade-in duration-150">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#143926]">
-                <div className="w-5 h-5 rounded-md bg-[#143926] text-white flex items-center justify-center text-[10px]">
-                  <Check className="w-3.5 h-3.5" />
-                </div>
-                <span>{selectedIds.length} product{selectedIds.length > 1 ? "s" : ""} selected</span>
-              </div>
-
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleBulkStatusChange("Active")}
-                  className="h-8 text-xs bg-white text-[#1b6b37] border-[#c0deca] hover:bg-[#f2faf5] rounded-lg"
-                >
-                  Mark Active
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleBulkStatusChange("Out of Stock")}
-                  className="h-8 text-xs bg-white text-rose-700 border-rose-200 hover:bg-rose-50 rounded-lg"
-                >
-                  Mark Out of Stock
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExportCSV}
-                  className="h-8 text-xs bg-white text-[#334b3e] border-[#dcd6cc] hover:bg-[#f8f6f0] rounded-lg gap-1"
-                >
-                  <Download className="w-3 h-3" />
-                  <span>Export</span>
-                </Button>
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => setIsBulkDeleteOpen(true)}
-                  className="h-8 text-xs rounded-lg gap-1"
-                >
-                  <Trash2 className="w-3 h-3" />
-                  <span>Delete Selected</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedIds([])}
-                  className="h-8 text-xs text-[#5e776a] hover:text-[#112a1d] hover:bg-white/60 rounded-lg"
-                >
-                  Deselect
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* SHADCN TABLE CONTAINER */}
-        <div className="bg-white rounded-2xl border border-[#e8e4dc] shadow-2xs overflow-hidden">
+          {/* Table Container - seamless without separate outer border */}
           <div className="relative w-full overflow-x-auto">
             <Table className="w-full text-left border-collapse text-xs">
               <TableHeader>
-                <TableRow className="border-b border-[#e8e4dc] bg-[#faf8f4] hover:bg-[#faf8f4]">
+                <TableRow className="bg-muted/30 hover:bg-muted/30 border-none">
                   {/* Select All Checkbox */}
-                  <TableHead className="w-12 py-3 px-4 text-center">
+                  <TableHead className="w-12 py-4 px-4 text-center">
                     <Checkbox
                       checked={isAllSelected}
                       onCheckedChange={handleSelectAll}
@@ -929,94 +981,109 @@ export function ProductManagement() {
                     />
                   </TableHead>
 
-                  {/* Product Column Header with Sort */}
-                  <TableHead className="py-3 px-3">
+                  {/* Image Column */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
+                    Image
+                  </TableHead>
+
+                  {/* Product Name Column */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
                     <button
                       type="button"
                       onClick={() => handleHeaderSort("name")}
-                      className="inline-flex items-center gap-1.5 uppercase tracking-wider text-[11px] font-semibold text-[#5e7567] hover:text-[#142e20] transition-colors"
+                      className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-medium text-xs text-muted-foreground"
                     >
-                      <span>Product</span>
+                      <span>Product Name</span>
                       {sortField === "name" ? (
                         sortDirection === "asc" ? (
-                          <ArrowUp className="w-3 h-3 text-[#143926]" />
+                          <ArrowUp className="w-3.5 h-3.5 text-foreground" />
                         ) : (
-                          <ArrowDown className="w-3 h-3 text-[#143926]" />
+                          <ArrowDown className="w-3.5 h-3.5 text-foreground" />
                         )
                       ) : (
-                        <ArrowUpDown className="w-3 h-3 text-[#9ab0a2] opacity-70" />
+                        <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
                       )}
                     </button>
                   </TableHead>
 
-                  {/* Category Column Header with Sort */}
-                  <TableHead className="py-3 px-3">
+                  {/* Code (SKU) Column */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
+                    Code
+                  </TableHead>
+
+                  {/* Category / Subcategory Column */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
                     <button
                       type="button"
                       onClick={() => handleHeaderSort("category")}
-                      className="inline-flex items-center gap-1.5 uppercase tracking-wider text-[11px] font-semibold text-[#5e7567] hover:text-[#142e20] transition-colors"
+                      className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-medium text-xs text-muted-foreground"
                     >
-                      <span>Category</span>
+                      <span>Subcategory</span>
                       {sortField === "category" ? (
                         sortDirection === "asc" ? (
-                          <ArrowUp className="w-3 h-3 text-[#143926]" />
+                          <ArrowUp className="w-3.5 h-3.5 text-foreground" />
                         ) : (
-                          <ArrowDown className="w-3 h-3 text-[#143926]" />
+                          <ArrowDown className="w-3.5 h-3.5 text-foreground" />
                         )
                       ) : (
-                        <ArrowUpDown className="w-3 h-3 text-[#9ab0a2] opacity-70" />
+                        <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
                       )}
                     </button>
                   </TableHead>
 
-                  {/* Price Column Header with Sort */}
-                  <TableHead className="py-3 px-3">
+                  {/* Price Column */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
                     <button
                       type="button"
                       onClick={() => handleHeaderSort("price")}
-                      className="inline-flex items-center gap-1.5 uppercase tracking-wider text-[11px] font-semibold text-[#5e7567] hover:text-[#142e20] transition-colors"
+                      className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-medium text-xs text-muted-foreground"
                     >
                       <span>Price</span>
                       {sortField === "price" ? (
                         sortDirection === "asc" ? (
-                          <ArrowUp className="w-3 h-3 text-[#143926]" />
+                          <ArrowUp className="w-3.5 h-3.5 text-foreground" />
                         ) : (
-                          <ArrowDown className="w-3 h-3 text-[#143926]" />
+                          <ArrowDown className="w-3.5 h-3.5 text-foreground" />
                         )
                       ) : (
-                        <ArrowUpDown className="w-3 h-3 text-[#9ab0a2] opacity-70" />
+                        <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
                       )}
                     </button>
                   </TableHead>
 
-                  {/* Stock Column Header with Sort */}
-                  <TableHead className="py-3 px-3">
+                  {/* Stock Column */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
                     <button
                       type="button"
                       onClick={() => handleHeaderSort("stock")}
-                      className="inline-flex items-center gap-1.5 uppercase tracking-wider text-[11px] font-semibold text-[#5e7567] hover:text-[#142e20] transition-colors"
+                      className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-medium text-xs text-muted-foreground"
                     >
-                      <span>Inventory</span>
+                      <span>Stock</span>
                       {sortField === "stock" ? (
                         sortDirection === "asc" ? (
-                          <ArrowUp className="w-3 h-3 text-[#143926]" />
+                          <ArrowUp className="w-3.5 h-3.5 text-foreground" />
                         ) : (
-                          <ArrowDown className="w-3 h-3 text-[#143926]" />
+                          <ArrowDown className="w-3.5 h-3.5 text-foreground" />
                         )
                       ) : (
-                        <ArrowUpDown className="w-3 h-3 text-[#9ab0a2] opacity-70" />
+                        <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
                       )}
                     </button>
                   </TableHead>
 
-                  {/* Status Column Header */}
-                  <TableHead className="py-3 px-3 uppercase tracking-wider text-[11px] font-semibold text-[#5e7567]">
+                  {/* Added Date Column (From Image 1) */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
+                    Added Date
+                  </TableHead>
+
+                  {/* Status Column */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
                     Status
                   </TableHead>
 
-                  {/* Actions Column Header */}
-                  <TableHead className="py-3 px-4 uppercase tracking-wider text-[11px] font-semibold text-[#5e7567] text-right">
-                    Actions
+                  {/* Action Column */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground text-center">
+                    Action
                   </TableHead>
                 </TableRow>
               </TableHeader>
@@ -1024,14 +1091,14 @@ export function ProductManagement() {
               <TableBody>
                 {paginatedProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-48 text-center">
+                    <TableCell colSpan={10} className="h-48 text-center">
                       <div className="flex flex-col items-center justify-center p-6 space-y-3">
-                        <div className="w-12 h-12 rounded-2xl bg-[#f5f2eb] text-[#7d9385] flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-2xl bg-muted text-muted-foreground flex items-center justify-center">
                           <Package className="w-6 h-6" />
                         </div>
                         <div className="space-y-1">
-                          <p className="font-semibold text-sm text-[#142e20]">No products found</p>
-                          <p className="text-xs text-[#718679] max-w-sm">
+                          <p className="font-semibold text-sm text-foreground">No products found</p>
+                          <p className="text-xs text-muted-foreground max-w-sm">
                             No drinks match your current search and filter settings. Try clearing the query or change filters.
                           </p>
                         </div>
@@ -1039,7 +1106,7 @@ export function ProductManagement() {
                           variant="outline"
                           size="sm"
                           onClick={handleResetFilters}
-                          className="h-8 text-xs rounded-xl border-[#dcd6cc]"
+                          className="h-9 px-4 text-xs rounded-full border-border"
                         >
                           Reset Filters
                         </Button>
@@ -1053,12 +1120,12 @@ export function ProductManagement() {
                       <TableRow
                         key={product.id}
                         data-state={isSelected ? "selected" : undefined}
-                        className={`transition-colors border-b border-[#f0ece4] hover:bg-[#faf9f6] ${
-                          isSelected ? "bg-[#f2f7f4]" : ""
+                        className={`transition-colors border-b border-muted/30 hover:bg-muted/20 ${
+                          isSelected ? "bg-muted/30" : ""
                         }`}
                       >
                         {/* Checkbox */}
-                        <TableCell className="py-3 px-4 text-center">
+                        <TableCell className="py-4 px-4 text-center">
                           <Checkbox
                             checked={isSelected}
                             onCheckedChange={() => handleToggleSelect(product.id)}
@@ -1066,218 +1133,177 @@ export function ProductManagement() {
                           />
                         </TableCell>
 
-                        {/* Product Thumbnail & Details */}
-                        <TableCell className="py-3 px-3">
-                          <div className="flex items-center gap-3">
-                            <div className="relative shrink-0">
-                              <img
-                                src={product.image}
-                                alt={product.name}
-                                className="w-10 h-10 rounded-xl object-cover border border-[#e2ddd4] shadow-2xs"
-                              />
+                        {/* Image Thumbnail (Square with rounded corners, Image 1 style - no border) */}
+                        <TableCell className="py-4 px-4">
+                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted/30 shrink-0 flex items-center justify-center">
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        </TableCell>
+
+                        {/* Product Name */}
+                        <TableCell className="py-4 px-4">
+                          <div className="flex flex-col min-w-0 max-w-[220px]">
+                            <span
+                              onClick={() => handleOpenView(product)}
+                              className="font-semibold text-xs md:text-sm text-foreground hover:text-primary transition-colors cursor-pointer truncate"
+                            >
+                              {product.name}
+                            </span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
                               {product.isFeatured && (
-                                <span
-                                  title="Featured product"
-                                  className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-amber-400 text-[#143926] flex items-center justify-center shadow-xs"
-                                >
-                                  <Star className="w-2.5 h-2.5 fill-current" />
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500 text-white">
+                                  Sale
                                 </span>
                               )}
-                            </div>
-                            <div className="flex flex-col min-w-0 max-w-[240px]">
-                              <div className="flex items-center gap-1.5">
-                                <span
-                                  onClick={() => setViewingProduct(product)}
-                                  className="font-semibold text-[#142e20] text-xs leading-snug hover:text-[#143926] hover:underline cursor-pointer truncate"
-                                >
-                                  {product.name}
+                              {product.volume && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {product.volume}
                                 </span>
-                                {product.volume && (
-                                  <span className="text-[10px] text-[#86998e] bg-[#f4f1ea] px-1.5 py-0.2 rounded font-sans">
-                                    {product.volume}
-                                  </span>
-                                )}
-                              </div>
-                              <span className="text-[11px] text-[#718679] truncate mt-0.5">
+                              )}
+                              <span className="text-[11px] text-muted-foreground truncate">
                                 {product.ingredients}
                               </span>
                             </div>
                           </div>
                         </TableCell>
 
-                        {/* Category Badge */}
-                        <TableCell className="py-3 px-3">
-                          <Badge
-                            variant="secondary"
-                            className={`rounded-full px-2.5 py-0.5 text-[11px] font-medium border-0 tracking-tight ${
-                              product.category === "Adaptogenic Tonics"
-                                ? "bg-[#e7f5ec] text-[#1c643b]"
-                                : product.category === "Wild Berry Spritz"
-                                ? "bg-[#f4eaf7] text-[#73368a]"
-                                : product.category === "Zero-Proof Spirits"
-                                ? "bg-[#fbf1dc] text-[#8e5c1d]"
-                                : "bg-[#e2f1f5] text-[#1f6679]"
-                            }`}
-                          >
-                            {product.category}
-                          </Badge>
+                        {/* Code (SKU) */}
+                        <TableCell className="py-4 px-4 text-xs font-mono text-muted-foreground">
+                          {product.sku || "N/A"}
+                        </TableCell>
+
+                        {/* Subcategory */}
+                        <TableCell className="py-4 px-4 text-xs font-medium text-foreground">
+                          {product.category}
                         </TableCell>
 
                         {/* Price */}
-                        <TableCell className="py-3 px-3 font-semibold text-[#152e21] font-sans">
+                        <TableCell className="py-4 px-4 text-xs font-semibold text-foreground">
                           €{product.price.toFixed(2)}
                         </TableCell>
 
-                        {/* Stock Quantity & Health Indicator */}
-                        <TableCell className="py-3 px-3">
-                          <div className="flex flex-col gap-1 max-w-[100px]">
-                            <div className="flex items-center justify-between text-xs">
-                              <span
-                                className={`font-semibold ${
-                                  product.stock === 0
-                                    ? "text-rose-600"
-                                    : product.stock <= 9
-                                    ? "text-amber-600"
-                                    : "text-[#1d3527]"
+                        {/* Stock */}
+                        <TableCell className="py-4 px-4 text-xs font-medium text-foreground">
+                          {product.stock}
+                        </TableCell>
+
+                        {/* Added Date */}
+                        <TableCell className="py-4 px-4 text-xs text-muted-foreground whitespace-nowrap">
+                          {product.addedDate || "14 Sept 2025"}
+                        </TableCell>
+
+                        {/* Status (Pill with Chevron, directly inspired by Image 1) */}
+                        <TableCell className="py-4 px-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
+                                  product.status === "Active"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200/70 hover:bg-emerald-100/60"
+                                    : product.status === "Low Stock"
+                                    ? "bg-amber-50 text-amber-700 border-amber-200/70 hover:bg-amber-100/60"
+                                    : "bg-rose-50 text-rose-700 border-rose-200/70 hover:bg-rose-100/60"
                                 }`}
                               >
-                                {product.stock} units
-                              </span>
-                            </div>
-                            {/* Stock Visual Ratio Bar */}
-                            <div className="w-full h-1.5 rounded-full bg-[#ede9e0] overflow-hidden">
-                              <div
-                                className={`h-full rounded-full transition-all duration-300 ${
-                                  product.stock === 0
-                                    ? "bg-rose-500 w-0"
-                                    : product.stock <= 9
-                                    ? "bg-amber-500"
-                                    : "bg-emerald-600"
-                                }`}
-                                style={{ width: `${Math.min(100, (product.stock / 35) * 100)}%` }}
-                              />
-                            </div>
-                          </div>
+                                <span
+                                  className={`w-1.5 h-1.5 rounded-full ${
+                                    product.status === "Active"
+                                      ? "bg-emerald-600"
+                                      : product.status === "Low Stock"
+                                      ? "bg-amber-600"
+                                      : "bg-rose-600"
+                                  }`}
+                                />
+                                <span>{product.status}</span>
+                                <ChevronDown className="w-3 h-3 opacity-60" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="start" className="w-36 bg-card border-border rounded-xl shadow-md p-1">
+                              <DropdownMenuItem
+                                onClick={() => handleQuickStatusChange(product.id, "Active")}
+                                className="text-xs cursor-pointer rounded-lg"
+                              >
+                                Active
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleQuickStatusChange(product.id, "Low Stock")}
+                                className="text-xs cursor-pointer rounded-lg text-amber-700"
+                              >
+                                Low Stock
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleQuickStatusChange(product.id, "Out of Stock")}
+                                className="text-xs cursor-pointer rounded-lg text-rose-700"
+                              >
+                                Out of Stock
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
 
-                        {/* Status Badge */}
-                        <TableCell className="py-3 px-3">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-semibold ${
-                              product.status === "Active"
-                                ? "bg-[#e5f7eb] text-[#1b6b37]"
-                                : product.status === "Low Stock"
-                                ? "bg-[#fef2e2] text-[#b36319]"
-                                : "bg-[#feecee] text-[#b92c3a]"
-                            }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                product.status === "Active"
-                                  ? "bg-emerald-600"
-                                  : product.status === "Low Stock"
-                                  ? "bg-amber-600"
-                                  : "bg-rose-600"
-                              }`}
-                            />
-                            {product.status}
-                          </span>
-                        </TableCell>
-
-                        {/* Action Dropdown Menu & Quick Actions */}
-                        <TableCell className="py-3 px-4 text-right">
-                          <div className="inline-flex items-center gap-1 text-[#73887b]">
-                            {/* Quick View Button */}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setViewingProduct(product)}
-                                  className="h-8 w-8 text-[#5f776a] hover:text-[#143926] hover:bg-[#eef5f1] rounded-lg transition-colors"
-                                >
-                                  <Eye className="w-3.5 h-3.5" />
-                                  <span className="sr-only">View Details</span>
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Quick View</TooltipContent>
-                            </Tooltip>
-
-                            {/* Quick Edit Button */}
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleOpenEdit(product)}
-                                  className="h-8 w-8 text-[#5f776a] hover:text-[#143926] hover:bg-[#eef5f1] rounded-lg transition-colors"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5" />
-                                  <span className="sr-only">Edit Product</span>
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit Details</TooltipContent>
-                            </Tooltip>
-
-                            {/* Shadcn DropdownMenu for Full Context Menu */}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-8 w-8 text-[#5f776a] hover:text-[#143926] hover:bg-[#eef5f1] rounded-lg transition-colors"
-                                >
-                                  <MoreVertical className="w-3.5 h-3.5" />
-                                  <span className="sr-only">Actions</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48 rounded-xl bg-white border border-[#e8e4dc] shadow-md p-1.5">
-                                <DropdownMenuLabel className="text-[11px] font-semibold text-[#82968a] px-2 py-1">
-                                  Product Options
-                                </DropdownMenuLabel>
-                                <DropdownMenuItem
-                                  onClick={() => setViewingProduct(product)}
-                                  className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-[#f4f8f5] text-[#142e20] gap-2"
-                                >
-                                  <Eye className="w-3.5 h-3.5 text-[#5e776a]" />
-                                  <span>View Details</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleOpenEdit(product)}
-                                  className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-[#f4f8f5] text-[#142e20] gap-2"
-                                >
-                                  <Edit2 className="w-3.5 h-3.5 text-[#5e776a]" />
-                                  <span>Edit Product</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleDuplicate(product)}
-                                  className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-[#f4f8f5] text-[#142e20] gap-2"
-                                >
-                                  <Copy className="w-3.5 h-3.5 text-[#5e776a]" />
-                                  <span>Duplicate Item</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => handleToggleFeatured(product.id)}
-                                  className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-[#f4f8f5] text-[#142e20] gap-2"
-                                >
-                                  <Star
-                                    className={`w-3.5 h-3.5 ${
-                                      product.isFeatured ? "fill-amber-400 text-amber-500" : "text-[#5e776a]"
-                                    }`}
-                                  />
-                                  <span>{product.isFeatured ? "Unfeature" : "Feature in Store"}</span>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator className="my-1 bg-[#ede9e1]" />
-                                <DropdownMenuItem
-                                  onClick={() => setDeleteCandidate(product)}
-                                  className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-rose-50 text-rose-600 focus:text-rose-600 focus:bg-rose-50 gap-2"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Delete Product</span>
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
+                        {/* Action Menu (Image 1 ••• horizontal dots) */}
+                        <TableCell className="py-4 px-4 text-center">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="h-8 w-8 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center transition-colors focus:outline-none"
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                                <span className="sr-only">Actions</span>
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 rounded-xl bg-card border border-border shadow-md p-1.5">
+                              <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
+                                Product Options
+                              </DropdownMenuLabel>
+                              <DropdownMenuItem
+                                onClick={() => handleOpenView(product)}
+                                className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted text-foreground gap-2"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                                <span>View Details</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleOpenEdit(product)}
+                                className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted text-foreground gap-2"
+                              >
+                                <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
+                                <span>Edit Product</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleDuplicate(product)}
+                                className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted text-foreground gap-2"
+                              >
+                                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
+                                <span>Duplicate Item</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => handleToggleFeatured(product.id)}
+                                className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted text-foreground gap-2"
+                              >
+                                <Star
+                                  className={`w-3.5 h-3.5 ${
+                                    product.isFeatured ? "fill-amber-400 text-amber-500" : "text-muted-foreground"
+                                  }`}
+                                />
+                                <span>{product.isFeatured ? "Remove Sale" : "Mark as Sale"}</span>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator className="my-1 bg-border" />
+                              <DropdownMenuItem
+                                onClick={() => setDeleteCandidate(product)}
+                                className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-destructive/10 text-destructive focus:text-destructive gap-2"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete Product</span>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     )
@@ -1287,25 +1313,25 @@ export function ProductManagement() {
             </Table>
           </div>
 
-          {/* Table Footer with Professional Pagination */}
-          <div className="p-3.5 md:p-4 border-t border-[#e8e4dc] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#637a6b] bg-[#fdfcfb]">
+          {/* Table Footer with Pagination (Clean, airy layout) */}
+          <div className="p-4 border-t border-muted/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground bg-card">
             <div className="flex items-center gap-3">
               <span>
                 Showing <strong>{filteredProducts.length === 0 ? 0 : (safeCurrentPage - 1) * pageSize + 1}</strong> to{" "}
                 <strong>{Math.min(safeCurrentPage * pageSize, filteredProducts.length)}</strong> of{" "}
-                <strong>{filteredProducts.length}</strong> items
+                <strong>{filteredProducts.length}</strong> products
               </span>
 
               {/* Page Size Selector */}
-              <div className="flex items-center gap-1.5 pl-2 border-l border-[#e5dfd5]">
-                <span className="text-[11px] text-[#86998e]">Per page:</span>
+              <div className="flex items-center gap-1.5 pl-3 border-l border-border">
+                <span className="text-[11px] text-muted-foreground">Per page:</span>
                 <select
                   value={pageSize}
                   onChange={(e) => {
                     setPageSize(Number(e.target.value))
                     setCurrentPage(1)
                   }}
-                  className="h-7 text-xs bg-white border border-[#e5dfd5] rounded-lg px-2 text-[#334b3e] focus:outline-none focus:ring-1 focus:ring-[#143926]"
+                  className="h-8 text-xs bg-card border border-border rounded-lg px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 >
                   <option value={5}>5</option>
                   <option value={8}>8</option>
@@ -1315,14 +1341,14 @@ export function ProductManagement() {
               </div>
             </div>
 
-            {/* Pagination Buttons */}
-            <div className="flex items-center gap-1">
+            {/* Pagination Controls */}
+            <div className="flex items-center gap-1.5">
               <Button
                 variant="outline"
                 size="icon"
                 disabled={safeCurrentPage === 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                className="w-8 h-8 rounded-lg border-[#e5dfd5] text-[#556c5d] hover:bg-[#f6f4ee] disabled:opacity-40"
+                className="w-8 h-8 rounded-full border border-border text-foreground hover:bg-muted disabled:opacity-40"
               >
                 <ChevronLeft className="w-3.5 h-3.5" />
                 <span className="sr-only">Previous page</span>
@@ -1334,10 +1360,10 @@ export function ProductManagement() {
                   variant={safeCurrentPage === page ? "default" : "outline"}
                   size="icon"
                   onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-lg text-xs font-semibold transition-colors ${
+                  className={`w-8 h-8 rounded-full text-xs font-semibold transition-colors ${
                     safeCurrentPage === page
-                      ? "bg-[#143926] text-white hover:bg-[#19452f] shadow-2xs"
-                      : "border-[#e5dfd5] text-[#556c5d] hover:bg-[#f6f4ee]"
+                      ? "bg-primary text-primary-foreground shadow-2xs"
+                      : "border border-border text-foreground hover:bg-muted"
                   }`}
                 >
                   {page}
@@ -1349,7 +1375,7 @@ export function ProductManagement() {
                 size="icon"
                 disabled={safeCurrentPage === totalPages || totalPages === 0}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                className="w-8 h-8 rounded-lg border-[#e5dfd5] text-[#556c5d] hover:bg-[#f6f4ee] disabled:opacity-40"
+                className="w-8 h-8 rounded-full border border-border text-foreground hover:bg-muted disabled:opacity-40"
               >
                 <ChevronRight className="w-3.5 h-3.5" />
                 <span className="sr-only">Next page</span>
@@ -1359,45 +1385,61 @@ export function ProductManagement() {
         </div>
       </div>
 
-      {/* RIGHT: Slide-over Drawer / Side Panel for Add & Edit Product */}
-      {isPanelOpen && (
-        <aside className="w-full xl:w-[460px] xl:shrink-0 bg-white border-t xl:border-t-0 xl:border-l border-[#e7e2d8] flex flex-col shadow-xl z-20 animate-in slide-in-from-right duration-200">
+      {/* RIGHT SLIDE-OVER DRAWER FOR ADD / EDIT / VIEW DETAILS (Full Height Covering Top Navbar) */}
+      <Sheet open={isPanelOpen} onOpenChange={setIsPanelOpen}>
+        <SheetContent
+          side="right"
+          showCloseButton={false}
+          className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-[560px] data-[side=right]:sm:max-w-xl data-[side=right]:md:max-w-2xl data-[side=right]:lg:max-w-[560px] p-0 flex flex-col gap-0 border-l border-border bg-card shadow-2xl z-50 overflow-hidden h-full"
+        >
           {/* Drawer Header */}
-          <div className="p-5 border-b border-[#e8e4dc] flex items-center justify-between bg-[#fbfaf8]">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#eaf4ee] text-[#143926] flex items-center justify-center">
-                {editingProduct ? <Edit2 className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+          <div className="p-5 border-b border-border flex items-center justify-between bg-muted/20 shrink-0">
+            <div className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-foreground shrink-0">
+                {panelMode === "create" ? (
+                  <Sparkles className="w-4 h-4" />
+                ) : panelMode === "view" ? (
+                  <Eye className="w-4 h-4" />
+                ) : (
+                  <Edit2 className="w-4 h-4" />
+                )}
               </div>
               <div>
-                <h2 className="font-serif text-lg font-bold text-[#112a1d]">
-                  {editingProduct ? "Edit Product" : "Add New Product"}
-                </h2>
-                <p className="text-[11px] text-[#698172]">
-                  {editingProduct ? `SKU: ${editingProduct.sku || "N/A"}` : "Create and publish a new botanical drink"}
-                </p>
+                <SheetTitle className="text-base font-bold text-foreground font-sans">
+                  {panelMode === "create"
+                    ? "Add New Product"
+                    : panelMode === "view"
+                    ? "Product Details"
+                    : "Edit Product"}
+                </SheetTitle>
+                <SheetDescription className="text-[11px] text-muted-foreground">
+                  {editingProduct
+                    ? `SKU: ${editingProduct.sku || "N/A"} • ${editingProduct.category}`
+                    : "Create and publish a new botanical drink"}
+                </SheetDescription>
               </div>
             </div>
 
-            <Button
-              variant="ghost"
-              size="icon"
+            {/* Circular Close Button matching Image 2 */}
+            <button
+              type="button"
               onClick={() => setIsPanelOpen(false)}
-              className="h-8 w-8 rounded-lg text-[#778d80] hover:text-[#112a1d] hover:bg-[#f3efe8]"
+              className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <X className="w-4 h-4" />
               <span className="sr-only">Close panel</span>
-            </Button>
+            </button>
           </div>
 
           {/* Form Tabs */}
-          <div className="flex border-b border-[#e8e4dc] px-5 text-xs font-semibold text-[#667d6f] bg-white">
+          <div className="flex border-b border-border px-5 text-xs font-medium text-muted-foreground bg-card shrink-0">
             <button
               type="button"
               onClick={() => setActiveTab("basic")}
-              className={`py-3 px-2 border-b-2 font-medium transition-colors ${
+              className={`py-3 px-3 border-b-2 font-medium transition-colors ${
                 activeTab === "basic"
-                  ? "border-[#143926] text-[#143926] font-bold"
-                  : "border-transparent hover:text-[#112a1d]"
+                  ? "border-primary text-primary font-bold"
+                  : "border-transparent hover:text-foreground"
               }`}
             >
               Basic Info
@@ -1407,8 +1449,8 @@ export function ProductManagement() {
               onClick={() => setActiveTab("ingredients")}
               className={`py-3 px-3 border-b-2 font-medium transition-colors ${
                 activeTab === "ingredients"
-                  ? "border-[#143926] text-[#143926] font-bold"
-                  : "border-transparent hover:text-[#112a1d]"
+                  ? "border-primary text-primary font-bold"
+                  : "border-transparent hover:text-foreground"
               }`}
             >
               Botanicals & Story
@@ -1418,406 +1460,276 @@ export function ProductManagement() {
               onClick={() => setActiveTab("media")}
               className={`py-3 px-3 border-b-2 font-medium transition-colors ${
                 activeTab === "media"
-                  ? "border-[#143926] text-[#143926] font-bold"
-                  : "border-transparent hover:text-[#112a1d]"
+                  ? "border-primary text-primary font-bold"
+                  : "border-transparent hover:text-foreground"
               }`}
             >
               Media & Gallery
             </button>
           </div>
 
-          {/* Form Body */}
-          <form onSubmit={handleSaveProduct} className="flex-1 overflow-y-auto p-5 space-y-4">
-            {activeTab === "basic" && (
-              <div className="space-y-4 animate-in fade-in duration-150">
-                {/* Product Name */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#233f30] mb-1">
-                    Product Title <span className="text-rose-500">*</span>
-                  </label>
-                  <Input
-                    required
-                    placeholder="e.g. Lingonberry Cloud Tonic"
-                    value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
-                    className="h-9.5 text-xs bg-[#fdfcfb] border-[#e2dcd2] rounded-xl focus-visible:ring-[#143926]"
-                  />
-                </div>
-
-                {/* Category & Volume */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {/* Form with Content and Pinned Bottom Buttons */}
+          <form onSubmit={handleSaveProduct} className="flex-1 flex flex-col min-h-0 overflow-hidden">
+            {/* Scrollable Form Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              {activeTab === "basic" && (
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  {/* Product Name */}
                   <div>
-                    <label className="block text-[11px] font-bold text-[#233f30] mb-1">
-                      Category <span className="text-rose-500">*</span>
-                    </label>
-                    <Select
-                      value={formCategory}
-                      onValueChange={(val) => setFormCategory(val as ProductItem["category"])}
-                    >
-                      <SelectTrigger className="h-9.5 text-xs bg-[#fdfcfb] border-[#e2dcd2] rounded-xl text-[#233f30]">
-                        <SelectValue placeholder="Select category" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Adaptogenic Tonics">Adaptogenic Tonics</SelectItem>
-                        <SelectItem value="Wild Berry Spritz">Wild Berry Spritz</SelectItem>
-                        <SelectItem value="Zero-Proof Spirits">Zero-Proof Spirits</SelectItem>
-                        <SelectItem value="Herbal Elixirs">Herbal Elixirs</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#233f30] mb-1">
-                      Volume / Format
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">
+                      Product Title <span className="text-rose-500">*</span>
                     </label>
                     <Input
-                      placeholder="e.g. 330 ml or 4-Pack"
-                      value={formVolume}
-                      onChange={(e) => setFormVolume(e.target.value)}
-                      className="h-9.5 text-xs bg-[#fdfcfb] border-[#e2dcd2] rounded-xl focus-visible:ring-[#143926]"
+                      required
+                      placeholder="e.g. Lingonberry Cloud Tonic"
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      className="h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
                     />
                   </div>
-                </div>
 
-                {/* Price & Stock */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#233f30] mb-1">
-                      Price (€) <span className="text-rose-500">*</span>
-                    </label>
-                    <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-[#768c7e]">
-                        €
-                      </span>
+                  {/* Category & Volume */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1.5">
+                        Subcategory <span className="text-rose-500">*</span>
+                      </label>
+                      <Select
+                        value={formCategory}
+                        onValueChange={(val) => setFormCategory(val as ProductItem["category"])}
+                      >
+                        <SelectTrigger className="h-10 text-xs bg-card border-border rounded-xl text-foreground">
+                          <SelectValue placeholder="Select category" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border">
+                          <SelectItem value="Adaptogenic Tonics">Adaptogenic Tonics</SelectItem>
+                          <SelectItem value="Wild Berry Spritz">Wild Berry Spritz</SelectItem>
+                          <SelectItem value="Zero-Proof Spirits">Zero-Proof Spirits</SelectItem>
+                          <SelectItem value="Herbal Elixirs">Herbal Elixirs</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1.5">
+                        Volume / Format
+                      </label>
                       <Input
-                        required
-                        type="number"
-                        step="0.01"
-                        placeholder="14.50"
-                        value={formPrice}
-                        onChange={(e) => setFormPrice(e.target.value)}
-                        className="pl-7 h-9.5 text-xs bg-[#fdfcfb] border-[#e2dcd2] rounded-xl focus-visible:ring-[#143926]"
+                        placeholder="e.g. 330 ml or 4-Pack"
+                        value={formVolume}
+                        onChange={(e) => setFormVolume(e.target.value)}
+                        className="h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
                       />
                     </div>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-bold text-[#233f30] mb-1">
-                      Stock Level <span className="text-rose-500">*</span>
-                    </label>
-                    <Input
-                      required
-                      type="number"
-                      placeholder="20"
-                      value={formStock}
-                      onChange={(e) => setFormStock(e.target.value)}
-                      className="h-9.5 text-xs bg-[#fdfcfb] border-[#e2dcd2] rounded-xl focus-visible:ring-[#143926]"
-                    />
-                  </div>
-                </div>
+                  {/* Price & Stock */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1.5">
+                        Price (€) <span className="text-rose-500">*</span>
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
+                          €
+                        </span>
+                        <Input
+                          required
+                          type="number"
+                          step="0.01"
+                          placeholder="14.50"
+                          value={formPrice}
+                          onChange={(e) => setFormPrice(e.target.value)}
+                          className="pl-7 h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
+                        />
+                      </div>
+                    </div>
 
-                {/* Status & Featured */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-center pt-1">
+                    <div>
+                      <label className="block text-xs font-semibold text-foreground mb-1.5">
+                        Inventory Units <span className="text-rose-500">*</span>
+                      </label>
+                      <Input
+                        required
+                        type="number"
+                        placeholder="20"
+                        value={formStock}
+                        onChange={(e) => setFormStock(e.target.value)}
+                        className="h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Status Selection */}
                   <div>
-                    <label className="block text-[11px] font-bold text-[#233f30] mb-1">
-                      Inventory Status
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">
+                      Publication Status
                     </label>
                     <Select
                       value={formStatus}
                       onValueChange={(val) => setFormStatus(val as ProductItem["status"])}
                     >
-                      <SelectTrigger className="h-9.5 text-xs bg-[#fdfcfb] border-[#e2dcd2] rounded-xl text-[#233f30]">
-                        <SelectValue placeholder="Active" />
+                      <SelectTrigger className="h-10 text-xs bg-card border-border rounded-xl text-foreground">
+                        <SelectValue placeholder="Select status" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Active">Active</SelectItem>
-                        <SelectItem value="Low Stock">Low Stock</SelectItem>
-                        <SelectItem value="Out of Stock">Out of Stock</SelectItem>
+                      <SelectContent className="bg-card border-border">
+                        <SelectItem value="Active">Active (Live in Store)</SelectItem>
+                        <SelectItem value="Low Stock">Low Stock Warning</SelectItem>
+                        <SelectItem value="Out of Stock">Out of Stock (Hidden/Waitlist)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="flex items-center gap-2.5 pt-4">
+                  {/* Sale / Featured Toggle */}
+                  <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-muted/20">
+                    <div>
+                      <span className="text-xs font-bold text-foreground block">Mark as Sale</span>
+                      <span className="text-[11px] text-muted-foreground">
+                        Display special sale badge on store
+                      </span>
+                    </div>
                     <Switch
                       checked={formFeatured}
                       onCheckedChange={setFormFeatured}
-                      id="drawer-featured-switch"
                     />
-                    <label
-                      htmlFor="drawer-featured-switch"
-                      className="text-xs font-semibold text-[#254233] cursor-pointer"
-                    >
-                      Feature in Store
-                    </label>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "ingredients" && (
-              <div className="space-y-4 animate-in fade-in duration-150">
-                {/* Botanical Ingredients Summary */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#233f30] mb-1">
-                    Botanical Blend & Key Notes
-                  </label>
-                  <Textarea
-                    rows={3}
-                    placeholder="e.g. Pine Needle • Ashwagandha • Lemon Peel • Wild Thyme"
-                    value={formIngredients}
-                    onChange={(e) => setFormIngredients(e.target.value)}
-                    className="text-xs bg-[#fdfcfb] border-[#e2dcd2] rounded-xl focus-visible:ring-[#143926]"
-                  />
-                  <p className="text-[10px] text-[#7d9385] mt-1">
-                    Displayed prominently on catalog cards and customer recipes.
-                  </p>
-                </div>
-
-                {/* Tags */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#233f30] mb-1">
-                    Search Tags & Moods
-                  </label>
-                  <Input
-                    placeholder="e.g. bestseller, relaxation, evening, adaptogen"
-                    value={formTags}
-                    onChange={(e) => setFormTags(e.target.value)}
-                    className="h-9.5 text-xs bg-[#fdfcfb] border-[#e2dcd2] rounded-xl focus-visible:ring-[#143926]"
-                  />
-                </div>
-              </div>
-            )}
-
-            {activeTab === "media" && (
-              <div className="space-y-4 animate-in fade-in duration-150">
-                {/* Main Image URL & Dropzone */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#233f30] mb-1">
-                    Product Hero Image URL
-                  </label>
-                  <Input
-                    placeholder="https://images.unsplash.com/..."
-                    value={formImage}
-                    onChange={(e) => setFormImage(e.target.value)}
-                    className="h-9.5 text-xs bg-[#fdfcfb] border-[#e2dcd2] rounded-xl focus-visible:ring-[#143926] mb-2"
-                  />
-
-                  {/* Dropzone mockup */}
-                  <div
-                    onClick={() => toast.info("Image upload simulation triggered")}
-                    className="border-2 border-dashed border-[#d8d2c6] hover:border-[#143926] bg-[#fbfaf8] rounded-2xl p-5 text-center cursor-pointer transition-colors flex flex-col items-center justify-center group"
-                  >
-                    <div className="w-9 h-9 rounded-full bg-white shadow-2xs flex items-center justify-center text-[#6e8578] group-hover:text-[#143926] mb-1.5">
-                      <UploadCloud className="w-4 h-4" />
-                    </div>
-                    <span className="text-xs font-semibold text-[#183626]">
-                      Click to upload new high-res bottle photo
-                    </span>
-                    <span className="text-[10px] text-[#819689] mt-0.5">
-                      Supports JPG, PNG, WebP (Max 5MB)
-                    </span>
-                  </div>
-                </div>
-
-                {/* Additional Images Row */}
-                <div>
-                  <label className="block text-[11px] font-bold text-[#233f30] mb-1.5">
-                    Gallery Thumbnails
-                  </label>
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {formAdditionalImages.map((imgUrl, idx) => (
-                      <div
-                        key={idx}
-                        className="relative w-14 h-14 rounded-xl overflow-hidden border border-[#e2dcd2] shadow-2xs group"
-                      >
-                        <img src={imgUrl} alt="Additional visual" className="w-full h-full object-cover" />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setFormAdditionalImages((prev) => prev.filter((_, i) => i !== idx))
-                          }
-                          className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-black transition-colors"
-                          title="Remove"
-                        >
-                          <X className="w-2.5 h-2.5" />
-                        </button>
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setFormAdditionalImages((prev) => [
-                          ...prev,
-                          "https://images.unsplash.com/photo-1560512823-829485b8bf24?w=120&auto=format&fit=crop&q=80",
-                        ])
-                        toast.success("Additional preview added")
-                      }}
-                      className="w-14 h-14 rounded-xl border-2 border-dashed border-[#d8d2c6] hover:border-[#143926] bg-[#fbfaf8] flex items-center justify-center text-[#73887b] hover:text-[#143926] transition-colors"
-                      title="Add Image"
-                    >
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Bottom Actions */}
-            <div className="pt-4 border-t border-[#e8e4dc] flex items-center justify-end gap-2.5">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsPanelOpen(false)}
-                className="h-9.5 px-4 text-xs font-semibold rounded-xl border-[#dcd6cc] text-[#3b5546] hover:bg-[#f6f2ea]"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                className="h-9.5 px-5 text-xs font-semibold rounded-xl bg-[#143926] hover:bg-[#1a4731] text-white shadow-xs transition-colors"
-              >
-                {editingProduct ? "Save Changes" : "Create Product"}
-              </Button>
-            </div>
-          </form>
-        </aside>
-      )}
-
-      {/* QUICK VIEW DETAILS MODAL */}
-      <Dialog open={Boolean(viewingProduct)} onOpenChange={(open) => !open && setViewingProduct(null)}>
-        <DialogContent className="max-w-md rounded-2xl bg-white p-6 border-[#e8e4dc]">
-          {viewingProduct && (
-            <div className="space-y-4">
-              <DialogHeader>
-                <div className="flex items-center justify-between">
-                  <Badge
-                    variant="secondary"
-                    className="rounded-full px-2.5 py-0.5 text-[11px] font-medium bg-[#e7f5ec] text-[#1c643b]"
-                  >
-                    {viewingProduct.category}
-                  </Badge>
-                  <span className="text-xs text-[#718679] font-mono">
-                    {viewingProduct.sku || "TEL-GEN-001"}
-                  </span>
-                </div>
-                <DialogTitle className="font-serif text-xl font-bold text-[#142e20] pt-2">
-                  {viewingProduct.name}
-                </DialogTitle>
-                <DialogDescription className="text-xs text-[#617769]">
-                  {viewingProduct.ingredients}
-                </DialogDescription>
-              </DialogHeader>
-
-              {/* Product Hero Visual */}
-              <div className="relative w-full h-44 rounded-xl overflow-hidden border border-[#e8e4dc] bg-[#fbfaf8]">
-                <img
-                  src={viewingProduct.image}
-                  alt={viewingProduct.name}
-                  className="w-full h-full object-cover"
-                />
-                {viewingProduct.isFeatured && (
-                  <Badge className="absolute top-3 left-3 bg-amber-400 text-[#143926] font-bold shadow-xs border-0">
-                    Featured Drink
-                  </Badge>
-                )}
-                <span className="absolute bottom-3 right-3 bg-black/70 backdrop-blur-xs text-white text-xs px-2.5 py-1 rounded-lg font-bold">
-                  €{viewingProduct.price.toFixed(2)}
-                </span>
-              </div>
-
-              {/* Key Specs Grid */}
-              <div className="grid grid-cols-3 gap-2.5 bg-[#fbfaf8] p-3 rounded-xl border border-[#ebe7df] text-center text-xs">
-                <div>
-                  <span className="text-[10px] text-[#7a9083] uppercase block font-medium">Stock</span>
-                  <span
-                    className={`font-bold ${
-                      viewingProduct.stock === 0
-                        ? "text-rose-600"
-                        : viewingProduct.stock <= 9
-                        ? "text-amber-600"
-                        : "text-[#142e20]"
-                    }`}
-                  >
-                    {viewingProduct.stock} units
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#7a9083] uppercase block font-medium">Status</span>
-                  <span className="font-semibold text-[#142e20]">{viewingProduct.status}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-[#7a9083] uppercase block font-medium">Volume</span>
-                  <span className="font-semibold text-[#142e20]">{viewingProduct.volume || "330 ml"}</span>
-                </div>
-              </div>
-
-              {/* Tags */}
-              {viewingProduct.tags && (
-                <div>
-                  <span className="text-[11px] font-bold text-[#233f30] block mb-1.5">Tags & Aromas</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {viewingProduct.tags.split(",").map((tag, i) => (
-                      <span
-                        key={i}
-                        className="text-[11px] bg-[#f4f2eb] text-[#3c5547] px-2 py-0.5 rounded-md font-medium"
-                      >
-                        #{tag.trim()}
-                      </span>
-                    ))}
                   </div>
                 </div>
               )}
 
-              <DialogFooter className="pt-2 flex items-center justify-between sm:justify-between w-full">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setViewingProduct(null)}
-                  className="rounded-xl border-[#dcd6cc] text-xs"
-                >
-                  Close
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    const prod = viewingProduct
-                    setViewingProduct(null)
-                    handleOpenEdit(prod)
-                  }}
-                  className="rounded-xl bg-[#143926] hover:bg-[#19452f] text-white text-xs gap-1.5"
-                >
-                  <Edit2 className="w-3.5 h-3.5" />
-                  <span>Edit Product</span>
-                </Button>
-              </DialogFooter>
+              {activeTab === "ingredients" && (
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">
+                      Botanical Ingredients
+                    </label>
+                    <Textarea
+                      placeholder="e.g. Nordic Lingonberry • Hibiscus • Spearmint • Alpine Spring Water"
+                      value={formIngredients}
+                      onChange={(e) => setFormIngredients(e.target.value)}
+                      rows={4}
+                      className="text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">
+                      Tags & Aromas (Comma separated)
+                    </label>
+                    <Input
+                      placeholder="e.g. antioxidant, floral, sparkling, seasonal"
+                      value={formTags}
+                      onChange={(e) => setFormTags(e.target.value)}
+                      className="h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeTab === "media" && (
+                <div className="space-y-4 animate-in fade-in duration-150">
+                  <div>
+                    <label className="block text-xs font-semibold text-foreground mb-1.5">
+                      Main Bottle Image URL
+                    </label>
+                    <Input
+                      placeholder="https://images.unsplash.com/photo-..."
+                      value={formImage}
+                      onChange={(e) => setFormImage(e.target.value)}
+                      className="h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
+                    />
+                  </div>
+
+                  {formImage && (
+                    <div className="relative w-full h-36 rounded-xl overflow-hidden border border-border bg-muted/30">
+                      <img
+                        src={formImage}
+                        alt="Preview"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          ;(e.target as HTMLImageElement).src =
+                            "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80"
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-          )}
-        </DialogContent>
-      </Dialog>
+
+            {/* Footer Buttons Pinned At The Bottom Down (Matching Image 2) */}
+            <div className="p-4 sm:p-5 border-t border-border flex items-center justify-end gap-3 bg-card mt-auto shrink-0">
+              {panelMode === "view" ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPanelOpen(false)}
+                    className="h-10 px-6 rounded-full border-border text-xs text-foreground hover:bg-muted font-medium"
+                  >
+                    Close
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={() => {
+                      setPanelMode("edit")
+                      toast.info("Switched to edit mode")
+                    }}
+                    className="h-10 px-6 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-sm hover:opacity-90 gap-1.5"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    <span>Edit Product</span>
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsPanelOpen(false)}
+                    className="h-10 px-6 rounded-full border-border text-xs text-foreground hover:bg-muted font-medium"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="h-10 px-6 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-sm hover:opacity-90"
+                  >
+                    {panelMode === "edit" ? "Save Changes" : "Create Product"}
+                  </Button>
+                </>
+              )}
+            </div>
+          </form>
+        </SheetContent>
+      </Sheet>
 
       {/* SINGLE DELETE CONFIRMATION ALERT DIALOG */}
       <AlertDialog
         open={Boolean(deleteCandidate)}
         onOpenChange={(open) => !open && setDeleteCandidate(null)}
       >
-        <AlertDialogContent className="rounded-2xl max-w-sm bg-white border-[#e8e4dc]">
+        <AlertDialogContent className="rounded-2xl max-w-sm bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-bold text-[#142e20]">
+            <AlertDialogTitle className="text-lg font-bold text-foreground">
               Delete Product?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-[#637a6b]">
+            <AlertDialogDescription className="text-xs text-muted-foreground">
               Are you sure you want to remove{" "}
-              <strong className="text-[#142e20]">"{deleteCandidate?.name}"</strong> from your catalog?
+              <strong className="text-foreground">"{deleteCandidate?.name}"</strong> from your catalog?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-xl text-xs border-[#dcd6cc]">
+            <AlertDialogCancel className="rounded-full text-xs border-border">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmSingleDelete}
-              className="rounded-xl text-xs bg-rose-600 hover:bg-rose-700 text-white"
+              className="rounded-full text-xs bg-rose-600 hover:bg-rose-700 text-white"
             >
               Delete
             </AlertDialogAction>
@@ -1827,23 +1739,23 @@ export function ProductManagement() {
 
       {/* BULK DELETE CONFIRMATION ALERT DIALOG */}
       <AlertDialog open={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen}>
-        <AlertDialogContent className="rounded-2xl max-w-sm bg-white border-[#e8e4dc]">
+        <AlertDialogContent className="rounded-2xl max-w-sm bg-card border-border">
           <AlertDialogHeader>
-            <AlertDialogTitle className="font-serif text-lg font-bold text-[#142e20]">
+            <AlertDialogTitle className="text-lg font-bold text-foreground">
               Delete {selectedIds.length} Products?
             </AlertDialogTitle>
-            <AlertDialogDescription className="text-xs text-[#637a6b]">
+            <AlertDialogDescription className="text-xs text-muted-foreground">
               Are you sure you want to permanently delete all {selectedIds.length} selected items?
               This will remove them from the active online store.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-xl text-xs border-[#dcd6cc]">
+            <AlertDialogCancel className="rounded-full text-xs border-border">
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleConfirmBulkDelete}
-              className="rounded-xl text-xs bg-rose-600 hover:bg-rose-700 text-white"
+              className="rounded-full text-xs bg-rose-600 hover:bg-rose-700 text-white"
             >
               Delete All Selected
             </AlertDialogAction>

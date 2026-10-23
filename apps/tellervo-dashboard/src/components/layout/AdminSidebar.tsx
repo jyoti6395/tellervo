@@ -1,7 +1,8 @@
-import * as React from "react"
 import {
   LayoutDashboard,
   Package,
+  ShoppingBag,
+  Users,
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 import {
@@ -23,6 +24,8 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/dashboard" },
   { title: "Products", icon: Package, path: "/products" },
+  { title: "Orders", icon: ShoppingBag, path: "/orders" },
+  { title: "Customers", icon: Users, path: "/customers" },
 ]
 
 export function AdminSidebar() {
@@ -32,6 +35,8 @@ export function AdminSidebar() {
   const currentPath = location.pathname
   const isDashboard = currentPath === "/" || currentPath === "/dashboard"
   const isProducts = currentPath === "/products"
+  const isOrders = currentPath === "/orders"
+  const isCustomers = currentPath === "/customers"
 
   const handleNavClick = (item: NavItem) => {
     if (item.path) {
@@ -80,6 +85,10 @@ export function AdminSidebar() {
                 ? isDashboard
                 : item.title === "Products"
                 ? isProducts
+                : item.title === "Orders"
+                ? isOrders
+                : item.title === "Customers"
+                ? isCustomers
                 : false
 
             return (

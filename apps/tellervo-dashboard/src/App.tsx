@@ -4,6 +4,8 @@ import { AdminSidebar } from "@/components/layout/AdminSidebar"
 import { AdminHeader } from "@/components/layout/AdminHeader"
 import { DashboardPage } from "@/pages/DashboardPage"
 import { ProductManagement } from "@/pages/ProductManagement"
+import { OrderManagement } from "@/pages/OrderManagement"
+import { CustomerManagement } from "@/pages/CustomerManagement"
 import { Toaster } from "sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 
@@ -25,6 +27,8 @@ export default function App() {
                 <Route path="/" element={<DashboardPage />} />
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/products" element={<ProductManagement />} />
+                <Route path="/orders" element={<OrderManagement />} />
+                <Route path="/customers" element={<CustomerManagement />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
