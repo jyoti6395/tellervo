@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 44 26% 96%;
+    --foreground: 140 18% 15%;
+    --card: 0 0% 100%;
+    --card-foreground: 140 18% 15%;
+    --primary: 142 33% 15%;
+    --primary-foreground: 45 40% 96%;
+    --secondary: 42 22% 92%;
+    --secondary-foreground: 140 20% 18%;
+    --muted: 42 16% 90%;
+    --muted-foreground: 140 8% 40%;
+    --accent: 36 78% 61%;
+    --accent-foreground: 20 40% 12%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 42 15% 88%;
+    --input: 42 15% 88%;
+    --ring: 142 33% 20%;
+    --radius: 1rem;
+  }
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  background-color: #F8F6F0;
+  color: #1A281E;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom scrollbar hiding utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Elegant serif heading styling */
+.font-editorial {
+  font-family: 'Newsreader', 'Cormorant Garamond', Georgia, serif;
+  font-feature-settings: "liga" 1, "kern" 1;
+}
+
+/* Smooth tap animations */
+.tap-effect {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease;
+}
+.tap-effect:active {
+  transform: scale(0.97);
+}
+
+/* Subtle glassmorphism */
+.glass-header {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background-color: rgba(248, 246, 240, 0.88);
+}
+
+.glass-floating {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
