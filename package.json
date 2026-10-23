@@ -12,8 +12,8 @@
     "dev:app": "pnpm --filter @tellervo/app dev",
     "dev:dashboard": "pnpm --filter @tellervo/dashboard dev",
     "build": "turbo build && node scripts/copy-dist.mjs",
-    "build:app": "pnpm --filter @tellervo/app build",
-    "build:dashboard": "pnpm --filter @tellervo/dashboard build",
+    "build:app": "pnpm --filter @tellervo/app build && node scripts/copy-dist.mjs tellervo-app",
+    "build:dashboard": "pnpm --filter @tellervo/dashboard build && node scripts/copy-dist.mjs tellervo-dashboard",
     "lint": "turbo lint",
     "clean": "turbo clean"
   },
