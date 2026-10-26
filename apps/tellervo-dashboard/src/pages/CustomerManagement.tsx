@@ -314,9 +314,7 @@ export function CustomerManagement() {
               setStatusFilter("all")
               setCurrentPage(1)
             }}
-            className={`cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all ${
-              statusFilter === "all" ? "ring-2 ring-primary/40 bg-muted/15" : ""
-            }`}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">
@@ -339,9 +337,7 @@ export function CustomerManagement() {
               setStatusFilter("Active")
               setCurrentPage(1)
             }}
-            className={`cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all ${
-              statusFilter === "Active" ? "ring-2 ring-emerald-600/40 bg-emerald-50/20" : ""
-            }`}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">
@@ -364,9 +360,7 @@ export function CustomerManagement() {
               setStatusFilter("Inactive")
               setCurrentPage(1)
             }}
-            className={`cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all ${
-              statusFilter === "Inactive" ? "ring-2 ring-amber-600/40 bg-amber-50/20" : ""
-            }`}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-medium text-muted-foreground">

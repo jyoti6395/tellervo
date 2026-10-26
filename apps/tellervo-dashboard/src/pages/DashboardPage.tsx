@@ -142,21 +142,21 @@ export function DashboardPage() {
   } | null>(null)
 
   return (
-    <div className="p-5 md:p-7 lg:p-8 space-y-6 bg-[#f8f7f4] min-h-screen text-[#12281c] w-full">
+    <div className="p-5 md:p-7 lg:p-8 space-y-6 bg-background min-h-screen text-foreground w-full">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="font-serif text-2xl md:text-3xl font-bold tracking-tight text-[#112a1d]">
+          <h1 className="font-serif text-2xl md:text-3xl font-bold tracking-tight text-foreground">
             Good morning, Admin
           </h1>
-          <p className="text-xs md:text-sm text-[#617769] mt-1 font-sans">
+          <p className="text-xs md:text-sm text-muted-foreground mt-1 font-sans">
             Here&apos;s what&apos;s happening with your store today.
           </p>
         </div>
 
         {/* Timeframe Filter */}
         <Select value={timeframe} onValueChange={setTimeframe}>
-          <SelectTrigger className="w-[140px] h-9.5 text-xs font-semibold bg-white border-[#e5dfd5] rounded-xl text-[#203a2c] shadow-2xs">
+          <SelectTrigger className="w-[140px] h-9.5 text-xs font-semibold bg-card border-border rounded-xl text-foreground shadow-2xs">
             <SelectValue placeholder="This Month" />
           </SelectTrigger>
           <SelectContent>
@@ -172,70 +172,70 @@ export function DashboardPage() {
       {/* 4 KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Revenue */}
-        <div className="bg-white rounded-2xl p-4 md:p-5 border border-[#e8e4dc] shadow-2xs flex items-center gap-4">
+        <div className="bg-card rounded-2xl p-4 md:p-5 border border-border/80 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-[#e6f7ec] text-[#1b6b38] flex items-center justify-center shrink-0">
             <Coins className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <span className="text-xs text-[#637a6b] font-medium block">Total Revenue</span>
+            <span className="text-xs text-muted-foreground font-medium block">Total Revenue</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold font-serif text-[#112a1d]">€24,850</span>
+              <span className="text-2xl font-bold font-serif text-foreground">€24,850</span>
               <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                 <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 12%
               </span>
             </div>
-            <span className="text-[11px] text-[#86998e]">vs. last month</span>
+            <span className="text-[11px] text-muted-foreground">vs. last month</span>
           </div>
         </div>
 
         {/* Total Orders */}
-        <div className="bg-white rounded-2xl p-4 md:p-5 border border-[#e8e4dc] shadow-2xs flex items-center gap-4">
+        <div className="bg-card rounded-2xl p-4 md:p-5 border border-border/80 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-[#ebf3fd] text-[#1e61b8] flex items-center justify-center shrink-0">
             <ShoppingBag className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <span className="text-xs text-[#637a6b] font-medium block">Total Orders</span>
+            <span className="text-xs text-muted-foreground font-medium block">Total Orders</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold font-serif text-[#112a1d]">1,248</span>
+              <span className="text-2xl font-bold font-serif text-foreground">1,248</span>
               <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                 <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 8%
               </span>
             </div>
-            <span className="text-[11px] text-[#86998e]">vs. last month</span>
+            <span className="text-[11px] text-muted-foreground">vs. last month</span>
           </div>
         </div>
 
         {/* Total Customers */}
-        <div className="bg-white rounded-2xl p-4 md:p-5 border border-[#e8e4dc] shadow-2xs flex items-center gap-4">
+        <div className="bg-card rounded-2xl p-4 md:p-5 border border-border/80 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-[#f5eefc] text-[#7836b8] flex items-center justify-center shrink-0">
             <Users className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <span className="text-xs text-[#637a6b] font-medium block">Total Customers</span>
+            <span className="text-xs text-muted-foreground font-medium block">Total Customers</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold font-serif text-[#112a1d]">864</span>
+              <span className="text-2xl font-bold font-serif text-foreground">864</span>
               <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                 <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 14%
               </span>
             </div>
-            <span className="text-[11px] text-[#86998e]">vs. last month</span>
+            <span className="text-[11px] text-muted-foreground">vs. last month</span>
           </div>
         </div>
 
         {/* Active Products */}
-        <div className="bg-white rounded-2xl p-4 md:p-5 border border-[#e8e4dc] shadow-2xs flex items-center gap-4">
+        <div className="bg-card rounded-2xl p-4 md:p-5 border border-border/80 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-[#fef1e2] text-[#bc6719] flex items-center justify-center shrink-0">
             <Package className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
-            <span className="text-xs text-[#637a6b] font-medium block">Active Products</span>
+            <span className="text-xs text-muted-foreground font-medium block">Active Products</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold font-serif text-[#112a1d]">48</span>
+              <span className="text-2xl font-bold font-serif text-foreground">48</span>
               <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                 <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 3%
               </span>
             </div>
-            <span className="text-[11px] text-[#86998e]">vs. last month</span>
+            <span className="text-[11px] text-muted-foreground">vs. last month</span>
           </div>
         </div>
       </div>
@@ -243,14 +243,14 @@ export function DashboardPage() {
       {/* Middle Row: Sales Overview Chart (Left) + Top Selling Products (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Sales Overview Chart */}
-        <div className="lg:col-span-8 bg-white rounded-2xl p-5 md:p-6 border border-[#e8e4dc] shadow-2xs flex flex-col justify-between">
+        <div className="lg:col-span-8 bg-card rounded-2xl p-5 md:p-6 border border-border/80 shadow-xs flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-[#73887b]">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Sales Overview
               </span>
               <div className="flex items-baseline gap-2.5 mt-1">
-                <span className="text-2xl font-bold font-serif text-[#112a1d]">€24,850</span>
+                <span className="text-2xl font-bold font-serif text-foreground">€24,850</span>
                 <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                   <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 12% vs. last month
                 </span>
@@ -395,25 +395,25 @@ export function DashboardPage() {
         </div>
 
         {/* Top Selling Products */}
-        <div className="lg:col-span-4 bg-white rounded-2xl p-5 md:p-6 border border-[#e8e4dc] shadow-2xs flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-card rounded-2xl p-5 md:p-6 border border-border/80 shadow-xs flex flex-col justify-between">
           <div>
-            <h3 className="font-serif text-base font-bold text-[#112a1d] mb-4">
+            <h3 className="font-serif text-base font-bold text-foreground mb-4">
               Top Selling Products
             </h3>
-            <div className="divide-y divide-[#f0ece4]">
+            <div className="divide-y divide-border">
               {TOP_PRODUCTS.map((prod) => (
                 <div key={prod.name} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
                     <img
                       src={prod.image}
                       alt={prod.name}
-                      className="w-10 h-10 rounded-xl object-cover shrink-0 border border-[#e2ddd4]"
+                      className="w-10 h-10 rounded-xl object-cover shrink-0 border border-border"
                     />
-                    <span className="text-xs font-semibold text-[#183626] truncate">
+                    <span className="text-xs font-semibold text-foreground truncate">
                       {prod.name}
                     </span>
                   </div>
-                  <span className="text-xs font-medium text-[#6e8578] whitespace-nowrap">
+                  <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
                     {prod.sold} sold
                   </span>
                 </div>
@@ -426,9 +426,9 @@ export function DashboardPage() {
       {/* Bottom Row: Recent Orders (Left) + Low Stock Alerts (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Recent Orders */}
-        <div className="lg:col-span-8 bg-white rounded-2xl p-5 md:p-6 border border-[#e8e4dc] shadow-2xs">
+        <div className="lg:col-span-8 bg-card rounded-2xl p-5 md:p-6 border border-border/80 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-serif text-base font-bold text-[#112a1d]">
+            <h3 className="font-serif text-base font-bold text-foreground">
               Recent Orders
             </h3>
             <button
@@ -443,7 +443,7 @@ export function DashboardPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-[#e8e4dc] text-[#718679] font-medium">
+                <tr className="border-b border-border text-muted-foreground font-medium">
                   <th className="py-2.5 px-3">Order ID</th>
                   <th className="py-2.5 px-3">Customer</th>
                   <th className="py-2.5 px-3">Total</th>
@@ -451,16 +451,16 @@ export function DashboardPage() {
                   <th className="py-2.5 px-3 text-right">Date</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#f2eeea]">
+              <tbody className="divide-y divide-border">
                 {RECENT_ORDERS.map((order) => (
-                  <tr key={order.id} className="hover:bg-[#fbfaf8] transition-colors">
-                    <td className="py-3 px-3 font-semibold text-[#142e20]">
+                  <tr key={order.id} className="hover:bg-muted/50 transition-colors">
+                    <td className="py-3 px-3 font-semibold text-foreground">
                       {order.id}
                     </td>
-                    <td className="py-3 px-3 text-[#2d4637]">
+                    <td className="py-3 px-3 text-foreground">
                       {order.customer}
                     </td>
-                    <td className="py-3 px-3 font-semibold text-[#142e20]">
+                    <td className="py-3 px-3 font-semibold text-foreground">
                       €{order.total.toFixed(2)}
                     </td>
                     <td className="py-3 px-3">
@@ -478,7 +478,7 @@ export function DashboardPage() {
                         {order.status}
                       </span>
                     </td>
-                    <td className="py-3 px-3 text-right text-[#718679]">
+                    <td className="py-3 px-3 text-right text-muted-foreground">
                       {order.date}
                     </td>
                   </tr>
@@ -489,9 +489,9 @@ export function DashboardPage() {
         </div>
 
         {/* Low Stock Alerts */}
-        <div className="lg:col-span-4 bg-white rounded-2xl p-5 md:p-6 border border-[#e8e4dc] shadow-2xs">
+        <div className="lg:col-span-4 bg-card rounded-2xl p-5 md:p-6 border border-border/80 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-serif text-base font-bold text-[#112a1d]">
+            <h3 className="font-serif text-base font-bold text-foreground">
               Low Stock Alerts
             </h3>
             <button
@@ -506,22 +506,22 @@ export function DashboardPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs border-collapse">
               <thead>
-                <tr className="border-b border-[#e8e4dc] text-[#718679] font-medium">
+                <tr className="border-b border-border text-muted-foreground font-medium">
                   <th className="py-2.5 px-2">Product</th>
                   <th className="py-2.5 px-2 text-right">Stock</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#f2eeea]">
+              <tbody className="divide-y divide-border">
                 {LOW_STOCK_ITEMS.map((item) => (
-                  <tr key={item.name} className="hover:bg-[#fbfaf8] transition-colors">
+                  <tr key={item.name} className="hover:bg-muted/50 transition-colors">
                     <td className="py-2.5 px-2">
                       <div className="flex items-center gap-2.5 min-w-0">
                         <img
                           src={item.image}
                           alt={item.name}
-                          className="w-8 h-8 rounded-lg object-cover shrink-0 border border-[#e2ddd4]"
+                          className="w-8 h-8 rounded-lg object-cover shrink-0 border border-border"
                         />
-                        <span className="font-semibold text-[#142e20] text-xs truncate">
+                        <span className="font-semibold text-foreground text-xs truncate">
                           {item.name}
                         </span>
                       </div>

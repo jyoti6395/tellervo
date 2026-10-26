@@ -473,9 +473,7 @@ export function OrderManagement() {
                 setStatusFilter("all")
                 setCurrentPage(1)
               }}
-              className={`cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all ${
-                statusFilter === "all" ? "ring-2 ring-primary/40 bg-muted/15" : ""
-              }`}
+              className="cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">
@@ -504,9 +502,7 @@ export function OrderManagement() {
                 setStatusFilter("Pending")
                 setCurrentPage(1)
               }}
-              className={`cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all ${
-                statusFilter === "Pending" ? "ring-2 ring-amber-600/40 bg-amber-50/20" : ""
-              }`}
+              className="cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">
@@ -535,9 +531,7 @@ export function OrderManagement() {
                 setStatusFilter("In Progress")
                 setCurrentPage(1)
               }}
-              className={`cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all ${
-                statusFilter === "In Progress" ? "ring-2 ring-sky-600/40 bg-sky-50/20" : ""
-              }`}
+              className="cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">
@@ -566,9 +560,7 @@ export function OrderManagement() {
                 setStatusFilter("Completed")
                 setCurrentPage(1)
               }}
-              className={`cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all ${
-                statusFilter === "Completed" ? "ring-2 ring-emerald-600/40 bg-emerald-50/20" : ""
-              }`}
+              className="cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all"
             >
               <div className="flex items-center justify-between">
                 <span className="text-xs font-medium text-muted-foreground">

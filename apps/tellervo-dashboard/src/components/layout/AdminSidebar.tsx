@@ -1,19 +1,31 @@
 import {
   LayoutDashboard,
+  BarChart3,
   Package,
   ShoppingBag,
   Users,
+  LogOut,
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 import {
   Sidebar,
   SidebarContent,
   SidebarHeader,
+  SidebarFooter,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { toast } from "sonner"
 
 interface NavItem {
   title: string
@@ -26,6 +38,7 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Products", icon: Package, path: "/products" },
   { title: "Orders", icon: ShoppingBag, path: "/orders" },
   { title: "Customers", icon: Users, path: "/customers" },
+  { title: "Analytics", icon: BarChart3, path: "/analytics" },
 ]
 
 export function AdminSidebar() {
@@ -34,6 +47,7 @@ export function AdminSidebar() {
 
   const currentPath = location.pathname
   const isDashboard = currentPath === "/" || currentPath === "/dashboard"
+  const isAnalytics = currentPath === "/analytics"
   const isProducts = currentPath === "/products"
   const isOrders = currentPath === "/orders"
   const isCustomers = currentPath === "/customers"
@@ -83,6 +97,8 @@ export function AdminSidebar() {
             const isActive =
               item.title === "Dashboard"
                 ? isDashboard
+                : item.title === "Analytics"
+                ? isAnalytics
                 : item.title === "Products"
                 ? isProducts
                 : item.title === "Orders"
@@ -111,6 +127,72 @@ export function AdminSidebar() {
           })}
         </SidebarMenu>
       </SidebarContent>
+
+      {/* Sidebar Bottom Footer: Admin User Profile (Matching Image 3) */}
+      <SidebarFooter className="p-3 border-t border-[#1b352a]">
+        <DropdownMenu>
+          <div className="flex items-center justify-between gap-2 p-1.5 rounded-xl hover:bg-[#1a3328] transition-colors group-data-[collapsible=icon]:justify-center">
+            {/* User Avatar + Details */}
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-3 text-left min-w-0 flex-1 focus:outline-hidden cursor-pointer"
+              >
+                {/* Avatar with Online Green Dot */}
+                <div className="w-9 h-9 rounded-xl bg-[#0f241c] border border-[#1e3b2e] text-[#55b382] font-semibold text-xs flex items-center justify-center relative shrink-0 shadow-xs">
+                  MA
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#13251f] absolute -bottom-0.5 -right-0.5" />
+                </div>
+
+                <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
+                  <span className="text-xs font-bold text-white truncate leading-tight">
+                    Master Admin
+                  </span>
+                  <span className="text-[10.5px] text-[#789384] leading-tight mt-0.5">
+                    Super Admin
+                  </span>
+                </div>
+              </button>
+            </DropdownMenuTrigger>
+
+            {/* Logout Icon Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                toast.success("Signed out successfully")
+              }}
+              className="p-1.5 text-[#789384] hover:text-white hover:bg-[#234234] rounded-lg transition-colors group-data-[collapsible=icon]:hidden cursor-pointer"
+              title="Sign Out"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+
+          <DropdownMenuContent
+            align="end"
+            side="right"
+            className="w-48 bg-[#13251f] border-[#1b352a] text-[#d9e1e1] p-1.5 rounded-xl shadow-xl"
+          >
+            <DropdownMenuLabel className="text-xs font-bold text-white">
+              Master Admin Session
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator className="bg-[#1b352a]" />
+            <DropdownMenuItem
+              onClick={() => toast.info("Super Admin Settings & Roles")}
+              className="text-xs cursor-pointer rounded-lg p-2 focus:bg-[#1a3328] focus:text-white"
+            >
+              Settings & Roles
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => toast.success("Signed out successfully")}
+              className="text-xs font-semibold text-rose-400 cursor-pointer rounded-lg p-2 focus:bg-rose-950/40 focus:text-rose-300"
+            >
+              Sign Out
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarFooter>
 
       <SidebarRail />
     </Sidebar>

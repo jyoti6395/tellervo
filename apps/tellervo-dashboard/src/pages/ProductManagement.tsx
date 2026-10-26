@@ -671,9 +671,7 @@ export function ProductManagement() {
               setStatusFilter("all")
               setCurrentPage(1)
             }}
-            className={`cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
-              statusFilter === "all" ? "ring-2 ring-primary/40 bg-muted/15" : ""
-            }`}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5"
           >
             <div className="w-12 h-12 rounded-2xl bg-[#edf5f0] text-[#1e4630] flex items-center justify-center shrink-0">
               <Package className="w-5 h-5 stroke-[1.75]" />
@@ -702,9 +700,7 @@ export function ProductManagement() {
               setStatusFilter("Active")
               setCurrentPage(1)
             }}
-            className={`cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
-              statusFilter === "Active" ? "ring-2 ring-emerald-600/40 bg-emerald-50/20" : ""
-            }`}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5"
           >
             <div className="w-12 h-12 rounded-2xl bg-[#edf5f0] text-[#1e4630] flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-5 h-5 stroke-[1.75]" />
@@ -733,9 +729,7 @@ export function ProductManagement() {
               setStatusFilter("Low Stock")
               setCurrentPage(1)
             }}
-            className={`cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
-              statusFilter === "Low Stock" ? "ring-2 ring-amber-600/40 bg-amber-50/20" : ""
-            }`}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5"
           >
             <div className="w-12 h-12 rounded-2xl bg-[#fef7ee] text-[#b45309] flex items-center justify-center shrink-0">
               <AlertTriangle className="w-5 h-5 stroke-[1.75]" />
@@ -764,9 +758,7 @@ export function ProductManagement() {
               setStatusFilter("Out of Stock")
               setCurrentPage(1)
             }}
-            className={`cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5 ${
-              statusFilter === "Out of Stock" ? "ring-2 ring-rose-600/40 bg-rose-50/20" : ""
-            }`}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5"
           >
             <div className="w-12 h-12 rounded-2xl bg-[#fdf2f2] text-[#be123c] flex items-center justify-center shrink-0">
               <AlertOctagon className="w-5 h-5 stroke-[1.75]" />

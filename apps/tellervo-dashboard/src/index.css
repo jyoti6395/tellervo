@@ -5,91 +5,6 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@layer base {
-  :root {
-    --background: 38 33% 97%;
-    --foreground: 147 38% 13%;
-    --card: 0 0% 100%;
-    --card-foreground: 147 38% 13%;
-    --popover: 38 33% 97%;
-    --popover-foreground: 147 38% 13%;
-    --primary: 147 39% 15%;
-    --primary-foreground: 40 40% 97%;
-    --secondary: 37 32% 93%;
-    --secondary-foreground: 147 39% 15%;
-    --muted: 36 29% 91%;
-    --muted-foreground: 144 11% 41%;
-    --accent: 38 72% 54%;
-    --accent-foreground: 147 39% 15%;
-    --destructive: 349 55% 36%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 35 34% 86%;
-    --input: 35 34% 86%;
-    --ring: 147 39% 15%;
-    --radius: 0.75rem;
-
-    /* Tellervo Admin Sidebar Root Values matching exact image (#13251f) */
-    --sidebar-background: 160 23% 10%;
-    --sidebar-foreground: 180 12% 87%;
-    --sidebar-primary: 135 15% 29%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 145 18% 18%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 160 20% 15%;
-    --sidebar-ring: 135 15% 29%;
-  }
-
-  .dark {
-    --background: 150 35% 8%;
-    --foreground: 40 40% 97%;
-    --card: 148 30% 11%;
-    --card-foreground: 40 40% 97%;
-    --popover: 148 30% 11%;
-    --popover-foreground: 40 40% 97%;
-    --primary: 38 72% 54%;
-    --primary-foreground: 150 35% 8%;
-    --secondary: 148 24% 16%;
-    --secondary-foreground: 40 40% 97%;
-    --muted: 148 24% 16%;
-    --muted-foreground: 144 12% 65%;
-    --accent: 38 72% 54%;
-    --accent-foreground: 150 35% 8%;
-    --destructive: 349 60% 45%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 148 20% 18%;
-    --input: 148 20% 18%;
-    --ring: 38 72% 54%;
-    --sidebar-background: 148 30% 9%;
-    --sidebar-foreground: 40 40% 97%;
-    --sidebar-primary: 38 72% 54%;
-    --sidebar-primary-foreground: 150 35% 8%;
-    --sidebar-accent: 148 24% 16%;
-    --sidebar-accent-foreground: 40 40% 97%;
-    --sidebar-border: 148 20% 18%;
-    --sidebar-ring: 38 72% 54%;
-  }
-
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-  html {
-    @apply font-sans;
-  }
-}
-
-* {
-  border-color: hsl(var(--border));
-}
-
-body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
-  font-feature-settings: "rlig" 1, "calt" 1;
-}
-
 @theme inline {
   --font-heading: 'Playfair Display', Georgia, serif;
   --font-serif: 'Playfair Display', Georgia, serif;
@@ -162,26 +77,26 @@ body {
 }
 
 :root {
-  /* OKLCH values reflecting exact Tellervo app palette */
-  --background: oklch(0.975 0.012 85);       /* #FAF7F2 Warm Oat Cream */
-  --foreground: oklch(0.24 0.035 152);       /* #142E20 Nordic Deep Pine */
-  --card: oklch(1 0 0);                      /* #FFFFFF Crisp White */
-  --card-foreground: oklch(0.24 0.035 152);  /* #142E20 */
-  --popover: oklch(0.975 0.012 85);          /* #FAF7F2 */
-  --popover-foreground: oklch(0.24 0.035 152);
-  --primary: oklch(0.28 0.05 155);           /* #183626 Tellervo Pine Green */
-  --primary-foreground: oklch(0.98 0.008 85);/* #FBF8F2 Warm Ivory */
-  --secondary: oklch(0.95 0.015 85);         /* #F4EFE6 Warm Oat */
-  --secondary-foreground: oklch(0.28 0.05 155);
-  --muted: oklch(0.92 0.018 85);             /* #EBDCCA Soft Linen */
-  --muted-foreground: oklch(0.52 0.03 150);  /* #5C7263 Pine Mist */
-  --accent: oklch(0.74 0.15 75);             /* #DCA038 Harvest Amber Gold */
-  --accent-foreground: oklch(0.22 0.04 155); /* Deep Pine */
-  --destructive: oklch(0.38 0.14 20);        /* #8E2B3C Wild Lingonberry */
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.90 0.025 80);            /* #EBDCCA */
-  --input: oklch(0.90 0.025 80);
-  --ring: oklch(0.28 0.05 155);
+  /* LIGHT MODE (Clean warm oat background, crisp white cards, distinct divider border) */
+  --background: #f8f7f4;
+  --foreground: #12281c;
+  --card: #ffffff;
+  --card-foreground: #12281c;
+  --popover: #ffffff;
+  --popover-foreground: #12281c;
+  --primary: #183626;
+  --primary-foreground: #ffffff;
+  --secondary: #f3efe8;
+  --secondary-foreground: #183626;
+  --muted: #f0ece3;
+  --muted-foreground: #5e7264;
+  --accent: #dca038;
+  --accent-foreground: #183626;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: #e2ddd4;
+  --input: #e2ddd4;
+  --ring: #183626;
   --radius: 0.75rem;
 
   /* Custom Brand Tokens */
@@ -195,7 +110,7 @@ body {
   --brand-border: #ebdcca;
   --brand-sage: #e3ece5;
 
-  /* Tellervo Admin Sidebar exact image color tokens */
+  /* Tellervo Admin Sidebar */
   --sidebar: #13251f;
   --sidebar-foreground: #d9e1e1;
   --sidebar-primary: #3f5745;
@@ -207,30 +122,46 @@ body {
 }
 
 .dark {
-  --background: oklch(0.18 0.025 150);
-  --foreground: oklch(0.98 0.008 85);
-  --card: oklch(0.22 0.03 150);
-  --card-foreground: oklch(0.98 0.008 85);
-  --popover: oklch(0.22 0.03 150);
-  --popover-foreground: oklch(0.98 0.008 85);
-  --primary: oklch(0.74 0.15 75);
-  --primary-foreground: oklch(0.18 0.025 150);
-  --secondary: oklch(0.26 0.03 150);
-  --secondary-foreground: oklch(0.98 0.008 85);
-  --muted: oklch(0.26 0.03 150);
-  --muted-foreground: oklch(0.68 0.03 150);
-  --accent: oklch(0.74 0.15 75);
-  --accent-foreground: oklch(0.18 0.025 150);
-  --destructive: oklch(0.55 0.18 20);
-  --border: oklch(0.30 0.02 150);
-  --input: oklch(0.30 0.02 150);
-  --ring: oklch(0.74 0.15 75);
-  --sidebar: oklch(0.20 0.025 150);
-  --sidebar-foreground: oklch(0.98 0.008 85);
-  --sidebar-primary: oklch(0.74 0.15 75);
-  --sidebar-primary-foreground: oklch(0.18 0.025 150);
-  --sidebar-accent: oklch(0.26 0.03 150);
-  --sidebar-accent-foreground: oklch(0.98 0.008 85);
-  --sidebar-border: oklch(0.30 0.02 150);
-  --sidebar-ring: oklch(0.74 0.15 75);
+  /* DARK MODE (Matching Advisetech deep rich dark mode) */
+  --background: #0d1a14;
+  --foreground: #f3f6f4;
+  --card: #13241c;
+  --card-foreground: #f3f6f4;
+  --popover: #13241c;
+  --popover-foreground: #f3f6f4;
+  --primary: #dca038;
+  --primary-foreground: #0d1a14;
+  --secondary: #1a2e24;
+  --secondary-foreground: #f3f6f4;
+  --muted: #1c3127;
+  --muted-foreground: #8fa697;
+  --accent: #dca038;
+  --accent-foreground: #0d1a14;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #233a30;
+  --input: #233a30;
+  --ring: #dca038;
+
+  --sidebar: #0f1d17;
+  --sidebar-foreground: #d9e1e1;
+  --sidebar-primary: #3f5745;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #3f5745;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #1a332a;
+  --sidebar-ring: #3f5745;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  html {
+    @apply font-sans;
+  }
 }
