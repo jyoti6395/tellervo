@@ -146,7 +146,7 @@ export function DashboardPage() {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="font-serif text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground font-sans">
             Good morning, Admin
           </h1>
           <p className="text-xs md:text-sm text-muted-foreground mt-1 font-sans">
@@ -172,70 +172,70 @@ export function DashboardPage() {
       {/* 4 KPI Metric Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Revenue */}
-        <div className="bg-card rounded-2xl p-4 md:p-5 border border-border/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-[#e6f7ec] text-[#1b6b38] flex items-center justify-center shrink-0">
+        <div className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5">
+          <div className="w-12 h-12 rounded-2xl bg-[#edf5f0] text-[#1e4630] flex items-center justify-center shrink-0">
             <Coins className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
             <span className="text-xs text-muted-foreground font-medium block">Total Revenue</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold font-serif text-foreground">€24,850</span>
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground">€24,850</span>
               <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                 <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 12%
               </span>
             </div>
-            <span className="text-[11px] text-muted-foreground">vs. last month</span>
+            <span className="text-[11px] text-muted-foreground mt-0.5">vs. last month</span>
           </div>
         </div>
 
         {/* Total Orders */}
-        <div className="bg-card rounded-2xl p-4 md:p-5 border border-border/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-[#ebf3fd] text-[#1e61b8] flex items-center justify-center shrink-0">
+        <div className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5">
+          <div className="w-12 h-12 rounded-2xl bg-[#ebf3fd] text-[#1e61b8] flex items-center justify-center shrink-0">
             <ShoppingBag className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
             <span className="text-xs text-muted-foreground font-medium block">Total Orders</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold font-serif text-foreground">1,248</span>
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground">1,248</span>
               <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                 <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 8%
               </span>
             </div>
-            <span className="text-[11px] text-muted-foreground">vs. last month</span>
+            <span className="text-[11px] text-muted-foreground mt-0.5">vs. last month</span>
           </div>
         </div>
 
         {/* Total Customers */}
-        <div className="bg-card rounded-2xl p-4 md:p-5 border border-border/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-[#f5eefc] text-[#7836b8] flex items-center justify-center shrink-0">
+        <div className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5">
+          <div className="w-12 h-12 rounded-2xl bg-[#f5eefc] text-[#7836b8] flex items-center justify-center shrink-0">
             <Users className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
             <span className="text-xs text-muted-foreground font-medium block">Total Customers</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold font-serif text-foreground">864</span>
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground">864</span>
               <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                 <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 14%
               </span>
             </div>
-            <span className="text-[11px] text-muted-foreground">vs. last month</span>
+            <span className="text-[11px] text-muted-foreground mt-0.5">vs. last month</span>
           </div>
         </div>
 
         {/* Active Products */}
-        <div className="bg-card rounded-2xl p-4 md:p-5 border border-border/80 shadow-xs flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-[#fef1e2] text-[#bc6719] flex items-center justify-center shrink-0">
+        <div className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5">
+          <div className="w-12 h-12 rounded-2xl bg-[#fef1e2] text-[#bc6719] flex items-center justify-center shrink-0">
             <Package className="w-5 h-5" />
           </div>
           <div className="flex-1 min-w-0">
             <span className="text-xs text-muted-foreground font-medium block">Active Products</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold font-serif text-foreground">48</span>
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground">48</span>
               <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                 <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 3%
               </span>
             </div>
-            <span className="text-[11px] text-muted-foreground">vs. last month</span>
+            <span className="text-[11px] text-muted-foreground mt-0.5">vs. last month</span>
           </div>
         </div>
       </div>
@@ -243,14 +243,14 @@ export function DashboardPage() {
       {/* Middle Row: Sales Overview Chart (Left) + Top Selling Products (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Sales Overview Chart */}
-        <div className="lg:col-span-8 bg-card rounded-2xl p-5 md:p-6 border border-border/80 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-8 bg-card rounded-2xl p-5 md:p-6 border-0 shadow-xs flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
             <div>
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <h2 className="text-sm font-bold text-foreground">
                 Sales Overview
-              </span>
+              </h2>
               <div className="flex items-baseline gap-2.5 mt-1">
-                <span className="text-2xl font-bold font-serif text-foreground">€24,850</span>
+                <span className="text-2xl font-bold font-sans tracking-tight text-foreground">€24,850</span>
                 <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                   <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 12% vs. last month
                 </span>
@@ -395,11 +395,11 @@ export function DashboardPage() {
         </div>
 
         {/* Top Selling Products */}
-        <div className="lg:col-span-4 bg-card rounded-2xl p-5 md:p-6 border border-border/80 shadow-xs flex flex-col justify-between">
+        <div className="lg:col-span-4 bg-card rounded-2xl p-5 md:p-6 border-0 shadow-xs flex flex-col justify-between">
           <div>
-            <h3 className="font-serif text-base font-bold text-foreground mb-4">
+            <h2 className="text-sm font-bold text-foreground mb-4">
               Top Selling Products
-            </h3>
+            </h2>
             <div className="divide-y divide-border">
               {TOP_PRODUCTS.map((prod) => (
                 <div key={prod.name} className="py-2.5 first:pt-0 last:pb-0 flex items-center justify-between gap-3">
@@ -426,11 +426,11 @@ export function DashboardPage() {
       {/* Bottom Row: Recent Orders (Left) + Low Stock Alerts (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Recent Orders */}
-        <div className="lg:col-span-8 bg-card rounded-2xl p-5 md:p-6 border border-border/80 shadow-xs">
+        <div className="lg:col-span-8 bg-card rounded-2xl p-5 md:p-6 border-0 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-serif text-base font-bold text-foreground">
+            <h2 className="text-sm font-bold text-foreground">
               Recent Orders
-            </h3>
+            </h2>
             <button
               type="button"
               onClick={() => toast.info("Opening all orders")}
@@ -489,11 +489,11 @@ export function DashboardPage() {
         </div>
 
         {/* Low Stock Alerts */}
-        <div className="lg:col-span-4 bg-card rounded-2xl p-5 md:p-6 border border-border/80 shadow-xs">
+        <div className="lg:col-span-4 bg-card rounded-2xl p-5 md:p-6 border-0 shadow-xs">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="font-serif text-base font-bold text-foreground">
+            <h2 className="text-sm font-bold text-foreground">
               Low Stock Alerts
-            </h3>
+            </h2>
             <button
               type="button"
               onClick={() => toast.info("Opening inventory & low stock view")}
