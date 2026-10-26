@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Eye,
   EyeOff,
@@ -11,95 +11,27 @@ import {
   KeyRound,
   X
 } from 'lucide-react';
-import {
-  LoginFormData,
-  ValidationErrors,
-  validateLoginForm
-} from '../../lib/authValidation';
 import { navigateTo, AUTH_ROUTES } from '../../routes/authRoutes';
-import { useApp } from '../../context/AppContext';
-import { authService } from '../../lib/auth';
+import { useLoginForm } from './hooks/useLoginForm';
 
 export const LoginPage: React.FC = () => {
-  const { login, showToast } = useApp();
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
-    password: '',
-    rememberMe: false,
-  });
-
-  const [errors, setErrors] = useState<ValidationErrors>({});
-  const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionFeedback, setSubmissionFeedback] = useState<string | null>(null);
-  const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
-  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
-  const [forgotPasswordFeedback, setForgotPasswordFeedback] = useState<string | null>(null);
-
-  const handleInputChange = (field: keyof LoginFormData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field as keyof ValidationErrors]) {
-      setErrors(prev => {
-        const next = { ...prev };
-        delete next[field as keyof ValidationErrors];
-        return next;
-      });
-    }
-    if (submissionFeedback) {
-      setSubmissionFeedback(null);
-    }
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Prevent duplicate submissions
-    if (isSubmitting) return;
-
-    // Validate form
-    const validation = validateLoginForm(formData);
-    if (!validation.isValid) {
-      setErrors(validation.errors);
-      setSubmissionFeedback(null);
-      return;
-    }
-
-    setErrors({});
-    setIsSubmitting(true);
-    setSubmissionFeedback(null);
-
-    try {
-      const result = await login(formData.email, formData.password, formData.rememberMe);
-
-      if (!result.success) {
-        setSubmissionFeedback(result.error || 'Invalid credentials. Please verify your email and password.');
-        return;
-      }
-
-      showToast(`Welcome back, ${result.user?.name || 'Patron'}!`, 'success');
-      navigateTo(AUTH_ROUTES.HOME);
-    } catch {
-      setSubmissionFeedback('An unexpected error occurred during sign in. Please try again.');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!forgotPasswordEmail.trim()) {
-      setForgotPasswordFeedback('Please enter your email to receive recovery instructions.');
-      return;
-    }
-    const result = await authService.resetPassword(forgotPasswordEmail);
-    if (result.success) {
-      setForgotPasswordFeedback(
-        `A recovery link has been dispatched to ${forgotPasswordEmail.trim()}. Please inspect your inbox.`
-      );
-    } else {
-      setForgotPasswordFeedback(result.error || 'Failed to dispatch recovery link.');
-    }
-  };
+  const {
+    formData,
+    errors,
+    showPassword,
+    setShowPassword,
+    isSubmitting,
+    submissionFeedback,
+    isForgotPasswordOpen,
+    setIsForgotPasswordOpen,
+    forgotPasswordEmail,
+    setForgotPasswordEmail,
+    forgotPasswordFeedback,
+    setForgotPasswordFeedback,
+    handleInputChange,
+    handleSubmit,
+    handleForgotPasswordSubmit,
+  } = useLoginForm();
 
   return (
     <div className="min-h-screen bg-[#F4EFE6] text-[#1B2B20] flex flex-col items-center justify-center p-4 sm:p-6 lg:p-8">
@@ -139,7 +71,7 @@ export const LoginPage: React.FC = () => {
             </div>
 
             <h1 className="font-editorial text-2xl sm:text-3xl font-medium tracking-tight text-[#14261B]">
-              Welcome Back
+              Sign In
             </h1>
             <p className="text-xs sm:text-sm text-[#617467] mt-1">
               Sign in to access your subscriptions, saved favorites & Seeds

@@ -54,6 +54,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
+import { profileService } from "@tellervo/supabase"
 
 export interface CustomerRecord {
   id: string
@@ -189,6 +190,59 @@ export function CustomerManagement() {
   const [selectedCustomer, setSelectedCustomer] = React.useState<CustomerRecord | null>(null)
   const [currentPage, setCurrentPage] = React.useState(1)
   const pageSize = 10
+
+  // Query live patron profiles from Supabase and merge seamlessly with customer records
+  React.useEffect(() => {
+    let isMounted = true
+    async function loadLiveCustomers() {
+      try {
+        const liveProfiles = await profileService.fetchAllProfiles()
+        if (!isMounted || !liveProfiles || liveProfiles.length === 0) return
+
+        const mappedLive: CustomerRecord[] = liveProfiles.map((p) => {
+          const dateStr = p.created_at
+            ? new Date(p.created_at).toLocaleDateString("en-US", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : "Recent"
+
+          return {
+            id: p.id,
+            name: p.full_name || p.email?.split("@")[0] || "Patron",
+            email: p.email || "—",
+            phone: p.phone || "—",
+            totalOrders: 0,
+            totalSpent: 0,
+            joinedDate: dateStr,
+            status: "Active",
+            city: p.address || "Helsinki, Finland",
+          }
+        })
+
+        setCustomers((prev) => {
+          const liveIds = new Set(mappedLive.map((m) => m.id))
+          const liveEmails = new Set(
+            mappedLive
+              .map((m) => m.email.toLowerCase())
+              .filter((e) => e && e !== "—")
+          )
+          const filteredPrev = prev.filter(
+            (c) => !liveIds.has(c.id) && !liveEmails.has(c.email.toLowerCase())
+          )
+          return [...mappedLive, ...filteredPrev]
+        })
+      } catch (err) {
+        console.warn("Failed to query live Supabase profiles:", err)
+      }
+    }
+
+    loadLiveCustomers()
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   // Metrics from reference image
   const totalCustomersMetric = 5000

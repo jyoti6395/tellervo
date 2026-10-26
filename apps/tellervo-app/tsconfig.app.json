@@ -16,7 +16,9 @@
     "paths": {
       "@/*": ["./src/*"],
       "@tellervo/functions": ["../../packages/functions/src/index.ts"],
-      "@tellervo/functions/*": ["../../packages/functions/src/*"]
+      "@tellervo/functions/*": ["../../packages/functions/src/*"],
+      "@tellervo/supabase": ["../../packages/supabase/src/index.ts"],
+      "@tellervo/supabase/*": ["../../packages/supabase/src/*"]
     },
 
     /* Linting */

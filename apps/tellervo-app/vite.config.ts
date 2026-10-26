@@ -9,6 +9,7 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       '@tellervo/functions': fileURLToPath(new URL('../../packages/functions/src/index.ts', import.meta.url)),
+      '@tellervo/supabase': fileURLToPath(new URL('../../packages/supabase/src/index.ts', import.meta.url)),
     },
   },
   server: {

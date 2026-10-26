@@ -166,6 +166,9 @@ importers:
 
   .:
     devDependencies:
+      oxlint:
+        specifier: ^1.88.0
+        version: 1.89.0
       turbo:
         specifier: ^2.11.10
         version: 2.11.10
@@ -178,6 +181,9 @@ importers:
       '@tellervo/functions':
         specifier: workspace:*
         version: link:../../packages/functions
+      '@tellervo/supabase':
+        specifier: workspace:*
+        version: link:../../packages/supabase
       canvas-confetti:
         specifier: ^1.9.4
         version: 1.9.4
@@ -248,6 +254,9 @@ importers:
       '@tellervo/functions':
         specifier: workspace:*
         version: link:../../packages/functions
+      '@tellervo/supabase':
+        specifier: workspace:*
+        version: link:../../packages/supabase
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -360,6 +369,12 @@ importers:
       tailwind-merge:
         specifier: ^3.7.0
         version: 3.7.0
+
+  packages/supabase:
+    dependencies:
+      '@supabase/supabase-js':
+        specifier: ^2.118.0
+        version: 2.118.0
 
 packages:
 

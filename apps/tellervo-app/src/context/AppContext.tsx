@@ -3,8 +3,7 @@ import { TabType, Product, CartItem, UserProfile, RewardItem, OrderItem, Languag
 import { PRODUCTS, INITIAL_USER, INITIAL_CART, RECENT_ORDERS } from '../data/mockData';
 import { translations, Translations } from '../i18n/translations';
 import confetti from 'canvas-confetti';
-import { authService, AuthUser, AuthResult } from '../lib/auth';
-import { supabase } from '../lib/supabase';
+import { authService, AuthUser, AuthResult, supabase } from '@tellervo/supabase';
 
 interface Toast {
   id: string;

@@ -1,5 +1,5 @@
 -- ====================================================================
--- Tellervo App: Supabase Authentication and Profiles Migration
+-- Tellervo: Supabase Authentication and Profiles Migration
 -- Schema Version: 20261026000000
 -- ====================================================================
 
@@ -50,6 +50,7 @@ CREATE POLICY "Users can insert own profile"
   ON public.profiles
   FOR INSERT
   TO authenticated
+  USING (auth.uid() = id)
   WITH CHECK (auth.uid() = id);
 
 -- 4. Trigger Function: Automatically create profile on new user registration in auth.users
@@ -132,7 +133,7 @@ CREATE TRIGGER on_auth_user_phone_sync
   BEFORE INSERT OR UPDATE ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.sync_auth_user_phone();
 
--- 7. Update any existing users (such as Iron Man) so their phone displays in the dashboard immediately
+-- 7. Update any existing users so their phone displays in the dashboard immediately
 UPDATE auth.users
 SET phone = raw_user_meta_data->>'phone'
 WHERE phone IS NULL AND raw_user_meta_data->>'phone' IS NOT NULL;

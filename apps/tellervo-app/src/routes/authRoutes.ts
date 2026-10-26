@@ -19,17 +19,18 @@ export const AUTH_ROUTES = {
 export type AuthRouteType = typeof AUTH_ROUTES[keyof typeof AUTH_ROUTES];
 
 /**
- * Normalizes the current pathname to match known auth routes.
- * Gracefully maps legacy temporary routes (/temp-signup, /temp-login) to standard auth routes.
+ * Normalizes the current pathname to match known auth routes:
+ * - /signup -> 'signup'
+ * - /login -> 'login'
  */
 export function getCurrentAuthRoute(): 'signup' | 'login' | null {
   if (typeof window === 'undefined') return null;
   const path = window.location.pathname.toLowerCase().replace(/\/$/, '');
 
-  if (path === AUTH_ROUTES.SIGNUP || path === '/temp-signup') {
+  if (path === AUTH_ROUTES.SIGNUP) {
     return 'signup';
   }
-  if (path === AUTH_ROUTES.LOGIN || path === '/temp-login') {
+  if (path === AUTH_ROUTES.LOGIN) {
     return 'login';
   }
   return null;

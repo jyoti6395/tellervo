@@ -10,6 +10,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(import.meta.dirname, './src'),
       '@tellervo/functions': path.resolve(import.meta.dirname, '../../packages/functions/src/index.ts'),
+      '@tellervo/supabase': path.resolve(import.meta.dirname, '../../packages/supabase/src/index.ts'),
     },
   },
   server: {

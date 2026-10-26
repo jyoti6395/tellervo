@@ -18,6 +18,7 @@
     "clean": "turbo clean"
   },
   "devDependencies": {
+    "oxlint": "^1.88.0",
     "turbo": "^2.11.10"
   }
 }
