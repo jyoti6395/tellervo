@@ -3,6 +3,8 @@ import { TabType, Product, CartItem, UserProfile, RewardItem, OrderItem, Languag
 import { PRODUCTS, INITIAL_USER, INITIAL_CART, RECENT_ORDERS } from '../data/mockData';
 import { translations, Translations } from '../i18n/translations';
 import confetti from 'canvas-confetti';
+import { authService, AuthUser, AuthResult } from '../lib/auth';
+import { supabase } from '../lib/supabase';
 
 interface Toast {
   id: string;
@@ -50,6 +52,12 @@ interface AppContextType {
   showToast: (message: string, type?: 'success' | 'info' | 'reward') => void;
   dismissToast: (id: string) => void;
   triggerConfetti: () => void;
+  isAuthenticated: boolean;
+  isLoadingSession: boolean;
+  authUser: AuthUser | null;
+  login: (email: string, password: string, rememberMe?: boolean) => Promise<AuthResult>;
+  signup: (email: string, password: string, fullName: string, phone?: string) => Promise<AuthResult>;
+  logout: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -94,6 +102,139 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   ]);
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [orders] = useState<OrderItem[]>(RECENT_ORDERS);
+
+  // Authentication State
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoadingSession, setIsLoadingSession] = useState<boolean>(true);
+
+  // Initialize and restore authenticated session on mount with Supabase
+  useEffect(() => {
+    let isMounted = true;
+
+    const restoreSession = async () => {
+      try {
+        const session = await authService.getSession();
+        if (isMounted) {
+          if (session && session.user) {
+            setAuthUser(session.user);
+            setIsAuthenticated(true);
+            setUser(prev => ({
+              ...prev,
+              name: session.user.name,
+              handle: session.user.email.split('@')[0],
+              tier: session.user.tier || prev.tier,
+              seeds: session.user.seeds !== undefined ? session.user.seeds : prev.seeds,
+              memberSince: session.user.memberSince || prev.memberSince,
+              avatarUrl: session.user.avatarUrl || prev.avatarUrl,
+              address: session.user.address || prev.address,
+              paymentMethod: session.user.paymentMethod || prev.paymentMethod,
+              dietaryPreferences: session.user.dietaryPreferences || prev.dietaryPreferences,
+            }));
+          } else {
+            setAuthUser(null);
+            setIsAuthenticated(false);
+          }
+        }
+      } catch {
+        if (isMounted) {
+          setAuthUser(null);
+          setIsAuthenticated(false);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingSession(false);
+        }
+      }
+    };
+
+    restoreSession();
+
+    // Listen to real-time Supabase Auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!isMounted) return;
+
+      if (event === 'SIGNED_OUT' || !session) {
+        setAuthUser(null);
+        setIsAuthenticated(false);
+        setUser(INITIAL_USER);
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        const authSession = await authService.getSession();
+        if (isMounted && authSession?.user) {
+          setAuthUser(authSession.user);
+          setIsAuthenticated(true);
+          setUser(prev => ({
+            ...prev,
+            name: authSession.user.name,
+            handle: authSession.user.email.split('@')[0],
+            tier: authSession.user.tier || prev.tier,
+            seeds: authSession.user.seeds !== undefined ? authSession.user.seeds : prev.seeds,
+            memberSince: authSession.user.memberSince || prev.memberSince,
+            avatarUrl: authSession.user.avatarUrl || prev.avatarUrl,
+            address: authSession.user.address || prev.address,
+            paymentMethod: authSession.user.paymentMethod || prev.paymentMethod,
+            dietaryPreferences: authSession.user.dietaryPreferences || prev.dietaryPreferences,
+          }));
+        }
+      }
+    });
+
+    return () => {
+      isMounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const login = async (email: string, password: string, rememberMe = false): Promise<AuthResult> => {
+    const result = await authService.signIn(email, password, rememberMe);
+    if (result.success && result.user) {
+      setAuthUser(result.user);
+      setIsAuthenticated(true);
+      setUser(prev => ({
+        ...prev,
+        name: result.user!.name,
+        handle: result.user!.email.split('@')[0],
+        tier: result.user!.tier || prev.tier,
+        seeds: result.user!.seeds !== undefined ? result.user!.seeds : prev.seeds,
+        memberSince: result.user!.memberSince || prev.memberSince,
+        avatarUrl: result.user!.avatarUrl || prev.avatarUrl,
+        address: result.user!.address || prev.address,
+        paymentMethod: result.user!.paymentMethod || prev.paymentMethod,
+        dietaryPreferences: result.user!.dietaryPreferences || prev.dietaryPreferences,
+      }));
+    }
+    return result;
+  };
+
+  const signup = async (email: string, password: string, fullName: string, phone?: string): Promise<AuthResult> => {
+    const result = await authService.signUp(email, password, fullName, phone);
+    if (result.success && result.user && !result.confirmationRequired) {
+      setAuthUser(result.user);
+      setIsAuthenticated(true);
+      setUser(prev => ({
+        ...prev,
+        name: result.user!.name,
+        handle: result.user!.email.split('@')[0],
+        tier: result.user!.tier || 'Taiga Patron',
+        seeds: result.user!.seeds !== undefined ? result.user!.seeds : 50,
+        memberSince: result.user!.memberSince || prev.memberSince,
+        avatarUrl: result.user!.avatarUrl || prev.avatarUrl,
+        address: result.user!.address || prev.address,
+        paymentMethod: result.user!.paymentMethod || prev.paymentMethod,
+        dietaryPreferences: result.user!.dietaryPreferences || prev.dietaryPreferences,
+      }));
+      triggerConfetti();
+    }
+    return result;
+  };
+
+  const logout = async (): Promise<void> => {
+    await authService.signOut();
+    setAuthUser(null);
+    setIsAuthenticated(false);
+    setUser(INITIAL_USER);
+    setActiveTab('home');
+  };
 
   // Modals & Drawers
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -252,6 +393,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         showToast,
         dismissToast,
         triggerConfetti,
+        isAuthenticated,
+        isLoadingSession,
+        authUser,
+        login,
+        signup,
+        logout,
       }}
     >
       {children}

@@ -16,10 +16,12 @@ import { ShopScreen } from './screens/ShopScreen';
 import { RewardsScreen } from './screens/RewardsScreen';
 import { FavoritesScreen } from './screens/FavoritesScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
-import { Sparkles, MessageCircle } from 'lucide-react';
+import { getCurrentAuthRoute, navigateTo, AUTH_ROUTES } from './routes/authRoutes';
+import { SignupPage } from './screens/auth/SignupPage';
+import { LoginPage } from './screens/auth/LoginPage';
 
 const MainApp: React.FC = () => {
-  const { activeTab, setActiveTab, setIsChatbotOpen } = useApp();
+  const { activeTab, setIsChatbotOpen, isAuthenticated, isLoadingSession } = useApp();
 
   const renderActiveScreen = () => {
     switch (activeTab) {
@@ -32,6 +34,10 @@ const MainApp: React.FC = () => {
       case 'favorites':
         return <FavoritesScreen />;
       case 'profile':
+        if (!isLoadingSession && !isAuthenticated) {
+          navigateTo(AUTH_ROUTES.LOGIN);
+          return null;
+        }
         return <ProfileScreen />;
       default:
         return <HomeScreen />;
@@ -88,15 +94,57 @@ const MainApp: React.FC = () => {
       <ChatbotDrawer />
       <ProductDetailModal />
       <LanguageModal />
-      <ToastContainer />
     </div>
   );
+};
+
+const AppRouter: React.FC = () => {
+  const [authRoute, setAuthRoute] = React.useState<'signup' | 'login' | null>(() => getCurrentAuthRoute());
+  const { isAuthenticated, isLoadingSession, activeTab } = useApp();
+
+  React.useEffect(() => {
+    const handleLocationChange = () => {
+      setAuthRoute(getCurrentAuthRoute());
+    };
+
+    window.addEventListener('popstate', handleLocationChange);
+    return () => {
+      window.removeEventListener('popstate', handleLocationChange);
+    };
+  }, []);
+
+  // Protected route guard: Profile requires authentication
+  React.useEffect(() => {
+    if (!isLoadingSession && !isAuthenticated && activeTab === 'profile') {
+      navigateTo(AUTH_ROUTES.LOGIN);
+    }
+  }, [activeTab, isAuthenticated, isLoadingSession]);
+
+  // When successfully authenticated, direct from /login or /signup to home
+  React.useEffect(() => {
+    if (!isLoadingSession && isAuthenticated) {
+      if (authRoute === 'login' || authRoute === 'signup') {
+        navigateTo(AUTH_ROUTES.HOME);
+      }
+    }
+  }, [authRoute, isAuthenticated, isLoadingSession]);
+
+  if (authRoute === 'signup') {
+    return <SignupPage />;
+  }
+
+  if (authRoute === 'login') {
+    return <LoginPage />;
+  }
+
+  return <MainApp />;
 };
 
 export default function App() {
   return (
     <AppProvider>
-      <MainApp />
+      <AppRouter />
+      <ToastContainer />
     </AppProvider>
   );
 }

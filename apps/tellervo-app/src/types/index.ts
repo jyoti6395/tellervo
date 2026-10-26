@@ -102,6 +102,7 @@ export interface UserProfile {
   treesPlanted: number;
   avatarUrl: string;
   address: string;
+  phone?: string;
   paymentMethod: string;
   dietaryPreferences: string;
   subscription: {

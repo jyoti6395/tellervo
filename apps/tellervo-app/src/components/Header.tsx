@@ -1,18 +1,20 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { Bell, ShoppingBag } from 'lucide-react';
+import { navigateTo, AUTH_ROUTES } from '../routes/authRoutes';
 
 export const Header: React.FC = () => {
-  const { 
-    activeTab, 
-    setActiveTab, 
-    user, 
+  const {
+    activeTab,
+    setActiveTab,
+    user,
     setIsNotificationsOpen,
     setIsCartOpen,
     setIsLanguageModalOpen,
     language,
     t,
-    cartCount 
+    cartCount,
+    isAuthenticated,
   } = useApp();
 
   const getSubTitle = () => {
@@ -48,7 +50,7 @@ export const Header: React.FC = () => {
     <header className="sticky top-0 z-40 bg-[#FBF9F5]/95 backdrop-blur-md px-4 py-3 transition-all w-full">
       <div className="max-w-md mx-auto flex items-center justify-between">
         {/* Brand Logo & Section exactly as in screenshot */}
-        <div 
+        <div
           onClick={() => setActiveTab('home')}
           className="flex items-center gap-2.5 cursor-pointer select-none"
         >
@@ -111,9 +113,15 @@ export const Header: React.FC = () => {
 
           {/* User Profile Avatar */}
           <button
-            onClick={() => setActiveTab('profile')}
+            onClick={() => {
+              if (!isAuthenticated) {
+                navigateTo(AUTH_ROUTES.LOGIN);
+              } else {
+                setActiveTab('profile');
+              }
+            }}
             aria-label="Open profile"
-            className="w-8 h-8 rounded-full overflow-hidden shadow-xs hover:opacity-90 active:scale-95 transition-all shrink-0"
+            className="w-8 h-8 rounded-full overflow-hidden shadow-xs hover:opacity-90 active:scale-95 transition-all shrink-0 cursor-pointer"
           >
             <img
               src={user.avatarUrl}

@@ -2,9 +2,10 @@ import React from 'react';
 import { useApp } from '../context/AppContext';
 import { TabType } from '../types';
 import { Home, Store, Sparkles, Heart, User } from 'lucide-react';
+import { navigateTo, AUTH_ROUTES } from '../routes/authRoutes';
 
 export const BottomNav: React.FC = () => {
-  const { activeTab, setActiveTab, favorites, t } = useApp();
+  const { activeTab, setActiveTab, favorites, t, isAuthenticated } = useApp();
 
   const navItems: { id: TabType; label: string; icon: React.FC<{ className?: string }> }[] = [
     { id: 'home', label: t.nav.home, icon: Home },
@@ -23,16 +24,20 @@ export const BottomNav: React.FC = () => {
           return (
             <button
               key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex flex-col items-center justify-center flex-1 py-1 relative tap-effect transition-colors duration-150 ${
-                isActive ? 'text-[#162D1F]' : 'text-[#87958B] hover:text-[#4A5D50]'
-              }`}
+              onClick={() => {
+                if (item.id === 'profile' && !isAuthenticated) {
+                  navigateTo(AUTH_ROUTES.LOGIN);
+                } else {
+                  setActiveTab(item.id);
+                }
+              }}
+              className={`flex flex-col items-center justify-center flex-1 py-1 relative tap-effect transition-colors duration-150 ${isActive ? 'text-[#162D1F]' : 'text-[#87958B] hover:text-[#4A5D50]'
+                }`}
             >
               <div className="relative">
                 <Icon
-                  className={`w-5 h-5 transition-transform duration-150 ${
-                    isActive ? 'stroke-[2.4] scale-105' : 'stroke-[1.8]'
-                  }`}
+                  className={`w-5 h-5 transition-transform duration-150 ${isActive ? 'stroke-[2.4] scale-105' : 'stroke-[1.8]'
+                    }`}
                 />
                 {item.id === 'favorites' && favorites.length > 0 && (
                   <span className="absolute -top-1 -right-2.5 min-w-[15px] h-[15px] px-1 bg-[#183324] text-[#E5A953] text-[9px] font-bold rounded-full flex items-center justify-center leading-none">
@@ -41,9 +46,8 @@ export const BottomNav: React.FC = () => {
                 )}
               </div>
               <span
-                className={`text-[11px] mt-1 tracking-tight ${
-                  isActive ? 'font-semibold text-[#162D1F]' : 'font-medium text-[#87958B]'
-                }`}
+                className={`text-[11px] mt-1 tracking-tight ${isActive ? 'font-semibold text-[#162D1F]' : 'font-medium text-[#87958B]'
+                  }`}
               >
                 {item.label}
               </span>

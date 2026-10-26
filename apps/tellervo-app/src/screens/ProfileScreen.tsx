@@ -1,37 +1,56 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { 
-  CheckCircle2, 
-  Trees, 
-  MapPin, 
-  CreditCard, 
-  Sliders, 
-  Bell, 
-  ShieldCheck, 
-  HelpCircle, 
-  FileText, 
-  LogOut, 
-  ChevronRight, 
-  RotateCcw, 
-  Package, 
-  Truck, 
+import {
+  CheckCircle2,
+  Trees,
+  MapPin,
+  CreditCard,
+  Sliders,
+  Bell,
+  ShieldCheck,
+  HelpCircle,
+  FileText,
+  LogOut,
+  ChevronRight,
+  RotateCcw,
+  Package,
+  Truck,
   Receipt,
   X,
   Globe
 } from 'lucide-react';
+import { navigateTo, AUTH_ROUTES } from '../routes/authRoutes';
 
 export const ProfileScreen: React.FC = () => {
-  const { 
-    user, 
-    orders, 
-    setSelectedOrderForTracking, 
-    addToCart, 
-    products, 
+  const {
+    user,
+    orders,
+    setSelectedOrderForTracking,
+    addToCart,
+    products,
     showToast,
     language,
     setIsLanguageModalOpen,
-    t
+    t,
+    logout,
   } = useApp();
+
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      showToast('Logged out of Tellervo session', 'info');
+      setIsLogoutDialogOpen(false);
+      navigateTo(AUTH_ROUTES.LOGIN);
+    } catch {
+      showToast('Failed to log out. Please try again.', 'info');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   const [notifications, setNotifications] = useState(user.notifications);
   const [activeSubscriptionStatus, setActiveSubscriptionStatus] = useState<'active' | 'skipped' | 'paused'>('active');
@@ -195,7 +214,7 @@ export const ProfileScreen: React.FC = () => {
       <div>
         <div className="flex items-baseline justify-between mb-2">
           <h3 className="font-editorial text-xl font-medium text-[#14261B]">Recent Orders</h3>
-          <button 
+          <button
             onClick={() => showToast('Displaying all past orders', 'info')}
             className="text-xs font-semibold text-[#8C7443] hover:underline"
           >
@@ -288,7 +307,7 @@ export const ProfileScreen: React.FC = () => {
 
         <div className="bg-white rounded-3xl border border-[#E8E2D5] shadow-soft-sm divide-y divide-[#F0ECE1] overflow-hidden">
           {/* Language Selector */}
-          <div 
+          <div
             onClick={() => setIsLanguageModalOpen(true)}
             className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
           >
@@ -317,7 +336,7 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           {/* Delivery Addresses */}
-          <div 
+          <div
             onClick={() => showToast('Default delivery address: Mannerheimintie 14 B, Helsinki')}
             className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
           >
@@ -334,7 +353,7 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           {/* Payment Methods */}
-          <div 
+          <div
             onClick={() => showToast('Active card: Apple Pay ending in 9012')}
             className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
           >
@@ -351,7 +370,7 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           {/* Flavor & Dietary */}
-          <div 
+          <div
             onClick={() => showToast('Preferences: Low sugar, zero-proof, organic')}
             className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
           >
@@ -384,14 +403,12 @@ export const ProfileScreen: React.FC = () => {
                 <span className="text-xs text-[#2A3E31]">{t.profile.seasonalDrops}</span>
                 <button
                   onClick={() => toggleNotification('seasonalDrops')}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
-                    notifications.seasonalDrops ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
-                  }`}
+                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${notifications.seasonalDrops ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
+                    }`}
                 >
                   <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      notifications.seasonalDrops ? 'translate-x-5' : 'translate-x-0'
-                    }`}
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${notifications.seasonalDrops ? 'translate-x-5' : 'translate-x-0'
+                      }`}
                   />
                 </button>
               </div>
@@ -400,14 +417,12 @@ export const ProfileScreen: React.FC = () => {
                 <span className="text-xs text-[#2A3E31]">{t.profile.restockAlerts}</span>
                 <button
                   onClick={() => toggleNotification('restockAlerts')}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
-                    notifications.restockAlerts ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
-                  }`}
+                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${notifications.restockAlerts ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
+                    }`}
                 >
                   <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      notifications.restockAlerts ? 'translate-x-5' : 'translate-x-0'
-                    }`}
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${notifications.restockAlerts ? 'translate-x-5' : 'translate-x-0'
+                      }`}
                   />
                 </button>
               </div>
@@ -416,14 +431,12 @@ export const ProfileScreen: React.FC = () => {
                 <span className="text-xs text-[#2A3E31]">{t.profile.orderUpdates}</span>
                 <button
                   onClick={() => toggleNotification('orderUpdates')}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
-                    notifications.orderUpdates ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
-                  }`}
+                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${notifications.orderUpdates ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
+                    }`}
                 >
                   <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
-                      notifications.orderUpdates ? 'translate-x-5' : 'translate-x-0'
-                    }`}
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${notifications.orderUpdates ? 'translate-x-5' : 'translate-x-0'
+                      }`}
                   />
                 </button>
               </div>
@@ -431,7 +444,7 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           {/* Nordic Forest Impact */}
-          <div 
+          <div
             onClick={() => setIsImpactOpen(true)}
             className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
           >
@@ -448,7 +461,7 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           {/* Help & Forest Concierge */}
-          <div 
+          <div
             onClick={() => showToast('Forest Concierge: info@tellervo.fi or +358 40 123 4567')}
             className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
           >
@@ -462,7 +475,7 @@ export const ProfileScreen: React.FC = () => {
           </div>
 
           {/* Terms & Nordic Botanical Policy */}
-          <div 
+          <div
             onClick={() => showToast('Viewing Nordic Botanical Harvest Policy (Inari & Kainuu)', 'info')}
             className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
           >
@@ -479,7 +492,8 @@ export const ProfileScreen: React.FC = () => {
 
       {/* Log Out Button */}
       <button
-        onClick={() => setIsLogoutDialogOpen(true)}
+        onClick={handleLogout}
+        disabled={isLoggingOut}
         className="w-full py-3.5 bg-[#F6F3EB] hover:bg-[#ECE6DA] text-[#9E3E3E] rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors border border-[#E5DFD1]"
       >
         <LogOut className="w-4 h-4" />
@@ -620,10 +634,8 @@ export const ProfileScreen: React.FC = () => {
             <p className="text-xs text-[#637568] mb-4">You can log back in anytime with your Apple ID or phone.</p>
             <div className="flex gap-2">
               <button
-                onClick={() => {
-                  showToast('Logged out of Tellervo session', 'info');
-                  setIsLogoutDialogOpen(false);
-                }}
+                onClick={handleLogout}
+                disabled={isLoggingOut}
                 className="flex-1 py-2 bg-[#9E3E3E] text-white text-xs font-semibold rounded-xl"
               >
                 Log Out
