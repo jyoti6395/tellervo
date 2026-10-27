@@ -1,6 +1,14 @@
-import React, { useState } from 'react';
-import { X, User, Mail, Phone, Lock, CheckCircle2, Loader2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, User, Mail, Lock, CheckCircle2, Loader2 } from 'lucide-react';
+import type { CountryCode } from 'libphonenumber-js';
 import { useApp } from '../../context/AppContext';
+import { PhoneInputWithCountry } from '../common/PhoneInputWithCountry';
+import {
+  validatePhoneNumber,
+  normalizePhoneNumber,
+  detectCountryFromPhone,
+  getNationalNumberWithoutCallingCode,
+} from '../../utils/phoneUtils';
 
 interface PersonalInformationModalProps {
   isOpen: boolean;
@@ -13,11 +21,39 @@ export const PersonalInformationModal: React.FC<PersonalInformationModalProps> =
 }) => {
   const { user, authUser, updateUserProfile, showToast } = useApp();
 
+  const initialPhone = user.phone || authUser?.phone || '';
+  const initialCountry = detectCountryFromPhone(initialPhone) || 'FI';
+
   const [fullName, setFullName] = useState(user.name);
-  const [phone, setPhone] = useState(user.phone || authUser?.phone || '+358 40 123 4567');
+  const [selectedCountry, setSelectedCountry] = useState<CountryCode>(initialCountry);
+  const [phone, setPhone] = useState(() =>
+    getNationalNumberWithoutCallingCode(initialPhone, initialCountry)
+  );
+  const [phoneError, setPhoneError] = useState<string | undefined>();
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    if (isOpen) {
+      const current = user.phone || authUser?.phone || '';
+      const c = detectCountryFromPhone(current) || 'FI';
+      setSelectedCountry(c);
+      setFullName(user.name);
+      setPhone(getNationalNumberWithoutCallingCode(current, c));
+      setPhoneError(undefined);
+    }
+  }, [isOpen, user.name, user.phone, authUser?.phone]);
+
   if (!isOpen) return null;
+
+  const handlePhoneChange = (val: string) => {
+    setPhone(val);
+    if (val.trim()) {
+      const res = validatePhoneNumber(val, selectedCountry);
+      setPhoneError(res.isValid ? undefined : res.error);
+    } else {
+      setPhoneError(undefined);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,11 +62,24 @@ export const PersonalInformationModal: React.FC<PersonalInformationModalProps> =
       return;
     }
 
+    if (phone.trim()) {
+      const res = validatePhoneNumber(phone, selectedCountry);
+      if (!res.isValid) {
+        setPhoneError(res.error || 'Please enter a valid phone number');
+        showToast(res.error || 'Please enter a valid phone number', 'info');
+        return;
+      }
+    }
+
     setIsSaving(true);
     try {
+      const normalizedPhone = phone.trim()
+        ? normalizePhoneNumber(phone, selectedCountry) || phone.trim()
+        : '';
+
       await updateUserProfile({
         name: fullName.trim(),
-        phone: phone.trim(),
+        phone: normalizedPhone,
       });
       showToast('Personal information updated', 'success');
       onClose();
@@ -79,7 +128,7 @@ export const PersonalInformationModal: React.FC<PersonalInformationModalProps> =
             <input
               type="text"
               value={fullName}
-              onChange={e => setFullName(e.target.value)}
+              onChange={(e) => setFullName(e.target.value)}
               placeholder="e.g. Freja Lindqvist"
               className="w-full bg-white rounded-xl border border-[#DED7C9] px-3.5 py-2.5 text-xs text-[#14261B] focus:outline-none focus:ring-2 focus:ring-[#183324]/20 focus:border-[#183324] transition-all"
             />
@@ -107,22 +156,19 @@ export const PersonalInformationModal: React.FC<PersonalInformationModalProps> =
             </p>
           </div>
 
-          {/* Phone Number */}
+          {/* Phone Number with Fixed Country Indicator (Disabled edit, only domestic number in input) */}
           <div>
-            <label className="block text-xs font-bold text-[#183122] mb-1.5 flex items-center gap-1.5">
-              <Phone className="w-3.5 h-3.5 text-[#5B7161]" />
-              <span>Mobile Phone</span>
-            </label>
-            <input
-              type="tel"
+            <PhoneInputWithCountry
+              id="profile-phone"
+              name="phone"
+              label="Mobile Phone"
               value={phone}
-              onChange={e => setPhone(e.target.value)}
-              placeholder="+358 40 123 4567"
-              className="w-full bg-white rounded-xl border border-[#DED7C9] px-3.5 py-2.5 text-xs text-[#14261B] focus:outline-none focus:ring-2 focus:ring-[#183324]/20 focus:border-[#183324] transition-all"
+              onChange={handlePhoneChange}
+              selectedCountry={selectedCountry}
+              disableCountryChange={true}
+              error={phoneError}
+              helperText="Used by Posti Eco for delivery SMS alerts & locker PINs."
             />
-            <p className="text-[10px] text-[#869689] mt-1">
-              Used by Posti Eco for delivery SMS alerts & locker PINs.
-            </p>
           </div>
 
           {/* Actions */}

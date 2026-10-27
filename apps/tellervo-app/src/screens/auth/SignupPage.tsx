@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { navigateTo, AUTH_ROUTES } from '../../routes/authRoutes';
 import { useSignupForm } from './hooks/useSignupForm';
+import { PhoneInputWithCountry } from '../../components/common/PhoneInputWithCountry';
 
 export const SignupPage: React.FC = () => {
   const {
@@ -22,6 +23,10 @@ export const SignupPage: React.FC = () => {
     handleSubmit,
     errors,
     isSubmitting,
+    selectedCountry,
+    handleCountryChange,
+    phoneValue,
+    handlePhoneChange,
     showPassword,
     setShowPassword,
     showConfirmPassword,
@@ -184,40 +189,18 @@ export const SignupPage: React.FC = () => {
               )}
             </div>
 
-            {/* Phone Number */}
-            <div>
-              <label
-                htmlFor="signup-phone"
-                className="block text-xs font-semibold text-[#23382A] mb-1.5"
-              >
-                Phone Number
-              </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-[#7A8E80]">
-                  <Phone className="w-4 h-4" />
-                </div>
-                <input
-                  id="signup-phone"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  placeholder="e.g. 9876543210 (10 digits)"
-                  maxLength={14}
-                  {...register('phone')}
-                  disabled={isSubmitting}
-                  className={`w-full pl-10 pr-3.5 py-2.5 bg-white text-xs sm:text-sm text-[#183324] placeholder:text-[#9AA89E] rounded-xl border transition-all outline-none ${errors.phone
-                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
-                      : 'border-[#E0D8C8] focus:border-[#183324] focus:ring-2 focus:ring-[#183324]/10'
-                    }`}
-                />
-              </div>
-              {errors.phone?.message && (
-                <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" />
-                  <span>{errors.phone.message}</span>
-                </p>
-              )}
-            </div>
+            {/* Phone Number with International Country Code Selection */}
+            <PhoneInputWithCountry
+              id="signup-phone"
+              name="phone"
+              label="Phone Number"
+              value={phoneValue}
+              onChange={handlePhoneChange}
+              selectedCountry={selectedCountry}
+              onCountryChange={handleCountryChange}
+              error={errors.phone?.message}
+              disabled={isSubmitting}
+            />
 
             {/* Password */}
             <div>
