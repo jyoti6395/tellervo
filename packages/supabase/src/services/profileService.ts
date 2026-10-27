@@ -20,10 +20,23 @@ export class ProfileService {
       email.split('@')[0] ||
       'Patron';
 
-    const role: 'admin' | 'patron' =
-      profile?.tier === 'Founder Patron' || supabaseUser.app_metadata?.role === 'admin'
-        ? 'admin'
-        : 'patron';
+    // Role Resolution Strategy:
+    // 1. Check if user is an administrator via app_metadata, profile role, or Founder Patron tier.
+    // 2. Otherwise, use existing saved role from public.profiles table (e.g. 'customer').
+    // 3. Fallback to app_metadata role if present.
+    // 4. Default to 'customer'.
+    let role: string = 'customer';
+    if (
+      supabaseUser.app_metadata?.role === 'admin' ||
+      profile?.role === 'admin' ||
+      profile?.tier === 'Founder Patron'
+    ) {
+      role = 'admin';
+    } else if (profile?.role) {
+      role = profile.role;
+    } else if (supabaseUser.app_metadata?.role) {
+      role = supabaseUser.app_metadata.role;
+    }
 
     const memberDate = profile?.created_at || supabaseUser.created_at;
     const memberSince = memberDate
@@ -92,6 +105,7 @@ export class ProfileService {
         address: 'Mannerheimintie 14 B, Helsinki (Default)',
         payment_method: 'Apple Pay •••• 9012',
         dietary_preferences: 'Low sugar, zero-proof, vegan botanical extracts',
+        role: 'customer',
       };
 
       const { data, error } = await this.client

@@ -1,69 +1,43 @@
 import { useState } from 'react';
-import {
-  LoginFormData,
-  ValidationErrors,
-  validateLoginForm,
-  authService,
-} from '@tellervo/supabase';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { authService } from '@tellervo/supabase';
 import { navigateTo, AUTH_ROUTES } from '../../../routes/authRoutes';
 import { useApp } from '../../../context/AppContext';
+import { loginSchema, LoginSchemaType } from '../schemas/authSchemas';
 
 /**
- * Controller Hook for Login Business Logic
- * 
- * Encapsulates form state, validation, Supabase sign-in,
- * error handling, and password recovery.
+ * Controller Hook for Login Business Logic using React Hook Form & Zod
  */
 export function useLoginForm() {
   const { login, showToast } = useApp();
-  const [formData, setFormData] = useState<LoginFormData>({
-    email: '',
-    password: '',
-    rememberMe: false,
-  });
 
-  const [errors, setErrors] = useState<ValidationErrors>({});
   const [showPassword, setShowPassword] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState<string | null>(null);
   const [isForgotPasswordOpen, setIsForgotPasswordOpen] = useState(false);
   const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
   const [forgotPasswordFeedback, setForgotPasswordFeedback] = useState<string | null>(null);
 
-  const handleInputChange = (field: keyof LoginFormData, value: string | boolean) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (errors[field as keyof ValidationErrors]) {
-      setErrors(prev => {
-        const next = { ...prev };
-        delete next[field as keyof ValidationErrors];
-        return next;
-      });
-    }
-    if (submissionFeedback) {
-      setSubmissionFeedback(null);
-    }
-  };
+  const {
+    register,
+    handleSubmit: rhfHandleSubmit,
+    formState: { errors, isSubmitting },
+    getValues,
+  } = useForm<LoginSchemaType>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      rememberMe: false,
+    },
+    mode: 'onTouched',
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    // Prevent duplicate submissions
-    if (isSubmitting) return;
-
-    // Validate form
-    const validation = validateLoginForm(formData);
-    if (!validation.isValid) {
-      setErrors(validation.errors);
-      setSubmissionFeedback(null);
-      return;
-    }
-
-    setErrors({});
-    setIsSubmitting(true);
+  const onSubmit = async (data: LoginSchemaType) => {
     setSubmissionFeedback(null);
 
     try {
-      const result = await login(formData.email, formData.password, formData.rememberMe);
+      const result = await login(data.email, data.password, data.rememberMe);
 
       if (!result.success) {
         setSubmissionFeedback(result.error || 'Invalid credentials. Please verify your email and password.');
@@ -74,8 +48,6 @@ export function useLoginForm() {
       navigateTo(AUTH_ROUTES.HOME);
     } catch {
       setSubmissionFeedback('An unexpected error occurred during sign in. Please try again.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -95,21 +67,28 @@ export function useLoginForm() {
     }
   };
 
+  const openForgotPasswordModal = () => {
+    const currentEmail = getValues('email') || '';
+    setForgotPasswordEmail(currentEmail);
+    setForgotPasswordFeedback(null);
+    setIsForgotPasswordOpen(true);
+  };
+
   return {
-    formData,
+    register,
+    handleSubmit: rhfHandleSubmit(onSubmit),
     errors,
+    isSubmitting,
     showPassword,
     setShowPassword,
-    isSubmitting,
     submissionFeedback,
+    setSubmissionFeedback,
     isForgotPasswordOpen,
     setIsForgotPasswordOpen,
     forgotPasswordEmail,
     setForgotPasswordEmail,
     forgotPasswordFeedback,
-    setForgotPasswordFeedback,
-    handleInputChange,
-    handleSubmit,
+    openForgotPasswordModal,
     handleForgotPasswordSubmit,
   };
 }

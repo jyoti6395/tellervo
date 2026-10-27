@@ -146,6 +146,13 @@ export class AuthService {
               'Supabase email rate limit reached (429 Too Many Requests). Supabase default email service is capped at 3 emails/hour. To resolve: in Supabase Dashboard go to Authentication -> Providers -> Email and uncheck "Confirm email" (recommended for development), or configure custom SMTP.',
           };
         }
+        if (error.message?.includes('Database error saving new user')) {
+          return {
+            success: false,
+            error:
+              'This phone number is already registered to another account. Please use a different phone number or leave it blank.',
+          };
+        }
         return {
           success: false,
           error: error.message || 'Signup failed. Please check your details and try again.',
@@ -166,7 +173,7 @@ export class AuthService {
           email: normalizedEmail,
           phone: cleanPhone,
           name: cleanName,
-          role: 'patron',
+          role: 'customer',
           tier: 'Taiga Patron',
           seeds: 50,
           treesPlanted: 18,

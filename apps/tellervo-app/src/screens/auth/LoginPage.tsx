@@ -16,20 +16,19 @@ import { useLoginForm } from './hooks/useLoginForm';
 
 export const LoginPage: React.FC = () => {
   const {
-    formData,
+    register,
+    handleSubmit,
     errors,
+    isSubmitting,
     showPassword,
     setShowPassword,
-    isSubmitting,
     submissionFeedback,
     isForgotPasswordOpen,
     setIsForgotPasswordOpen,
     forgotPasswordEmail,
     setForgotPasswordEmail,
     forgotPasswordFeedback,
-    setForgotPasswordFeedback,
-    handleInputChange,
-    handleSubmit,
+    openForgotPasswordModal,
     handleForgotPasswordSubmit,
   } = useLoginForm();
 
@@ -113,8 +112,7 @@ export const LoginPage: React.FC = () => {
                   type="email"
                   autoComplete="email"
                   placeholder="name@nordicbotanicals.com"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  {...register('email')}
                   disabled={isSubmitting}
                   className={`w-full pl-10 pr-3.5 py-2.5 bg-white text-xs sm:text-sm text-[#183324] placeholder:text-[#9AA89E] rounded-xl border transition-all outline-none ${errors.email
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
@@ -122,10 +120,10 @@ export const LoginPage: React.FC = () => {
                     }`}
                 />
               </div>
-              {errors.email && (
+              {errors.email?.message && (
                 <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{errors.email}</span>
+                  <span>{errors.email.message}</span>
                 </p>
               )}
             </div>
@@ -141,11 +139,7 @@ export const LoginPage: React.FC = () => {
                 </label>
                 <button
                   type="button"
-                  onClick={() => {
-                    setForgotPasswordEmail(formData.email);
-                    setForgotPasswordFeedback(null);
-                    setIsForgotPasswordOpen(true);
-                  }}
+                  onClick={openForgotPasswordModal}
                   className="text-[11px] font-medium text-[#A67C37] hover:text-[#8D6425] hover:underline cursor-pointer"
                 >
                   Forgot password?
@@ -160,8 +154,7 @@ export const LoginPage: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="current-password"
                   placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  {...register('password')}
                   disabled={isSubmitting}
                   className={`w-full pl-10 pr-10 py-2.5 bg-white text-xs sm:text-sm text-[#183324] placeholder:text-[#9AA89E] rounded-xl border transition-all outline-none ${errors.password
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
@@ -178,10 +171,10 @@ export const LoginPage: React.FC = () => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {errors.password && (
+              {errors.password?.message && (
                 <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{errors.password}</span>
+                  <span>{errors.password.message}</span>
                 </p>
               )}
             </div>
@@ -191,8 +184,7 @@ export const LoginPage: React.FC = () => {
               <input
                 id="login-remember"
                 type="checkbox"
-                checked={formData.rememberMe}
-                onChange={(e) => handleInputChange('rememberMe', e.target.checked)}
+                {...register('rememberMe')}
                 className="w-4 h-4 rounded border-[#D8CEBC] text-[#183324] focus:ring-[#183324]/20 cursor-pointer"
               />
               <label htmlFor="login-remember" className="text-xs text-[#5D6F62] cursor-pointer select-none">

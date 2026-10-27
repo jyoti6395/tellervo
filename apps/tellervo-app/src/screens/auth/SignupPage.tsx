@@ -18,17 +18,16 @@ import { useSignupForm } from './hooks/useSignupForm';
 
 export const SignupPage: React.FC = () => {
   const {
-    formData,
+    register,
+    handleSubmit,
     errors,
+    isSubmitting,
     showPassword,
     setShowPassword,
     showConfirmPassword,
     setShowConfirmPassword,
-    isSubmitting,
     submissionFeedback,
     isSuccessNotice,
-    handleInputChange,
-    handleSubmit,
   } = useSignupForm();
 
   return (
@@ -136,8 +135,7 @@ export const SignupPage: React.FC = () => {
                   type="text"
                   autoComplete="name"
                   placeholder="e.g. Milla Virtanen"
-                  value={formData.fullName}
-                  onChange={(e) => handleInputChange('fullName', e.target.value)}
+                  {...register('fullName')}
                   disabled={isSubmitting}
                   className={`w-full pl-10 pr-3.5 py-2.5 bg-white text-xs sm:text-sm text-[#183324] placeholder:text-[#9AA89E] rounded-xl border transition-all outline-none ${errors.fullName
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
@@ -145,10 +143,10 @@ export const SignupPage: React.FC = () => {
                     }`}
                 />
               </div>
-              {errors.fullName && (
+              {errors.fullName?.message && (
                 <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{errors.fullName}</span>
+                  <span>{errors.fullName.message}</span>
                 </p>
               )}
             </div>
@@ -170,8 +168,7 @@ export const SignupPage: React.FC = () => {
                   type="email"
                   autoComplete="email"
                   placeholder="name@nordicbotanicals.com"
-                  value={formData.email}
-                  onChange={(e) => handleInputChange('email', e.target.value)}
+                  {...register('email')}
                   disabled={isSubmitting}
                   className={`w-full pl-10 pr-3.5 py-2.5 bg-white text-xs sm:text-sm text-[#183324] placeholder:text-[#9AA89E] rounded-xl border transition-all outline-none ${errors.email
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
@@ -179,10 +176,10 @@ export const SignupPage: React.FC = () => {
                     }`}
                 />
               </div>
-              {errors.email && (
+              {errors.email?.message && (
                 <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{errors.email}</span>
+                  <span>{errors.email.message}</span>
                 </p>
               )}
             </div>
@@ -202,10 +199,11 @@ export const SignupPage: React.FC = () => {
                 <input
                   id="signup-phone"
                   type="tel"
+                  inputMode="numeric"
                   autoComplete="tel"
-                  placeholder="e.g. +358 40 123 4567"
-                  value={formData.phone}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  placeholder="e.g. 9876543210 (10 digits)"
+                  maxLength={14}
+                  {...register('phone')}
                   disabled={isSubmitting}
                   className={`w-full pl-10 pr-3.5 py-2.5 bg-white text-xs sm:text-sm text-[#183324] placeholder:text-[#9AA89E] rounded-xl border transition-all outline-none ${errors.phone
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
@@ -213,10 +211,10 @@ export const SignupPage: React.FC = () => {
                     }`}
                 />
               </div>
-              {errors.phone && (
+              {errors.phone?.message && (
                 <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{errors.phone}</span>
+                  <span>{errors.phone.message}</span>
                 </p>
               )}
             </div>
@@ -241,8 +239,7 @@ export const SignupPage: React.FC = () => {
                   type={showPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   placeholder="••••••••"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
+                  {...register('password')}
                   disabled={isSubmitting}
                   className={`w-full pl-10 pr-10 py-2.5 bg-white text-xs sm:text-sm text-[#183324] placeholder:text-[#9AA89E] rounded-xl border transition-all outline-none ${errors.password
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
@@ -259,10 +256,10 @@ export const SignupPage: React.FC = () => {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {errors.password && (
+              {errors.password?.message && (
                 <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{errors.password}</span>
+                  <span>{errors.password.message}</span>
                 </p>
               )}
             </div>
@@ -284,8 +281,7 @@ export const SignupPage: React.FC = () => {
                   type={showConfirmPassword ? 'text' : 'password'}
                   autoComplete="new-password"
                   placeholder="••••••••"
-                  value={formData.confirmPassword}
-                  onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
+                  {...register('confirmPassword')}
                   disabled={isSubmitting}
                   className={`w-full pl-10 pr-10 py-2.5 bg-white text-xs sm:text-sm text-[#183324] placeholder:text-[#9AA89E] rounded-xl border transition-all outline-none ${errors.confirmPassword
                       ? 'border-rose-400 focus:ring-2 focus:ring-rose-200'
@@ -302,10 +298,10 @@ export const SignupPage: React.FC = () => {
                   {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {errors.confirmPassword && (
+              {errors.confirmPassword?.message && (
                 <p className="mt-1 text-[11px] text-rose-600 flex items-center gap-1">
                   <AlertCircle className="w-3 h-3" />
-                  <span>{errors.confirmPassword}</span>
+                  <span>{errors.confirmPassword.message}</span>
                 </p>
               )}
             </div>

@@ -25,11 +25,7 @@ export const BottomNav: React.FC = () => {
             <button
               key={item.id}
               onClick={() => {
-                if (item.id === 'profile' && !isAuthenticated) {
-                  navigateTo(AUTH_ROUTES.LOGIN);
-                } else {
-                  setActiveTab(item.id);
-                }
+                setActiveTab(item.id);
               }}
               className={`flex flex-col items-center justify-center flex-1 py-1 relative tap-effect transition-colors duration-150 ${isActive ? 'text-[#162D1F]' : 'text-[#87958B] hover:text-[#4A5D50]'
                 }`}

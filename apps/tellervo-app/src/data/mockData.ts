@@ -15,6 +15,7 @@ export const INITIAL_USER: UserProfile = {
   address: "Mannerheimintie 14 B, Helsinki (Default)",
   paymentMethod: "Apple Pay •••• 9012",
   dietaryPreferences: "Low sugar, zero-proof, vegan botanical extracts",
+  role: "customer",
   subscription: {
     title: "Nordic Monthly Forest Box",
     status: "ACTIVE • 4-WEEK DISPATCH",

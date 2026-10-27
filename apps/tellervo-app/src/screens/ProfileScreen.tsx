@@ -3,9 +3,6 @@ import { useApp } from '../context/AppContext';
 import {
   CheckCircle2,
   Trees,
-  MapPin,
-  CreditCard,
-  Sliders,
   Bell,
   ShieldCheck,
   HelpCircle,
@@ -15,11 +12,20 @@ import {
   RotateCcw,
   Package,
   Truck,
-  Receipt,
+  MapPin,
   X,
-  Globe
+  Globe,
+  User,
+  Gift
 } from 'lucide-react';
 import { navigateTo, AUTH_ROUTES } from '../routes/authRoutes';
+import { QuickAccessGrid } from '../components/profile/QuickAccessGrid';
+import { PersonalInformationModal } from '../components/profile/PersonalInformationModal';
+import { AddressesModal } from '../components/profile/AddressesModal';
+import { PaymentMethodsModal } from '../components/profile/PaymentMethodsModal';
+import { SecurityModal } from '../components/profile/SecurityModal';
+import { SupportDrawer } from '../components/profile/SupportDrawer';
+import { LegalPrivacyModal } from '../components/profile/LegalPrivacyModal';
 
 export const ProfileScreen: React.FC = () => {
   const {
@@ -31,6 +37,7 @@ export const ProfileScreen: React.FC = () => {
     showToast,
     language,
     setIsLanguageModalOpen,
+    setIsMembershipCardOpen,
     t,
     logout,
   } = useApp();
@@ -59,10 +66,18 @@ export const ProfileScreen: React.FC = () => {
   const [isImpactOpen, setIsImpactOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
+  // Modular Modals State
+  const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
+  const [isAddressesOpen, setIsAddressesOpen] = useState(false);
+  const [isPaymentsOpen, setIsPaymentsOpen] = useState(false);
+  const [isSecurityOpen, setIsSecurityOpen] = useState(false);
+  const [isSupportOpen, setIsSupportOpen] = useState(false);
+  const [isLegalOpen, setIsLegalOpen] = useState(false);
+
   const toggleNotification = (key: keyof typeof notifications) => {
     setNotifications(prev => {
       const next = { ...prev, [key]: !prev[key] };
-      showToast(`Notification preference updated`);
+      showToast('Notification preference updated');
       return next;
     });
   };
@@ -73,8 +88,32 @@ export const ProfileScreen: React.FC = () => {
     showToast('Reordered all 8 items from Order #TL-84102');
   };
 
+  const handleScrollToOrders = () => {
+    const el = document.getElementById('recent-orders-section');
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  // Extract authenticated user first name dynamically
+  const firstName = user.name ? user.name.split(' ')[0] : 'Patron';
+
   return (
     <div className="pb-28 px-4 pt-3 max-w-md mx-auto space-y-5 animate-in fade-in duration-200">
+      {/* Dynamic Account Overview Greeting Banner */}
+      <div className="space-y-0.5 pt-1">
+        <span className="text-[10px] font-bold tracking-widest text-[#937548] uppercase block">
+          ACCOUNT OVERVIEW
+        </span>
+        <h1 className="font-editorial text-2xl sm:text-[28px] font-medium text-[#14261B] flex items-center gap-2">
+          <span>Hello, {firstName}</span>
+          <span className="text-xl">👋</span>
+        </h1>
+        <p className="text-xs text-[#5D6F61]">
+          Manage your account and your Tellervo experience.
+        </p>
+      </div>
+
       {/* User Header Profile Card */}
       <div className="bg-white rounded-3xl p-5 border border-[#E8E2D5] shadow-soft-sm space-y-4">
         <div className="flex items-center gap-3.5">
@@ -124,6 +163,7 @@ export const ProfileScreen: React.FC = () => {
             </div>
           </div>
           <button
+            type="button"
             onClick={() => setIsImpactOpen(true)}
             className="text-xs font-semibold text-[#1F492E] hover:underline px-2 py-1"
           >
@@ -131,6 +171,13 @@ export const ProfileScreen: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Shopping Activities 2x2 Quick-Access Card Grid */}
+      <QuickAccessGrid
+        onSelectOrders={handleScrollToOrders}
+        onOpenAddresses={() => setIsAddressesOpen(true)}
+        onOpenPayments={() => setIsPaymentsOpen(true)}
+      />
 
       {/* Active Subscription Section */}
       <div>
@@ -183,12 +230,14 @@ export const ProfileScreen: React.FC = () => {
           {/* Buttons row */}
           <div className="grid grid-cols-3 gap-2 pt-1">
             <button
+              type="button"
               onClick={() => setIsEditFlavorsOpen(true)}
               className="py-2 px-2 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl hover:bg-[#254632] transition-colors truncate"
             >
               Edit Flavors
             </button>
             <button
+              type="button"
               onClick={() => {
                 setActiveSubscriptionStatus(prev => prev === 'skipped' ? 'active' : 'skipped');
                 showToast(activeSubscriptionStatus === 'skipped' ? 'Resumed November dispatch' : 'Skipped November dispatch');
@@ -198,6 +247,7 @@ export const ProfileScreen: React.FC = () => {
               {activeSubscriptionStatus === 'skipped' ? 'Resume Nov' : 'Skip Nov'}
             </button>
             <button
+              type="button"
               onClick={() => {
                 setActiveSubscriptionStatus(prev => prev === 'paused' ? 'active' : 'paused');
                 showToast(activeSubscriptionStatus === 'paused' ? 'Subscription resumed' : 'Subscription paused');
@@ -211,10 +261,11 @@ export const ProfileScreen: React.FC = () => {
       </div>
 
       {/* Recent Orders Section */}
-      <div>
+      <div id="recent-orders-section">
         <div className="flex items-baseline justify-between mb-2">
           <h3 className="font-editorial text-xl font-medium text-[#14261B]">Recent Orders</h3>
           <button
+            type="button"
             onClick={() => showToast('Displaying all past orders', 'info')}
             className="text-xs font-semibold text-[#8C7443] hover:underline"
           >
@@ -253,6 +304,7 @@ export const ProfileScreen: React.FC = () => {
             {/* Action buttons */}
             <div className="flex gap-2 pt-0.5">
               <button
+                type="button"
                 onClick={() => setSelectedOrderForTracking(orders[0])}
                 className="flex-1 py-2 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#254632] transition-colors"
               >
@@ -260,6 +312,7 @@ export const ProfileScreen: React.FC = () => {
                 <span>Track Order</span>
               </button>
               <button
+                type="button"
                 onClick={() => setIsReceiptOpen(true)}
                 className="px-4 py-2 bg-[#F5F2EB] text-[#293E30] text-xs font-semibold rounded-xl hover:bg-[#ECE7DC] transition-colors"
               >
@@ -289,6 +342,7 @@ export const ProfileScreen: React.FC = () => {
             </div>
 
             <button
+              type="button"
               onClick={handleReorderEverything}
               className="w-full py-2 bg-[#F5F2EB] text-[#293E30] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#ECE7DC] transition-colors"
             >
@@ -299,14 +353,31 @@ export const ProfileScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Settings & Preferences Section */}
+      {/* Account & Settings Section */}
       <div>
         <h3 className="font-editorial text-xl font-medium text-[#14261B] mb-2">
-          {t.profile.settingsPreferences || 'Settings & Preferences'}
+          {t.profile.settingsPreferences || 'Account & Settings'}
         </h3>
 
         <div className="bg-white rounded-3xl border border-[#E8E2D5] shadow-soft-sm divide-y divide-[#F0ECE1] overflow-hidden">
-          {/* Language Selector */}
+          {/* 1. Personal Information */}
+          <div
+            onClick={() => setIsPersonalInfoOpen(true)}
+            className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#F5F2EB] flex items-center justify-center text-[#183324]">
+                <User className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-[#183122]">Personal Information</div>
+                <div className="text-[11px] text-[#718274]">Name, email and phone</div>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[#8C9C90]" />
+          </div>
+
+          {/* 2. Language Selector */}
           <div
             onClick={() => setIsLanguageModalOpen(true)}
             className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
@@ -335,66 +406,15 @@ export const ProfileScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Delivery Addresses */}
-          <div
-            onClick={() => showToast('Default delivery address: Mannerheimintie 14 B, Helsinki')}
-            className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#F5F2EB] flex items-center justify-center text-[#2A3F31]">
-                <MapPin className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-[#183122]">{t.profile.deliveryAddresses}</div>
-                <div className="text-[11px] text-[#718274]">{user.address}</div>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-[#8C9C90]" />
-          </div>
-
-          {/* Payment Methods */}
-          <div
-            onClick={() => showToast('Active card: Apple Pay ending in 9012')}
-            className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#F5F2EB] flex items-center justify-center text-[#2A3F31]">
-                <CreditCard className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-[#183122]">{t.profile.paymentMethods}</div>
-                <div className="text-[11px] text-[#718274]">{user.paymentMethod}</div>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-[#8C9C90]" />
-          </div>
-
-          {/* Flavor & Dietary */}
-          <div
-            onClick={() => showToast('Preferences: Low sugar, zero-proof, organic')}
-            className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#F5F2EB] flex items-center justify-center text-[#2A3F31]">
-                <Sliders className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-xs font-bold text-[#183122]">{t.profile.flavorDietary}</div>
-                <div className="text-[11px] text-[#718274]">{user.dietaryPreferences}</div>
-              </div>
-            </div>
-            <ChevronRight className="w-4 h-4 text-[#8C9C90]" />
-          </div>
-
-          {/* Notification Signals Group */}
+          {/* 3. Notifications & Preferences */}
           <div className="p-4 space-y-3">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#F5F2EB] flex items-center justify-center text-[#2A3F31]">
                 <Bell className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-xs font-bold text-[#183122]">{t.profile.notificationSignals}</div>
-                <div className="text-[11px] text-[#718274]">{t.profile.realTimeAlerts}</div>
+                <div className="text-xs font-bold text-[#183122]">Notifications & Preferences</div>
+                <div className="text-[11px] text-[#718274]">Order alerts, offers and communication</div>
               </div>
             </div>
 
@@ -402,13 +422,16 @@ export const ProfileScreen: React.FC = () => {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-[#2A3E31]">{t.profile.seasonalDrops}</span>
                 <button
+                  type="button"
                   onClick={() => toggleNotification('seasonalDrops')}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${notifications.seasonalDrops ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
-                    }`}
+                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                    notifications.seasonalDrops ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
+                  }`}
                 >
                   <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${notifications.seasonalDrops ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      notifications.seasonalDrops ? 'translate-x-5' : 'translate-x-0'
+                    }`}
                   />
                 </button>
               </div>
@@ -416,13 +439,16 @@ export const ProfileScreen: React.FC = () => {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-[#2A3E31]">{t.profile.restockAlerts}</span>
                 <button
+                  type="button"
                   onClick={() => toggleNotification('restockAlerts')}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${notifications.restockAlerts ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
-                    }`}
+                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                    notifications.restockAlerts ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
+                  }`}
                 >
                   <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${notifications.restockAlerts ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      notifications.restockAlerts ? 'translate-x-5' : 'translate-x-0'
+                    }`}
                   />
                 </button>
               </div>
@@ -430,60 +456,86 @@ export const ProfileScreen: React.FC = () => {
               <div className="flex items-center justify-between">
                 <span className="text-xs text-[#2A3E31]">{t.profile.orderUpdates}</span>
                 <button
+                  type="button"
                   onClick={() => toggleNotification('orderUpdates')}
-                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${notifications.orderUpdates ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
-                    }`}
+                  className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                    notifications.orderUpdates ? 'bg-[#183324]' : 'bg-[#D6CFC2]'
+                  }`}
                 >
                   <div
-                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${notifications.orderUpdates ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                    className={`bg-white w-4 h-4 rounded-full shadow-md transform transition-transform ${
+                      notifications.orderUpdates ? 'translate-x-5' : 'translate-x-0'
+                    }`}
                   />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Nordic Forest Impact */}
+          {/* 4. Login & Security */}
           <div
-            onClick={() => setIsImpactOpen(true)}
+            onClick={() => setIsSecurityOpen(true)}
             className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-[#E8F3EB] flex items-center justify-center text-[#215734]">
-                <Trees className="w-4 h-4" />
+              <div className="w-9 h-9 rounded-xl bg-[#F5F2EB] flex items-center justify-center text-[#2A3F31]">
+                <ShieldCheck className="w-4 h-4" />
               </div>
               <div>
-                <div className="text-xs font-bold text-[#183122]">{t.profile.nordicForestImpact}</div>
-                <div className="text-[11px] text-[#718274]">18 trees planted through your orders this year</div>
+                <div className="text-xs font-bold text-[#183122]">Login & Security</div>
+                <div className="text-[11px] text-[#718274]">Password and account security</div>
               </div>
             </div>
             <ChevronRight className="w-4 h-4 text-[#8C9C90]" />
           </div>
 
-          {/* Help & Forest Concierge */}
+          {/* 5. Rewards & Membership */}
           <div
-            onClick={() => showToast('Forest Concierge: info@tellervo.fi or +358 40 123 4567')}
+            onClick={() => setIsMembershipCardOpen(true)}
+            className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-[#E8F3EB] flex items-center justify-center text-[#183324]">
+                <Gift className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-[#183122]">Rewards & Membership</div>
+                <div className="text-[11px] text-[#718274]">{user.tier} • {user.seeds} Seeds available</div>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-[#8C9C90]" />
+          </div>
+
+          {/* 6. Help & Support */}
+          <div
+            onClick={() => setIsSupportOpen(true)}
             className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#F5F2EB] flex items-center justify-center text-[#2A3F31]">
                 <HelpCircle className="w-4 h-4" />
               </div>
-              <div className="text-xs font-bold text-[#183122]">{t.profile.helpConcierge}</div>
+              <div>
+                <div className="text-xs font-bold text-[#183122]">Help & Support</div>
+                <div className="text-[11px] text-[#718274]">FAQs, contact support and order issues</div>
+              </div>
             </div>
             <ChevronRight className="w-4 h-4 text-[#8C9C90]" />
           </div>
 
-          {/* Terms & Nordic Botanical Policy */}
+          {/* 7. Legal & Privacy */}
           <div
-            onClick={() => showToast('Viewing Nordic Botanical Harvest Policy (Inari & Kainuu)', 'info')}
+            onClick={() => setIsLegalOpen(true)}
             className="p-4 flex items-center justify-between hover:bg-[#FAF8F3] cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-[#F5F2EB] flex items-center justify-center text-[#2A3F31]">
                 <FileText className="w-4 h-4" />
               </div>
-              <div className="text-xs font-bold text-[#183122]">{t.profile.termsPolicy}</div>
+              <div>
+                <div className="text-xs font-bold text-[#183122]">Legal & Privacy</div>
+                <div className="text-[11px] text-[#718274]">Terms, harvest policy and GDPR data</div>
+              </div>
             </div>
             <ChevronRight className="w-4 h-4 text-[#8C9C90]" />
           </div>
@@ -492,6 +544,7 @@ export const ProfileScreen: React.FC = () => {
 
       {/* Log Out Button */}
       <button
+        type="button"
         onClick={handleLogout}
         disabled={isLoggingOut}
         className="w-full py-3.5 bg-[#F6F3EB] hover:bg-[#ECE6DA] text-[#9E3E3E] rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors border border-[#E5DFD1]"
@@ -533,6 +586,7 @@ export const ProfileScreen: React.FC = () => {
               </div>
             </div>
             <button
+              type="button"
               onClick={() => setIsImpactOpen(false)}
               className="w-full py-3 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl"
             >
@@ -552,6 +606,7 @@ export const ProfileScreen: React.FC = () => {
                 Receipt #TL-89421
               </h3>
               <button
+                type="button"
                 onClick={() => setIsReceiptOpen(false)}
                 className="w-7 h-7 rounded-full bg-[#EAE5D9] flex items-center justify-center text-[#2A3E30]"
               >
@@ -581,6 +636,7 @@ export const ProfileScreen: React.FC = () => {
               </div>
             </div>
             <button
+              type="button"
               onClick={() => {
                 showToast('Receipt PDF downloaded');
                 setIsReceiptOpen(false);
@@ -613,6 +669,7 @@ export const ProfileScreen: React.FC = () => {
               ))}
             </div>
             <button
+              type="button"
               onClick={() => {
                 showToast('November flavor box updated!');
                 setIsEditFlavorsOpen(false);
@@ -625,6 +682,37 @@ export const ProfileScreen: React.FC = () => {
         </div>
       )}
 
+      {/* Interactive Profile Modals */}
+      <PersonalInformationModal
+        isOpen={isPersonalInfoOpen}
+        onClose={() => setIsPersonalInfoOpen(false)}
+      />
+
+      <AddressesModal
+        isOpen={isAddressesOpen}
+        onClose={() => setIsAddressesOpen(false)}
+      />
+
+      <PaymentMethodsModal
+        isOpen={isPaymentsOpen}
+        onClose={() => setIsPaymentsOpen(false)}
+      />
+
+      <SecurityModal
+        isOpen={isSecurityOpen}
+        onClose={() => setIsSecurityOpen(false)}
+      />
+
+      <SupportDrawer
+        isOpen={isSupportOpen}
+        onClose={() => setIsSupportOpen(false)}
+      />
+
+      <LegalPrivacyModal
+        isOpen={isLegalOpen}
+        onClose={() => setIsLegalOpen(false)}
+      />
+
       {/* Logout confirmation dialog */}
       {isLogoutDialogOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -634,6 +722,7 @@ export const ProfileScreen: React.FC = () => {
             <p className="text-xs text-[#637568] mb-4">You can log back in anytime with your Apple ID or phone.</p>
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={handleLogout}
                 disabled={isLoggingOut}
                 className="flex-1 py-2 bg-[#9E3E3E] text-white text-xs font-semibold rounded-xl"
@@ -641,6 +730,7 @@ export const ProfileScreen: React.FC = () => {
                 Log Out
               </button>
               <button
+                type="button"
                 onClick={() => setIsLogoutDialogOpen(false)}
                 className="flex-1 py-2 bg-[#F3EFE6] text-[#293E30] text-xs font-semibold rounded-xl"
               >

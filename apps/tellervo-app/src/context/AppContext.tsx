@@ -3,7 +3,9 @@ import { TabType, Product, CartItem, UserProfile, RewardItem, OrderItem, Languag
 import { PRODUCTS, INITIAL_USER, INITIAL_CART, RECENT_ORDERS } from '../data/mockData';
 import { translations, Translations } from '../i18n/translations';
 import confetti from 'canvas-confetti';
-import { authService, AuthUser, AuthResult, supabase } from '@tellervo/supabase';
+import { authService, profileService, AuthUser, AuthResult, supabase } from '@tellervo/supabase';
+import { ALL_ROUTES } from '../routes/routes.config';
+import { navigateTo } from '../routes/hooks/useNavigation';
 
 interface Toast {
   id: string;
@@ -57,6 +59,7 @@ interface AppContextType {
   login: (email: string, password: string, rememberMe?: boolean) => Promise<AuthResult>;
   signup: (email: string, password: string, fullName: string, phone?: string) => Promise<AuthResult>;
   logout: () => Promise<void>;
+  updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -88,7 +91,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const t = translations[language] || translations.en;
 
-  const [activeTab, setActiveTab] = useState<TabType>('home');
+  const [activeTab, setActiveTabState] = useState<TabType>(() => {
+    if (typeof window === 'undefined') return 'home';
+    const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+    const matched = ALL_ROUTES.find((r) => r.path === path);
+    return matched?.tabEquivalent || 'home';
+  });
+
+  const setActiveTab = (tab: TabType) => {
+    setActiveTabState(tab);
+    const target = ALL_ROUTES.find((r) => r.tabEquivalent === tab);
+    if (target && typeof window !== 'undefined') {
+      const current = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+      if (current !== target.path) {
+        navigateTo(target.path);
+      }
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
+      const matched = ALL_ROUTES.find((r) => r.path === path);
+      if (matched?.tabEquivalent) {
+        setActiveTabState(matched.tabEquivalent);
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
   const [products] = useState<Product[]>(PRODUCTS);
   const [cart, setCart] = useState<CartItem[]>(INITIAL_CART);
   const [favorites, setFavorites] = useState<string[]>([
@@ -129,6 +163,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               address: session.user.address || prev.address,
               paymentMethod: session.user.paymentMethod || prev.paymentMethod,
               dietaryPreferences: session.user.dietaryPreferences || prev.dietaryPreferences,
+              role: session.user.role || prev.role || 'customer',
             }));
           } else {
             setAuthUser(null);
@@ -173,6 +208,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             address: authSession.user.address || prev.address,
             paymentMethod: authSession.user.paymentMethod || prev.paymentMethod,
             dietaryPreferences: authSession.user.dietaryPreferences || prev.dietaryPreferences,
+            role: authSession.user.role || prev.role || 'customer',
           }));
         }
       }
@@ -200,6 +236,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         address: result.user!.address || prev.address,
         paymentMethod: result.user!.paymentMethod || prev.paymentMethod,
         dietaryPreferences: result.user!.dietaryPreferences || prev.dietaryPreferences,
+        role: result.user!.role || prev.role || 'customer',
       }));
     }
     return result;
@@ -221,6 +258,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         address: result.user!.address || prev.address,
         paymentMethod: result.user!.paymentMethod || prev.paymentMethod,
         dietaryPreferences: result.user!.dietaryPreferences || prev.dietaryPreferences,
+        role: result.user!.role || 'customer',
       }));
       triggerConfetti();
     }
@@ -233,6 +271,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsAuthenticated(false);
     setUser(INITIAL_USER);
     setActiveTab('home');
+  };
+
+  const updateUserProfile = async (updates: Partial<UserProfile>): Promise<void> => {
+    setUser(prev => ({ ...prev, ...updates }));
+    if (authUser?.id) {
+      const dbUpdates: Record<string, unknown> = {};
+      if (updates.name !== undefined) dbUpdates.full_name = updates.name;
+      if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+      if (updates.address !== undefined) dbUpdates.address = updates.address;
+      if (updates.paymentMethod !== undefined) dbUpdates.payment_method = updates.paymentMethod;
+      if (updates.dietaryPreferences !== undefined) dbUpdates.dietary_preferences = updates.dietaryPreferences;
+      if (updates.tier !== undefined) dbUpdates.tier = updates.tier;
+      if (updates.seeds !== undefined) dbUpdates.seeds = updates.seeds;
+
+      await profileService.updateProfile(authUser.id, dbUpdates);
+    }
   };
 
   // Modals & Drawers
@@ -398,6 +452,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         login,
         signup,
         logout,
+        updateUserProfile,
       }}
     >
       {children}

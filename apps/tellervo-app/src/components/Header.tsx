@@ -113,13 +113,7 @@ export const Header: React.FC = () => {
 
           {/* User Profile Avatar */}
           <button
-            onClick={() => {
-              if (!isAuthenticated) {
-                navigateTo(AUTH_ROUTES.LOGIN);
-              } else {
-                setActiveTab('profile');
-              }
-            }}
+            onClick={() => setActiveTab('profile')}
             aria-label="Open profile"
             className="w-8 h-8 rounded-full overflow-hidden shadow-xs hover:opacity-90 active:scale-95 transition-all shrink-0 cursor-pointer"
           >

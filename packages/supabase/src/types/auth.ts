@@ -3,7 +3,7 @@ export interface AuthUser {
   email: string;
   phone?: string;
   name: string;
-  role: 'admin' | 'patron';
+  role: 'admin' | 'customer' | 'patron' | string;
   memberSince?: string;
   avatarUrl?: string;
   tier?: string;
@@ -40,6 +40,7 @@ export interface ProfileRecord {
   address?: string;
   payment_method?: string;
   dietary_preferences?: string;
+  role?: string;
   created_at?: string;
   updated_at?: string;
 }

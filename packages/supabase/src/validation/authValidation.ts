@@ -70,11 +70,11 @@ export function validateSignupForm(data: SignupFormData): {
     errors.email = emailError;
   }
 
-  // Phone (optional - validate format if provided)
+  // Phone (optional - validate format if provided: must be exactly 10 digits)
   if (data.phone && data.phone.trim()) {
     const cleaned = data.phone.replace(/[\s\-()]/g, '');
-    if (!/^\+?[0-9]{6,15}$/.test(cleaned)) {
-      errors.phone = 'Please enter a valid phone number (e.g. +358 40 123 4567).';
+    if (!/^[0-9]{10}$/.test(cleaned)) {
+      errors.phone = 'Phone number must be exactly 10 digits (e.g. 9876543210).';
     }
   }
 

@@ -105,6 +105,7 @@ export interface UserProfile {
   phone?: string;
   paymentMethod: string;
   dietaryPreferences: string;
+  role?: string;
   subscription: {
     title: string;
     status: string;
