@@ -38,6 +38,7 @@ interface AppContextType {
   refetchProducts: () => Promise<void>;
   fetchMoreProducts: () => Promise<void>;
   favorites: string[];
+  isLoadingFavorites: boolean;
   toggleFavorite: (productId: string) => void;
   user: UserProfile;
   addSeeds: (amount: number, title: string) => void;
@@ -243,6 +244,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // ignore
     }
   }, [cart]);
+  const [isLoadingFavorites, setIsLoadingFavorites] = useState<boolean>(true);
   const [favorites, setFavorites] = useState<string[]>(() => {
     try {
       const saved = localStorage.getItem('tellervo_favorites');
@@ -291,6 +293,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isLoadingSession, setIsLoadingSession] = useState<boolean>(true);
 
   // Initialize and restore authenticated session on mount with Supabase
+  useEffect(() => {
+    if (!isLoadingSession && !authUser?.id) {
+      setIsLoadingFavorites(false);
+    }
+  }, [isLoadingSession, authUser?.id]);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -375,6 +383,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     let isCancelled = false;
 
     const loadDbFavorites = async () => {
+      setIsLoadingFavorites(true);
       try {
         const { data, error } = await favouriteService.getFavoriteIds(authUser.id);
         if (!isCancelled && !error && data) {
@@ -388,6 +397,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         }
       } catch (err) {
         console.error('[AppContext] Error loading user favorites:', err);
+      } finally {
+        if (!isCancelled) {
+          setIsLoadingFavorites(false);
+        }
       }
     };
 
@@ -674,6 +687,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         refetchProducts,
         fetchMoreProducts,
         favorites,
+        isLoadingFavorites,
         toggleFavorite,
         user,
         addSeeds,

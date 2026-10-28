@@ -15,6 +15,8 @@ export const FavoritesScreen: React.FC = () => {
   const { 
     products, 
     favorites, 
+    isLoadingProducts,
+    isLoadingFavorites,
     toggleFavorite, 
     addToCart, 
     setSelectedProduct,
@@ -30,6 +32,16 @@ export const FavoritesScreen: React.FC = () => {
 
   // Filter saved items matching populated products
   const savedItems = products.filter(p => favorites.includes(p.id));
+
+  // Determine if data is still loading:
+  // 1. Initial product catalog loading
+  // 2. Initial user favorites query loading
+  // 3. Or user has favorited IDs that are currently being populated/fetched
+  const isLoading = Boolean(
+    isLoadingProducts ||
+    isLoadingFavorites ||
+    (favorites.length > 0 && savedItems.length < favorites.length)
+  );
 
   const refillsCount = savedItems.filter(p => !!p.autoRefillOptions).length;
   const stockCount = savedItems.filter(p => p.stockStatus === 'just-restocked' || p.stockStatus === 'low-stock').length;
@@ -59,12 +71,19 @@ export const FavoritesScreen: React.FC = () => {
           <span className="text-[#847350]">{t.favorites?.personalCellar || 'PERSONAL CELLAR'}</span>
           <span className="px-2.5 py-0.5 rounded-full bg-[#EAF3ED] border border-[#CFE2D4] text-[#245233] text-[10px] font-bold flex items-center gap-1.5 normal-case">
             <span className="w-1.5 h-1.5 rounded-full bg-[#277E46] animate-pulse" />
-            <span>{t.favorites?.vaultSynced || 'Vault Synced'}</span>
+            <span>{isLoading ? 'Syncing...' : (t.favorites?.vaultSynced || 'Vault Synced')}</span>
           </span>
         </div>
 
         <h1 className="font-editorial text-[32px] leading-tight font-medium text-[#14261B]">
-          {t.favorites?.myVault || 'My Vault'} <span className="text-xl font-normal text-[#6F8273]">({savedItems.length} {t.favorites?.savedCount || 'Items'})</span>
+          {t.favorites?.myVault || 'My Vault'}{' '}
+          <span className="text-xl font-normal text-[#6F8273]">
+            {isLoading ? (
+              <span className="inline-block w-16 h-5 bg-[#E8E2D5] rounded-full animate-pulse align-middle ml-1" />
+            ) : (
+              `(${savedItems.length} ${t.favorites?.savedCount || 'Items'})`
+            )}
+          </span>
         </h1>
 
         <p className="text-xs text-[#5D6F61] mt-1">
@@ -82,7 +101,7 @@ export const FavoritesScreen: React.FC = () => {
               : 'bg-[#EDE7DB]/70 text-[#6B7D70] hover:bg-[#E5DFD1]'
           }`}
         >
-          {t.favorites?.allSaved || 'All Saved'} ({savedItems.length})
+          {t.favorites?.allSaved || 'All Saved'} {isLoading ? '' : `(${savedItems.length})`}
         </button>
 
         <button
@@ -93,7 +112,7 @@ export const FavoritesScreen: React.FC = () => {
               : 'bg-[#EDE7DB]/70 text-[#6B7D70] hover:bg-[#E5DFD1]'
           }`}
         >
-          {t.favorites?.autoRefills || 'Auto-Refills'} ({refillsCount})
+          {t.favorites?.autoRefills || 'Auto-Refills'} {isLoading ? '' : `(${refillsCount})`}
         </button>
 
         <button
@@ -104,12 +123,65 @@ export const FavoritesScreen: React.FC = () => {
               : 'bg-[#EDE7DB]/70 text-[#6B7D70] hover:bg-[#E5DFD1]'
           }`}
         >
-          {t.favorites?.backInStock || 'Stock Alert'} ({stockCount})
+          {t.favorites?.backInStock || 'Stock Alert'} {isLoading ? '' : `(${stockCount})`}
         </button>
       </div>
 
-      {/* If there are items in the vault */}
-      {savedItems.length > 0 ? (
+      {/* Skeleton Loading State */}
+      {isLoading ? (
+        <div className="space-y-4 animate-pulse">
+          {/* Nordic Ritual Bundle Hero Restock Card Skeleton */}
+          <div className="bg-[#183324] text-white rounded-3xl p-5 shadow-soft border border-[#264833] space-y-3.5">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <div className="h-2.5 w-24 bg-white/20 rounded" />
+                <div className="h-6 w-44 bg-white/20 rounded-md" />
+              </div>
+              <div className="h-7 w-20 bg-white/20 rounded-md" />
+            </div>
+
+            <div className="h-8 w-full bg-white/10 rounded-xl" />
+            <div className="h-11 w-full bg-[#E5A953]/60 rounded-2xl" />
+          </div>
+
+          {/* Section Header Skeleton */}
+          <div className="flex items-center justify-between text-xs pt-1">
+            <div className="h-3 w-36 bg-[#E8E2D5] rounded" />
+            <div className="h-3 w-16 bg-[#E8E2D5] rounded" />
+          </div>
+
+          {/* Saved Items List Skeleton */}
+          <div className="space-y-3">
+            {[1, 2].map(n => (
+              <div
+                key={n}
+                className="bg-white rounded-3xl p-3.5 border border-[#E9E3D6] shadow-soft-sm space-y-3"
+              >
+                <div className="flex gap-3 items-start">
+                  <div className="w-20 h-20 rounded-2xl bg-[#EFEAE0] shrink-0" />
+
+                  <div className="flex-1 space-y-2 py-0.5">
+                    <div className="flex justify-between items-start">
+                      <div className="h-4 bg-[#EFEAE0] rounded-md w-3/5" />
+                      <div className="w-4 h-4 bg-[#EFEAE0] rounded-full" />
+                    </div>
+                    <div className="h-3 bg-[#EFEAE0] rounded w-4/5" />
+                    <div className="flex items-center gap-2 pt-1">
+                      <div className="h-4 bg-[#EFEAE0] rounded w-16" />
+                      <div className="h-3.5 bg-[#EFEAE0] rounded w-24" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-[#F2ECE1] flex justify-between items-center">
+                  <div className="h-7 w-28 bg-[#EFEAE0] rounded-xl" />
+                  <div className="h-7 w-24 bg-[#EFEAE0] rounded-xl" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : savedItems.length > 0 ? (
         <>
           {/* Nordic Ritual Bundle Hero Restock Card */}
           <div className="bg-[#183324] text-white rounded-3xl p-5 shadow-soft border border-[#264833] relative overflow-hidden space-y-3.5">
@@ -298,7 +370,7 @@ export const FavoritesScreen: React.FC = () => {
               <p className="text-xs text-[#6F8073]">No provisions matching this filter in your vault.</p>
               <button
                 onClick={() => setActiveTabFilter('all')}
-                className="text-xs font-semibold text-[#183324] underline"
+                className="text-xs font-semibold text-[#183122] underline"
               >
                 View all saved items ({savedItems.length})
               </button>
