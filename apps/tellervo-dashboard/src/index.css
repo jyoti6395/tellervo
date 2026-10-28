@@ -165,3 +165,8 @@
     @apply font-sans;
   }
 }
+/* Disable browser-native password reveal eye (Microsoft Edge / IE) */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+}

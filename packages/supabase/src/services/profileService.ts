@@ -1,4 +1,4 @@
-import type { SupabaseClient, User } from '@supabase/supabase-js';
+﻿import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { supabase as defaultSupabase } from '../client';
 import type { AuthUser, ProfileRecord } from '../types/auth';
 
@@ -22,10 +22,10 @@ export class ProfileService {
 
     // Role Resolution Strategy:
     // 1. Check if user is an administrator via app_metadata, profile role, or Founder Patron tier.
-    // 2. Otherwise, use existing saved role from public.profiles table (e.g. 'customer').
+    // 2. Otherwise, use existing saved role from public.profiles table (e.g. 'customer', 'patron').
     // 3. Fallback to app_metadata role if present.
     // 4. Default to 'customer'.
-    let role: string = 'customer';
+    let role: 'admin' | 'customer' | 'patron' | string = 'customer';
     if (
       supabaseUser.app_metadata?.role === 'admin' ||
       profile?.role === 'admin' ||
@@ -96,7 +96,8 @@ export class ProfileService {
         id: user.id,
         email: user.email || '',
         phone: userPhone,
-        full_name: (user.user_metadata?.full_name as string) || user.email?.split('@')[0] || 'Patron',
+        role: 'customer',
+        full_name: (user.user_metadata?.full_name as string) || user.email?.split('@')[0] || 'Customer',
         avatar_url:
           'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
         tier: 'Taiga Patron',
@@ -105,7 +106,6 @@ export class ProfileService {
         address: 'Mannerheimintie 14 B, Helsinki (Default)',
         payment_method: 'Apple Pay •••• 9012',
         dietary_preferences: 'Low sugar, zero-proof, vegan botanical extracts',
-        role: 'customer',
       };
 
       const { data, error } = await this.client

@@ -179,7 +179,7 @@ export function DashboardPage() {
           <div className="flex-1 min-w-0">
             <span className="text-xs text-muted-foreground font-medium block">Total Revenue</span>
             <div className="flex items-baseline gap-2 mt-0.5">
-              <span className="text-2xl font-bold font-sans tracking-tight text-foreground">€24,850</span>
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground">$24,850</span>
               <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                 <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 12%
               </span>
@@ -250,7 +250,7 @@ export function DashboardPage() {
                 Sales Overview
               </h2>
               <div className="flex items-baseline gap-2.5 mt-1">
-                <span className="text-2xl font-bold font-sans tracking-tight text-foreground">€24,850</span>
+                <span className="text-2xl font-bold font-sans tracking-tight text-foreground">$24,850</span>
                 <span className="inline-flex items-center text-xs font-semibold text-emerald-600">
                   <TrendingUp className="w-3.5 h-3.5 mr-0.5" /> 12% vs. last month
                 </span>
@@ -387,7 +387,7 @@ export function DashboardPage() {
                   {hoveredPoint.date}
                 </div>
                 <div className="text-xs font-bold text-white mt-0.5">
-                  €{hoveredPoint.sales.toLocaleString()}
+                  ${hoveredPoint.sales.toLocaleString()}
                 </div>
               </div>
             )}
@@ -461,7 +461,7 @@ export function DashboardPage() {
                       {order.customer}
                     </td>
                     <td className="py-3 px-3 font-semibold text-foreground">
-                      €{order.total.toFixed(2)}
+                      ${order.total.toFixed(2)}
                     </td>
                     <td className="py-3 px-3">
                       <span

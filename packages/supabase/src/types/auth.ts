@@ -1,4 +1,4 @@
-export interface AuthUser {
+﻿export interface AuthUser {
   id: string;
   email: string;
   phone?: string;
@@ -34,13 +34,13 @@ export interface ProfileRecord {
   phone?: string;
   full_name?: string;
   avatar_url?: string;
+  role?: 'admin' | 'customer' | 'patron' | string;
   tier?: string;
   seeds?: number;
   trees_planted?: number;
   address?: string;
   payment_method?: string;
   dietary_preferences?: string;
-  role?: string;
   created_at?: string;
   updated_at?: string;
 }

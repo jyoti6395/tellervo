@@ -541,12 +541,6 @@ export function CustomerManagement() {
                     Phone
                   </TableHead>
                   <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
-                    Total Orders
-                  </TableHead>
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
-                    Total Spent
-                  </TableHead>
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
                     Joined Date
                   </TableHead>
                   <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
@@ -561,7 +555,7 @@ export function CustomerManagement() {
               <TableBody>
                 {paginatedCustomers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="h-44 text-center">
+                    <TableCell colSpan={6} className="h-44 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground gap-2">
                         <Users className="w-8 h-8 opacity-40" />
                         <p className="text-sm font-medium">No customers found</p>
@@ -591,15 +585,6 @@ export function CustomerManagement() {
                         {cust.phone}
                       </TableCell>
 
-                      {/* Total Orders */}
-                      <TableCell className="py-3.5 px-4 text-xs font-semibold text-foreground">
-                        {cust.totalOrders}
-                      </TableCell>
-
-                      {/* Total Spent */}
-                      <TableCell className="py-3.5 px-4 text-xs font-semibold font-sans text-foreground">
-                        ${cust.totalSpent.toFixed(2)}
-                      </TableCell>
 
                       {/* Joined Date */}
                       <TableCell className="py-3.5 px-4 text-xs text-muted-foreground">

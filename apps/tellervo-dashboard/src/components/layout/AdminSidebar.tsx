@@ -1,3 +1,4 @@
+﻿import React from 'react';
 import {
   LayoutDashboard,
   BarChart3,
@@ -5,6 +6,7 @@ import {
   ShoppingBag,
   Users,
   LogOut,
+  ShieldCheck,
 } from "lucide-react"
 import { useNavigate, useLocation } from "react-router-dom"
 import {
@@ -26,6 +28,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "sonner"
+import { useAuth } from "@/context/AuthContext"
 
 interface NavItem {
   title: string
@@ -44,6 +47,7 @@ const NAV_ITEMS: NavItem[] = [
 export function AdminSidebar() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { user, logout } = useAuth()
 
   const currentPath = location.pathname
   const isDashboard = currentPath === "/" || currentPath === "/dashboard"
@@ -57,6 +61,27 @@ export function AdminSidebar() {
       navigate(item.path)
     }
   }
+
+  const handleSignOut = async () => {
+    try {
+      await logout()
+      toast.success("Signed out successfully")
+      navigate("/login")
+    } catch {
+      toast.error("Failed to sign out")
+    }
+  }
+
+  // Derive initials from user name or email
+  const displayName = user?.name || "Tellervo Admin"
+  const displayEmail = user?.email || "admin@tellervo.com"
+  const initials = displayName
+    .split(" ")
+    .map((n) => n[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase() || "TA"
 
   return (
     <Sidebar
@@ -128,7 +153,7 @@ export function AdminSidebar() {
         </SidebarMenu>
       </SidebarContent>
 
-      {/* Sidebar Bottom Footer: Admin User Profile (Matching Image 3) */}
+      {/* Sidebar Bottom Footer: Real Admin User Profile */}
       <SidebarFooter className="p-3 border-t border-[#1b352a]">
         <DropdownMenu>
           <div className="flex items-center justify-between gap-2 p-1.5 rounded-xl hover:bg-[#1a3328] transition-colors group-data-[collapsible=icon]:justify-center">
@@ -140,16 +165,17 @@ export function AdminSidebar() {
               >
                 {/* Avatar with Online Green Dot */}
                 <div className="w-9 h-9 rounded-xl bg-[#0f241c] border border-[#1e3b2e] text-[#55b382] font-semibold text-xs flex items-center justify-center relative shrink-0 shadow-xs">
-                  MA
+                  {initials}
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-[#13251f] absolute -bottom-0.5 -right-0.5" />
                 </div>
 
                 <div className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
                   <span className="text-xs font-bold text-white truncate leading-tight">
-                    Master Admin
+                    {displayName}
                   </span>
-                  <span className="text-[10.5px] text-[#789384] leading-tight mt-0.5">
-                    Super Admin
+                  <span className="text-[10px] text-[#789384] truncate leading-tight mt-0.5 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-[#dca038] shrink-0" />
+                    Master Admin
                   </span>
                 </div>
               </button>
@@ -158,10 +184,7 @@ export function AdminSidebar() {
             {/* Logout Icon Button */}
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation()
-                toast.success("Signed out successfully")
-              }}
+              onClick={handleSignOut}
               className="p-1.5 text-[#789384] hover:text-white hover:bg-[#234234] rounded-lg transition-colors group-data-[collapsible=icon]:hidden cursor-pointer"
               title="Sign Out"
             >
@@ -172,22 +195,18 @@ export function AdminSidebar() {
           <DropdownMenuContent
             align="end"
             side="right"
-            className="w-48 bg-[#13251f] border-[#1b352a] text-[#d9e1e1] p-1.5 rounded-xl shadow-xl"
+            className="w-56 bg-[#13251f] border-[#1b352a] text-[#d9e1e1] p-1.5 rounded-xl shadow-xl"
           >
-            <DropdownMenuLabel className="text-xs font-bold text-white">
-              Master Admin Session
+            <DropdownMenuLabel className="p-2">
+              <p className="text-xs font-bold text-white leading-tight">{displayName}</p>
+              <p className="text-[11px] text-[#789384] font-normal truncate mt-0.5">{displayEmail}</p>
             </DropdownMenuLabel>
             <DropdownMenuSeparator className="bg-[#1b352a]" />
             <DropdownMenuItem
-              onClick={() => toast.info("Super Admin Settings & Roles")}
-              className="text-xs cursor-pointer rounded-lg p-2 focus:bg-[#1a3328] focus:text-white"
-            >
-              Settings & Roles
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => toast.success("Signed out successfully")}
+              onClick={handleSignOut}
               className="text-xs font-semibold text-rose-400 cursor-pointer rounded-lg p-2 focus:bg-rose-950/40 focus:text-rose-300"
             >
+              <LogOut className="w-3.5 h-3.5 mr-2" />
               Sign Out
             </DropdownMenuItem>
           </DropdownMenuContent>

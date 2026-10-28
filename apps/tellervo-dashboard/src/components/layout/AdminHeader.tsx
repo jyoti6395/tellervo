@@ -1,4 +1,4 @@
-import * as React from "react"
+﻿import * as React from "react"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { SidebarTrigger } from "@/components/ui/sidebar"
@@ -24,7 +24,7 @@ export function AdminHeader() {
         </div>
       </div>
 
-      {/* Right: Theme Toggle (Matches advisetech dashboard, notification bell removed) */}
+      {/* Right: Theme Toggle  */}
       <div className="flex items-center gap-3">
         <ThemeToggle />
       </div>

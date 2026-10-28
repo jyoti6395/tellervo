@@ -1,4 +1,8 @@
 import * as React from "react"
+import { useForm, Controller } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { cn } from "@/lib/utils"
 import {
   Search,
   Plus,
@@ -19,22 +23,20 @@ import {
   ArrowDown,
   Download,
   Trash2,
-  Copy,
-  Star,
   Check,
   RotateCcw,
   SlidersHorizontal,
-  Sparkles,
+  Sprout,
+  Image as ImageIcon,
   Calendar,
-  ChevronDown,
   UploadCloud,
+  Loader2,
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
 import {
   Select,
   SelectContent,
@@ -62,7 +64,6 @@ import {
   Sheet,
   SheetContent,
   SheetTitle,
-  SheetDescription,
 } from "@/components/ui/sheet"
 import {
   AlertDialog,
@@ -75,35 +76,35 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
+import { useAuth } from "@/context/AuthContext"
+import { productService, type ProductRecord } from "@/lib/supabase"
 
 export interface ProductItem {
   id: string
   name: string
-  ingredients: string
   category: "Adaptogenic Tonics" | "Wild Berry Spritz" | "Zero-Proof Spirits" | "Herbal Elixirs"
   price: number
   stock: number
   status: "Active" | "Low Stock" | "Out of Stock"
   image: string
-  isFeatured?: boolean
-  tags?: string
+  description: string
   sku?: string
   volume?: string
   addedDate?: string
+  created_by?: string | null
+  updated_by?: string | null
 }
 
 const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-1",
     name: "Pine Forest Tonic",
-    ingredients: "Pine Needle • Ashwagandha • Lemon Peel",
+    description: "Pine Needle • Ashwagandha • Lemon Peel",
     category: "Adaptogenic Tonics",
     price: 14.5,
     stock: 24,
     status: "Active",
     image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
-    isFeatured: true,
-    tags: "bestseller, seasonal, calm",
     sku: "TEL-PFT-001",
     volume: "330 ml",
     addedDate: "12 Sept 2025",
@@ -111,14 +112,12 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-2",
     name: "Wild Berry Spritz",
-    ingredients: "Nordic Lingonberry • Hibiscus • Spearmint",
+    description: "Nordic Lingonberry • Hibiscus • Spearmint",
     category: "Wild Berry Spritz",
     price: 15.8,
     stock: 18,
     status: "Active",
     image: "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&auto=format&fit=crop&q=80",
-    isFeatured: true,
-    tags: "antioxidant, berry, refreshing",
     sku: "TEL-WBS-002",
     volume: "250 ml",
     addedDate: "14 Sept 2025",
@@ -126,14 +125,12 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-3",
     name: "Lemon Grass Cooler",
-    ingredients: "Lemongrass • Wild Ginger • Persian Lime",
+    description: "Lemongrass • Wild Ginger • Persian Lime",
     category: "Zero-Proof Spirits",
     price: 12.5,
     stock: 32,
     status: "Active",
     image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=300&auto=format&fit=crop&q=80",
-    isFeatured: false,
-    tags: "citrus, digestive, zero-proof",
     sku: "TEL-LGC-003",
     volume: "500 ml",
     addedDate: "14 Sept 2025",
@@ -141,14 +138,12 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-4",
     name: "Citrus Blossom Tonic",
-    ingredients: "Bergamot • Elderflower • Alpine Botanicals",
+    description: "Bergamot • Elderflower • Alpine Botanicals",
     category: "Adaptogenic Tonics",
     price: 13.9,
     stock: 6,
     status: "Low Stock",
     image: "https://images.unsplash.com/photo-1536935338788-846bb9981813?w=300&auto=format&fit=crop&q=80",
-    isFeatured: false,
-    tags: "citrus, elderflower, mood",
     sku: "TEL-CBT-004",
     volume: "330 ml",
     addedDate: "15 Sept 2025",
@@ -156,14 +151,12 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-5",
     name: "Forest Berry Elixir",
-    ingredients: "Mixed Wild Berries • Acerola • Vitamin C",
+    description: "Mixed Wild Berries • Acerola • Vitamin C",
     category: "Wild Berry Spritz",
     price: 16.2,
     stock: 0,
     status: "Out of Stock",
     image: "https://images.unsplash.com/photo-1556881286-fc6915169721?w=300&auto=format&fit=crop&q=80",
-    isFeatured: false,
-    tags: "vitamin-c, elixir, immune",
     sku: "TEL-FBE-005",
     volume: "330 ml",
     addedDate: "15 Sept 2025",
@@ -171,14 +164,12 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-6",
     name: "Golden Glow Tonic",
-    ingredients: "Fermented Turmeric • Ginger Root • Raw Honey",
+    description: "Fermented Turmeric • Ginger Root • Raw Honey",
     category: "Adaptogenic Tonics",
     price: 14.0,
     stock: 28,
     status: "Active",
     image: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
-    isFeatured: true,
-    tags: "wellness, turmeric, recovery",
     sku: "TEL-GGT-006",
     volume: "330 ml",
     addedDate: "16 Sept 2025",
@@ -186,14 +177,12 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-7",
     name: "Coconut Dream Botanical",
-    ingredients: "Young Coconut • Tahitian Vanilla • Lion's Mane",
+    description: "Young Coconut • Tahitian Vanilla • Lion's Mane",
     category: "Zero-Proof Spirits",
     price: 11.9,
     stock: 15,
     status: "Active",
     image: "https://images.unsplash.com/photo-1587888637140-849b25d80ef9?w=300&auto=format&fit=crop&q=80",
-    isFeatured: false,
-    tags: "creamy, nootropic, focus",
     sku: "TEL-CDB-007",
     volume: "500 ml",
     addedDate: "17 Sept 2025",
@@ -201,14 +190,12 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-8",
     name: "Berry Bloom Spritz",
-    ingredients: "Raspberry • Hibiscus Infusion • Sparkling Spring Water",
+    description: "Raspberry • Hibiscus Infusion • Sparkling Spring Water",
     category: "Wild Berry Spritz",
     price: 15.5,
     stock: 8,
     status: "Low Stock",
     image: "https://images.unsplash.com/photo-1560512823-829485b8bf24?w=300&auto=format&fit=crop&q=80",
-    isFeatured: false,
-    tags: "sparkling, floral, antioxidant",
     sku: "TEL-BBS-008",
     volume: "250 ml",
     addedDate: "18 Sept 2025",
@@ -216,14 +203,12 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-9",
     name: "Nordic Birch Elixir",
-    ingredients: "Birch Sap • Juniper • Angelica Root",
+    description: "Birch Sap • Juniper • Angelica Root",
     category: "Herbal Elixirs",
     price: 17.5,
     stock: 22,
     status: "Active",
     image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=300&auto=format&fit=crop&q=80",
-    isFeatured: true,
-    tags: "nordic, detox, botanical",
     sku: "TEL-NBE-009",
     volume: "330 ml",
     addedDate: "18 Sept 2025",
@@ -231,14 +216,12 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-10",
     name: "Smoked Cedar Aperitif",
-    ingredients: "Oak Smoke • Roasted Cedar • Gentian",
+    description: "Oak Smoke • Roasted Cedar • Gentian",
     category: "Zero-Proof Spirits",
     price: 18.0,
     stock: 4,
     status: "Low Stock",
     image: "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=300&auto=format&fit=crop&q=80",
-    isFeatured: false,
-    tags: "bitters, aperitif, evening",
     sku: "TEL-SCA-010",
     volume: "500 ml",
     addedDate: "19 Sept 2025",
@@ -246,14 +229,12 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-11",
     name: "Elderberry Nightcap",
-    ingredients: "Black Elderberry • Chamomile • Valerian",
+    description: "Black Elderberry • Chamomile • Valerian",
     category: "Herbal Elixirs",
     price: 16.5,
     stock: 35,
     status: "Active",
     image: "https://images.unsplash.com/photo-1546171753-97d7676e4602?w=300&auto=format&fit=crop&q=80",
-    isFeatured: false,
-    tags: "sleep, relaxation, botanical",
     sku: "TEL-EBN-011",
     volume: "330 ml",
     addedDate: "20 Sept 2025",
@@ -261,14 +242,12 @@ const INITIAL_PRODUCTS: ProductItem[] = [
   {
     id: "prod-12",
     name: "Sparkling Sea Buckthorn",
-    ingredients: "Sea Buckthorn • Blood Orange • Rosemary",
+    description: "Sea Buckthorn • Blood Orange • Rosemary",
     category: "Wild Berry Spritz",
     price: 14.8,
     stock: 0,
     status: "Out of Stock",
     image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
-    isFeatured: false,
-    tags: "superfruit, tangy, energizing",
     sku: "TEL-SSB-012",
     volume: "250 ml",
     addedDate: "20 Sept 2025",
@@ -283,8 +262,61 @@ function generateExportFilename() {
   return `tellervo_catalog_${dateStr}.csv`
 }
 
+function mapRecordToProductItem(record: ProductRecord): ProductItem {
+  let status: ProductItem["status"] = "Active"
+  const rawStatus = (record.status || "").toLowerCase()
+  if (rawStatus === "out of stock" || rawStatus === "out_of_stock" || record.stock === 0) {
+    status = "Out of Stock"
+  } else if (rawStatus === "low stock" || rawStatus === "low_stock" || (record.stock > 0 && record.stock <= 9)) {
+    status = "Low Stock"
+  }
+
+  return {
+    id: record.id,
+    name: record.name,
+    description: record.description || "",
+    category: (record.category as ProductItem["category"]) || "Adaptogenic Tonics",
+    price: Number(record.price) || 0,
+    stock: Number(record.stock) || 0,
+    status,
+    image: record.image_url || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
+    sku: record.sku || "",
+    volume: record.volume || "330 ml",
+    addedDate: record.created_at
+      ? new Date(record.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
+      : "Today",
+    created_by: record.created_by,
+    updated_by: record.updated_by,
+  }
+}
+
+
+const productFormSchema = z.object({
+  name: z.string().trim().min(2, "Product name must be at least 2 characters").max(100, "Product name cannot exceed 100 characters"),
+  category: z.enum([
+    "Adaptogenic Tonics",
+    "Wild Berry Spritz",
+    "Zero-Proof Spirits",
+    "Herbal Elixirs",
+  ]),
+  volume: z.string().trim().min(1, "Volume is required (e.g. 330 ml)"),
+  price: z.number({ message: "Price must be a valid number" }).positive("Price must be greater than $0.00"),
+  stock: z.number({ message: "Inventory units must be a valid number" }).int("Inventory units must be a whole number").min(0, "Inventory units cannot be negative"),
+  status: z.enum(["Active", "Low Stock", "Out of Stock"]),
+  description: z.string().trim().min(5, "Description must be at least 5 characters"),
+  image: z.string().min(1, "Product image is required"),
+})
+
+export type ProductFormData = z.infer<typeof productFormSchema>
+
 export function ProductManagement() {
   const [products, setProducts] = React.useState<ProductItem[]>(INITIAL_PRODUCTS)
+  const [isLoading, setIsLoading] = React.useState(true)
+  const { isAdmin } = useAuth()
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [isDeleting, setIsDeleting] = React.useState(false)
+  const [isDragging, setIsDragging] = React.useState(false)
+  const [selectedImageFile, setSelectedImageFile] = React.useState<File | null>(null)
   const [selectedIds, setSelectedIds] = React.useState<string[]>([])
   const [searchTerm, setSearchTerm] = React.useState("")
   const [categoryFilter, setCategoryFilter] = React.useState("all")
@@ -298,7 +330,6 @@ export function ProductManagement() {
   // Drawer / Side-panel State for Add / Edit
   const [isPanelOpen, setIsPanelOpen] = React.useState(false)
   const [editingProduct, setEditingProduct] = React.useState<ProductItem | null>(null)
-  const [activeTab, setActiveTab] = React.useState<"basic" | "ingredients" | "media">("basic")
 
   // Drawer Panel Mode: "create" | "edit" | "view"
   const [panelMode, setPanelMode] = React.useState<"create" | "edit" | "view">("create")
@@ -307,192 +338,313 @@ export function ProductManagement() {
   const [deleteCandidate, setDeleteCandidate] = React.useState<ProductItem | null>(null)
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = React.useState(false)
 
-  // Form State
-  const [formName, setFormName] = React.useState("")
-  const [formCategory, setFormCategory] = React.useState<ProductItem["category"]>("Adaptogenic Tonics")
-  const [formPrice, setFormPrice] = React.useState("")
-  const [formStock, setFormStock] = React.useState("0")
-  const [formIngredients, setFormIngredients] = React.useState("")
-  const [formStatus, setFormStatus] = React.useState<ProductItem["status"]>("Active")
-  const [formFeatured, setFormFeatured] = React.useState(false)
-  const [formTags, setFormTags] = React.useState("")
-  const [formVolume, setFormVolume] = React.useState("330 ml")
+  // Form State with react-hook-form
   const [formImage, setFormImage] = React.useState("")
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const {
+    register,
+    handleSubmit,
+    control,
+    setValue,
+    reset,
+    clearErrors,
+    formState: { errors },
+  } = useForm<ProductFormData>({
+    resolver: zodResolver(productFormSchema),
+    defaultValues: {
+      name: "",
+      category: "Adaptogenic Tonics",
+      volume: "330 ml",
+      price: 0,
+      stock: 20,
+      status: "Active",
+      description: "",
+      image: "",
+    },
+    mode: "onTouched",
+  })
+  // Fetch live products from Supabase on mount
+  React.useEffect(() => {
+    let isMounted = true
+    async function loadProducts() {
+      try {
+        setIsLoading(true)
+        const { data, error } = await productService.fetchProducts()
+        if (error) {
+          console.warn("[ProductManagement] Database fetch error, defaulting to local catalog:", error.message)
+          if (isMounted) setProducts(INITIAL_PRODUCTS)
+          return
+        }
+        if (data && data.length > 0) {
+          if (isMounted) setProducts(data.map(mapRecordToProductItem))
+        } else {
+          if (isMounted) setProducts(INITIAL_PRODUCTS)
+        }
+      } catch (err) {
+        console.error("[ProductManagement] Failed to fetch products:", err)
+        if (isMounted) setProducts(INITIAL_PRODUCTS)
+      } finally {
+        if (isMounted) setIsLoading(false)
+      }
+    }
+    loadProducts()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+
+    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error("File size exceeds 5MB limit")
+        return
+      }
+      setSelectedImageFile(file)
+      const reader = new FileReader()
+      reader.onload = () => {
+        setFormImage(reader.result as string)
+        toast.success("Image selected for upload")
+      }
+      reader.readAsDataURL(file)
+    }
+  }
 
   // Open Panel for creating new product
   const handleOpenCreate = () => {
+    setSelectedImageFile(null)
     setEditingProduct(null)
     setPanelMode("create")
-    setFormName("")
-    setFormCategory("Adaptogenic Tonics")
-    setFormPrice("")
-    setFormStock("20")
-    setFormIngredients("")
-    setFormStatus("Active")
-    setFormFeatured(false)
-    setFormTags("")
-    setFormVolume("330 ml")
-    setFormImage("https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80")
-    setActiveTab("basic")
+    setFormImage("")
+    reset({
+      name: "",
+      category: "Adaptogenic Tonics",
+      volume: "330 ml",
+      price: "" as unknown as number,
+      stock: 20,
+      status: "Active",
+      description: "",
+      image: "",
+    })
+    clearErrors()
     setIsPanelOpen(true)
   }
 
   // Open Panel for editing existing product
   const handleOpenEdit = (product: ProductItem) => {
+    setSelectedImageFile(null)
     setEditingProduct(product)
     setPanelMode("edit")
-    setFormName(product.name)
-    setFormCategory(product.category)
-    setFormPrice(product.price.toString())
-    setFormStock(product.stock.toString())
-    setFormIngredients(product.ingredients)
-    setFormStatus(product.status)
-    setFormFeatured(Boolean(product.isFeatured))
-    setFormTags(product.tags || "")
-    setFormVolume(product.volume || "330 ml")
     setFormImage(product.image)
-    setActiveTab("basic")
+    reset({
+      name: product.name,
+      category: product.category,
+      volume: product.volume || "330 ml",
+      price: product.price,
+      stock: product.stock,
+      status: product.status,
+      description: product.description || "",
+      image: product.image || "",
+    })
+    clearErrors()
     setIsPanelOpen(true)
   }
 
   // Open Panel for viewing details of an existing product in the slide drawer
   const handleOpenView = (product: ProductItem) => {
+    setSelectedImageFile(null)
     setEditingProduct(product)
     setPanelMode("view")
-    setFormName(product.name)
-    setFormCategory(product.category)
-    setFormPrice(product.price.toString())
-    setFormStock(product.stock.toString())
-    setFormIngredients(product.ingredients)
-    setFormStatus(product.status)
-    setFormFeatured(Boolean(product.isFeatured))
-    setFormTags(product.tags || "")
-    setFormVolume(product.volume || "330 ml")
     setFormImage(product.image)
-    setActiveTab("basic")
+    reset({
+      name: product.name,
+      category: product.category,
+      volume: product.volume || "330 ml",
+      price: product.price,
+      stock: product.stock,
+      status: product.status,
+      description: product.description || "",
+      image: product.image || "",
+    })
+    clearErrors()
     setIsPanelOpen(true)
   }
 
-  // Duplicate product
-  const handleDuplicate = (product: ProductItem) => {
-    const duplicated: ProductItem = {
-      ...product,
-      id: `prod-${Date.now()}`,
-      name: `${product.name} (Copy)`,
-      sku: `${product.sku || "TEL"}-COPY`,
-      addedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
-    }
-    setProducts((prev) => [duplicated, ...prev])
-    toast.success(`Duplicated "${product.name}" successfully`)
-  }
 
-  // Toggle Featured status
-  const handleToggleFeatured = (id: string) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === id) {
-          const updated = !p.isFeatured
-          toast.info(updated ? `Marked "${p.name}" as Sale` : `Unmarked "${p.name}" from Sale`)
-          return { ...p, isFeatured: updated }
+
+
+
+
+
+  // Form Save using react-hook-form
+  const onSubmitProduct = async (data: ProductFormData) => {
+    const computedStatus: ProductItem["status"] =
+      data.stock === 0 ? "Out of Stock" : data.stock <= 9 ? "Low Stock" : data.status
+
+    setIsSaving(true)
+    try {
+      let finalImageUrl = data.image.trim()
+      if (selectedImageFile) {
+        toast.loading("Uploading product image...", { id: "upload-image" })
+        const { url, error: uploadErr } = await productService.uploadProductImage(selectedImageFile)
+        toast.dismiss("upload-image")
+        if (uploadErr) {
+          console.warn("[ProductManagement] Image upload fallback:", uploadErr.message)
+        } else if (url) {
+          finalImageUrl = url
         }
-        return p
-      })
-    )
-  }
-
-  // Quick Status change from table dropdown
-  const handleQuickStatusChange = (id: string, newStatus: ProductItem["status"]) => {
-    setProducts((prev) =>
-      prev.map((p) => {
-        if (p.id === id) {
-          let updatedStock = p.stock
-          if (newStatus === "Out of Stock" && p.stock > 0) updatedStock = 0
-          if (newStatus === "Active" && p.stock === 0) updatedStock = 20
-          if (newStatus === "Low Stock" && (p.stock === 0 || p.stock > 9)) updatedStock = 5
-          return { ...p, status: newStatus, stock: updatedStock }
-        }
-        return p
-      })
-    )
-    toast.success(`Product status updated to ${newStatus}`)
-  }
-
-  // Form Save
-  const handleSaveProduct = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!formName.trim()) {
-      toast.error("Please enter a valid product name")
-      return
-    }
-
-    const priceNum = parseFloat(formPrice)
-    if (isNaN(priceNum) || priceNum < 0) {
-      toast.error("Please enter a valid positive price")
-      return
-    }
-
-    const stockNum = parseInt(formStock, 10)
-    const computedStatus =
-      stockNum === 0 ? "Out of Stock" : stockNum <= 9 ? "Low Stock" : formStatus
-
-    if (editingProduct) {
-      setProducts((prev) =>
-        prev.map((item) =>
-          item.id === editingProduct.id
-            ? {
-                ...item,
-                name: formName.trim(),
-                category: formCategory,
-                price: priceNum,
-                stock: isNaN(stockNum) ? 0 : Math.max(0, stockNum),
-                ingredients: formIngredients.trim(),
-                status: computedStatus,
-                isFeatured: formFeatured,
-                tags: formTags.trim(),
-                volume: formVolume.trim(),
-                image: formImage.trim() || item.image,
-              }
-            : item
-        )
-      )
-      toast.success(`Updated "${formName}" successfully`)
-    } else {
-      const newProduct: ProductItem = {
-        id: `prod-${Date.now()}`,
-        name: formName.trim(),
-        category: formCategory,
-        price: priceNum,
-        stock: isNaN(stockNum) ? 0 : Math.max(0, stockNum),
-        ingredients: formIngredients.trim() || "Wild Botanicals • Spring Water",
-        status: computedStatus,
-        isFeatured: formFeatured,
-        tags: formTags.trim(),
-        volume: formVolume.trim() || "330 ml",
-        image: formImage.trim() || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
-        sku: `TEL-${formCategory.slice(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
-        addedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
       }
-      setProducts((prev) => [newProduct, ...prev])
-      toast.success(`Created new drink "${newProduct.name}"`)
+
+      if (editingProduct) {
+        const { data: updatedRecord, error: updateErr } = await productService.updateProduct(
+          editingProduct.id,
+          {
+            name: data.name.trim(),
+            category: data.category,
+            volume: data.volume.trim() || "330 ml",
+            price: data.price,
+            stock: data.stock,
+            status: computedStatus,
+            description: data.description.trim(),
+            image_url: finalImageUrl || editingProduct.image,
+          }
+        )
+
+        if (updateErr) {
+          console.warn("[ProductManagement] Update fallback:", updateErr.message)
+          setProducts((prev) =>
+            prev.map((item) =>
+              item.id === editingProduct.id
+                ? {
+                    ...item,
+                    name: data.name.trim(),
+                    category: data.category,
+                    volume: data.volume.trim() || "330 ml",
+                    price: data.price,
+                    stock: data.stock,
+                    status: computedStatus,
+                    description: data.description.trim(),
+                    image: finalImageUrl || item.image,
+                  }
+                : item
+            )
+          )
+        } else if (updatedRecord) {
+          const mapped = mapRecordToProductItem(updatedRecord)
+          setProducts((prev) => prev.map((item) => (item.id === mapped.id ? mapped : item)))
+        }
+        toast.success(`Updated "${data.name}" successfully`)
+      } else {
+        const skuGenerated = `TEL-${data.category.slice(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`
+        const { data: newRecord, error: createErr } = await productService.createProduct({
+          name: data.name.trim(),
+          category: data.category,
+          volume: data.volume.trim() || "330 ml",
+          price: data.price,
+          stock: data.stock,
+          status: computedStatus,
+          description: data.description.trim(),
+          image_url: finalImageUrl || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
+          sku: skuGenerated,
+        })
+
+        if (createErr) {
+          console.warn("[ProductManagement] Create fallback:", createErr.message)
+          const fallbackProduct: ProductItem = {
+            id: `prod-${Date.now()}`,
+            name: data.name.trim(),
+            category: data.category,
+            volume: data.volume.trim() || "330 ml",
+            price: data.price,
+            stock: data.stock,
+            status: computedStatus,
+            description: data.description.trim(),
+            image: finalImageUrl || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
+            sku: skuGenerated,
+            addedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
+          }
+          setProducts((prev) => [fallbackProduct, ...prev])
+        } else if (newRecord) {
+          const mapped = mapRecordToProductItem(newRecord)
+          setProducts((prev) => [mapped, ...prev])
+        }
+        toast.success(`Created new drink "${data.name}"`)
+      }
+
+      setIsPanelOpen(false)
+      setSelectedImageFile(null)
+    } catch (err) {
+      console.error("[ProductManagement] Save error:", err)
+      toast.error("Failed to save product.")
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // Delete Handlers with Real Supabase Deletion & Admin Security
+  const handleConfirmSingleDelete = async () => {
+    if (!deleteCandidate) return
+
+    if (!isAdmin) {
+      toast.error("Unauthorized: Only Admin accounts can delete products.")
+      setDeleteCandidate(null)
+      return
     }
 
-    setIsPanelOpen(false)
+    setIsDeleting(true)
+    const candidateName = deleteCandidate.name
+    const candidateId = deleteCandidate.id
+
+    try {
+      const { error } = await productService.deleteProduct(candidateId)
+      if (error) {
+        toast.error(`Delete failed: ${error.message}`)
+        return
+      }
+
+      setProducts((prev) => prev.filter((p) => p.id !== candidateId))
+      setSelectedIds((prev) => prev.filter((id) => id !== candidateId))
+      toast.success(`"${candidateName}" deleted permanently from catalog`)
+      setDeleteCandidate(null)
+    } catch (err: any) {
+      console.error("[ProductManagement] Delete error:", err)
+      toast.error(err?.message || "Failed to delete product")
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
-  // Delete Handlers
-  const handleConfirmSingleDelete = () => {
-    if (!deleteCandidate) return
-    setProducts((prev) => prev.filter((p) => p.id !== deleteCandidate.id))
-    setSelectedIds((prev) => prev.filter((id) => id !== deleteCandidate.id))
-    toast.success(`Deleted "${deleteCandidate.name}" from catalog`)
-    setDeleteCandidate(null)
-  }
+  const handleConfirmBulkDelete = async () => {
+    if (selectedIds.length === 0) return
 
-  const handleConfirmBulkDelete = () => {
-    setProducts((prev) => prev.filter((p) => !selectedIds.includes(p.id)))
-    toast.success(`Deleted ${selectedIds.length} items from catalog`)
-    setSelectedIds([])
-    setIsBulkDeleteOpen(false)
+    if (!isAdmin) {
+      toast.error("Unauthorized: Only Admin accounts can delete products.")
+      setIsBulkDeleteOpen(false)
+      return
+    }
+
+    setIsDeleting(true)
+    const count = selectedIds.length
+
+    try {
+      const { error } = await productService.deleteProducts(selectedIds)
+      if (error) {
+        toast.error(`Bulk delete failed: ${error.message}`)
+        return
+      }
+
+      setProducts((prev) => prev.filter((p) => !selectedIds.includes(p.id)))
+      toast.success(`Successfully deleted ${count} products from catalog`)
+      setSelectedIds([])
+      setIsBulkDeleteOpen(false)
+    } catch (err: any) {
+      console.error("[ProductManagement] Bulk delete error:", err)
+      toast.error(err?.message || "Failed to delete products")
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleBulkStatusChange = (newStatus: ProductItem["status"]) => {
@@ -528,9 +680,8 @@ export function ProductManagement() {
         !query ||
         p.name.toLowerCase().includes(query) ||
         p.category.toLowerCase().includes(query) ||
-        p.ingredients.toLowerCase().includes(query) ||
-        (p.sku && p.sku.toLowerCase().includes(query)) ||
-        (p.tags && p.tags.toLowerCase().includes(query))
+        p.description.toLowerCase().includes(query) ||
+        (p.sku && p.sku.toLowerCase().includes(query))
 
       const matchesCategory = categoryFilter === "all" || p.category === categoryFilter
       const matchesStatus = statusFilter === "all" || p.status === statusFilter
@@ -1081,7 +1232,16 @@ export function ProductManagement() {
               </TableHeader>
 
               <TableBody>
-                {paginatedProducts.length === 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={10} className="h-56 text-center">
+                      <div className="flex flex-col items-center justify-center p-6 space-y-3">
+                        <Loader2 className="w-8 h-8 text-primary animate-spin text-[#183626] dark:text-[#dca038]" />
+                        <p className="font-medium text-xs text-muted-foreground">Loading products from database...</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : paginatedProducts.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={10} className="h-48 text-center">
                       <div className="flex flex-col items-center justify-center p-6 space-y-3">
@@ -1146,18 +1306,14 @@ export function ProductManagement() {
                               {product.name}
                             </span>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              {product.isFeatured && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500 text-white">
-                                  Sale
-                                </span>
-                              )}
+                              
                               {product.volume && (
                                 <span className="text-[10px] text-muted-foreground">
                                   {product.volume}
                                 </span>
                               )}
                               <span className="text-[11px] text-muted-foreground truncate">
-                                {product.ingredients}
+                                {product.description}
                               </span>
                             </div>
                           </div>
@@ -1175,7 +1331,7 @@ export function ProductManagement() {
 
                         {/* Price */}
                         <TableCell className="py-4 px-4 text-xs font-semibold text-foreground">
-                          €{product.price.toFixed(2)}
+                          ${product.price.toFixed(2)}
                         </TableCell>
 
                         {/* Stock */}
@@ -1188,54 +1344,28 @@ export function ProductManagement() {
                           {product.addedDate || "14 Sept 2025"}
                         </TableCell>
 
-                        {/* Status (Pill with Chevron, directly inspired by Image 1) */}
+                        {/* Status (Static Pill Badge - Non-dropdown) */}
                         <TableCell className="py-4 px-4">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                type="button"
-                                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border transition-colors cursor-pointer ${
-                                  product.status === "Active"
-                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200/70 hover:bg-emerald-100/60"
-                                    : product.status === "Low Stock"
-                                    ? "bg-amber-50 text-amber-700 border-amber-200/70 hover:bg-amber-100/60"
-                                    : "bg-rose-50 text-rose-700 border-rose-200/70 hover:bg-rose-100/60"
-                                }`}
-                              >
-                                <span
-                                  className={`w-1.5 h-1.5 rounded-full ${
-                                    product.status === "Active"
-                                      ? "bg-emerald-600"
-                                      : product.status === "Low Stock"
-                                      ? "bg-amber-600"
-                                      : "bg-rose-600"
-                                  }`}
-                                />
-                                <span>{product.status}</span>
-                                <ChevronDown className="w-3 h-3 opacity-60" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="start" className="w-36 bg-card border-border rounded-xl shadow-md p-1">
-                              <DropdownMenuItem
-                                onClick={() => handleQuickStatusChange(product.id, "Active")}
-                                className="text-xs cursor-pointer rounded-lg"
-                              >
-                                Active
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleQuickStatusChange(product.id, "Low Stock")}
-                                className="text-xs cursor-pointer rounded-lg text-amber-700"
-                              >
-                                Low Stock
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleQuickStatusChange(product.id, "Out of Stock")}
-                                className="text-xs cursor-pointer rounded-lg text-rose-700"
-                              >
-                                Out of Stock
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border select-none ${
+                              product.status === "Active"
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200/70 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60"
+                                : product.status === "Low Stock"
+                                ? "bg-amber-50 text-amber-700 border-amber-200/70 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60"
+                                : "bg-rose-50 text-rose-700 border-rose-200/70 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60"
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                product.status === "Active"
+                                  ? "bg-emerald-600"
+                                  : product.status === "Low Stock"
+                                  ? "bg-amber-600"
+                                  : "bg-rose-600"
+                              }`}
+                            />
+                            <span>{product.status}</span>
+                          </span>
                         </TableCell>
 
                         {/* Action Menu (Image 1 ••• horizontal dots) */}
@@ -1268,25 +1398,7 @@ export function ProductManagement() {
                                 <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
                                 <span>Edit Product</span>
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleDuplicate(product)}
-                                className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted text-foreground gap-2"
-                              >
-                                <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                                <span>Duplicate Item</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => handleToggleFeatured(product.id)}
-                                className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted text-foreground gap-2"
-                              >
-                                <Star
-                                  className={`w-3.5 h-3.5 ${
-                                    product.isFeatured ? "fill-amber-400 text-amber-500" : "text-muted-foreground"
-                                  }`}
-                                />
-                                <span>{product.isFeatured ? "Remove Sale" : "Mark as Sale"}</span>
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator className="my-1 bg-border" />
+                                                            <DropdownMenuSeparator className="my-1 bg-border" />
                               <DropdownMenuItem
                                 onClick={() => setDeleteCandidate(product)}
                                 className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-destructive/10 text-destructive focus:text-destructive gap-2"
@@ -1379,320 +1491,367 @@ export function ProductManagement() {
 
       {/* RIGHT SLIDE-OVER DRAWER FOR ADD / EDIT / VIEW DETAILS (Full Height Covering Top Navbar) */}
       <Sheet open={isPanelOpen} onOpenChange={setIsPanelOpen}>
-        <SheetContent
+                <SheetContent showCloseButton={false}
           side="right"
-          showCloseButton={false}
-          className="w-full sm:max-w-xl md:max-w-2xl lg:max-w-[560px] data-[side=right]:sm:max-w-xl data-[side=right]:md:max-w-2xl data-[side=right]:lg:max-w-[560px] p-0 flex flex-col gap-0 border-l border-border bg-card shadow-2xl z-50 overflow-hidden h-full"
+          className="w-full data-[side=right]:sm:max-w-xl data-[side=right]:md:max-w-2xl data-[side=right]:lg:max-w-[640px] p-0 flex flex-col gap-0 border-l border-border bg-card shadow-2xl z-50 overflow-hidden h-full"
         >
-          {/* Drawer Header */}
-          <div className="p-5 border-b border-border flex items-center justify-between bg-muted/20 shrink-0">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-full bg-muted flex items-center justify-center text-foreground shrink-0">
-                {panelMode === "create" ? (
-                  <Sparkles className="w-4 h-4" />
-                ) : panelMode === "view" ? (
-                  <Eye className="w-4 h-4" />
-                ) : (
-                  <Edit2 className="w-4 h-4" />
-                )}
+          {/* Header matching screenshot: Sprout icon, Add New Product title, circular X */}
+          <div className="p-5 sm:p-6 border-b border-border flex items-center justify-between bg-card shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center text-[#183626] dark:text-emerald-400 shrink-0">
+                <Sprout className="w-5 h-5 stroke-[1.75]" />
               </div>
-              <div>
-                <SheetTitle className="text-base font-bold text-foreground font-sans">
-                  {panelMode === "create"
-                    ? "Add New Product"
-                    : panelMode === "view"
-                    ? "Product Details"
-                    : "Edit Product"}
-                </SheetTitle>
-                <SheetDescription className="text-[11px] text-muted-foreground">
-                  {editingProduct
-                    ? `SKU: ${editingProduct.sku || "N/A"} • ${editingProduct.category}`
-                    : "Create and publish a new botanical drink"}
-                </SheetDescription>
-              </div>
+              <SheetTitle className="text-base sm:text-lg font-bold text-foreground font-sans">
+                {panelMode === "create"
+                  ? "Add New Product"
+                  : panelMode === "view"
+                  ? "Product Details"
+                  : "Edit Product"}
+              </SheetTitle>
             </div>
 
-            {/* Circular Close Button matching Image 2 */}
             <button
               type="button"
               onClick={() => setIsPanelOpen(false)}
-              className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
             >
               <X className="w-4 h-4" />
-              <span className="sr-only">Close panel</span>
+              <span className="sr-only">Close</span>
             </button>
           </div>
 
-          {/* Form Tabs */}
-          <div className="flex border-b border-border px-5 text-xs font-medium text-muted-foreground bg-card shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab("basic")}
-              className={`py-3 px-3 border-b-2 font-medium transition-colors ${
-                activeTab === "basic"
-                  ? "border-primary text-primary font-bold"
-                  : "border-transparent hover:text-foreground"
-              }`}
-            >
-              Basic Info
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("ingredients")}
-              className={`py-3 px-3 border-b-2 font-medium transition-colors ${
-                activeTab === "ingredients"
-                  ? "border-primary text-primary font-bold"
-                  : "border-transparent hover:text-foreground"
-              }`}
-            >
-              Botanicals & Story
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab("media")}
-              className={`py-3 px-3 border-b-2 font-medium transition-colors ${
-                activeTab === "media"
-                  ? "border-primary text-primary font-bold"
-                  : "border-transparent hover:text-foreground"
-              }`}
-            >
-              Media & Gallery
-            </button>
-          </div>
+          {/* Form matching screenshot layout */}
+          <form onSubmit={handleSubmit(onSubmitProduct)} className="flex-1 flex flex-col min-h-0 overflow-hidden" noValidate>
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+              {/* Product Name */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-foreground font-sans">
+                  Product Name <span className="text-rose-500">*</span>
+                </label>
+                <Input
+                  placeholder="e.g. Lingonberry Cloud Tonic"
+                  {...register("name")}
+                  disabled={panelMode === "view"}
+                  className={cn(
+                    "h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary placeholder:text-muted-foreground/60",
+                    errors.name && "border-rose-400 focus-visible:ring-rose-400"
+                  )}
+                />
+                {errors.name && (
+                  <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.name.message}</p>
+                )}
+              </div>
 
-          {/* Form with Content and Pinned Bottom Buttons */}
-          <form onSubmit={handleSaveProduct} className="flex-1 flex flex-col min-h-0 overflow-hidden">
-            {/* Scrollable Form Body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              {activeTab === "basic" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
-                  {/* Product Name */}
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Product Title <span className="text-rose-500">*</span>
-                    </label>
-                    <Input
-                      required
-                      placeholder="e.g. Lingonberry Cloud Tonic"
-                      value={formName}
-                      onChange={(e) => setFormName(e.target.value)}
-                      className="h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
-                    />
-                  </div>
-
-                  {/* Category & Volume */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div>
-                      <label className="block text-xs font-semibold text-foreground mb-1.5">
-                        Subcategory <span className="text-rose-500">*</span>
-                      </label>
+              {/* Category & Volume */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-foreground font-sans">
+                    Category <span className="text-rose-500">*</span>
+                  </label>
+                  <Controller
+                    control={control}
+                    name="category"
+                    render={({ field }) => (
                       <Select
-                        value={formCategory}
-                        onValueChange={(val) => setFormCategory(val as ProductItem["category"])}
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={panelMode === "view"}
                       >
-                        <SelectTrigger className="h-10 text-xs bg-card border-border rounded-xl text-foreground">
+                        <SelectTrigger
+                          className={cn(
+                            "h-10 text-xs bg-card border-border rounded-xl text-foreground",
+                            errors.category && "border-rose-400"
+                          )}
+                        >
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
-                        <SelectContent className="bg-card border-border">
+                        <SelectContent className="bg-card border-border rounded-xl">
                           <SelectItem value="Adaptogenic Tonics">Adaptogenic Tonics</SelectItem>
                           <SelectItem value="Wild Berry Spritz">Wild Berry Spritz</SelectItem>
                           <SelectItem value="Zero-Proof Spirits">Zero-Proof Spirits</SelectItem>
                           <SelectItem value="Herbal Elixirs">Herbal Elixirs</SelectItem>
                         </SelectContent>
                       </Select>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-foreground mb-1.5">
-                        Volume / Format
-                      </label>
-                      <Input
-                        placeholder="e.g. 330 ml or 4-Pack"
-                        value={formVolume}
-                        onChange={(e) => setFormVolume(e.target.value)}
-                        className="h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Price & Stock */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                    <div>
-                      <label className="block text-xs font-semibold text-foreground mb-1.5">
-                        Price (€) <span className="text-rose-500">*</span>
-                      </label>
-                      <div className="relative">
-                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
-                          €
-                        </span>
-                        <Input
-                          required
-                          type="number"
-                          step="0.01"
-                          placeholder="14.50"
-                          value={formPrice}
-                          onChange={(e) => setFormPrice(e.target.value)}
-                          className="pl-7 h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-foreground mb-1.5">
-                        Inventory Units <span className="text-rose-500">*</span>
-                      </label>
-                      <Input
-                        required
-                        type="number"
-                        placeholder="20"
-                        value={formStock}
-                        onChange={(e) => setFormStock(e.target.value)}
-                        className="h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Status Selection */}
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Publication Status
-                    </label>
-                    <Select
-                      value={formStatus}
-                      onValueChange={(val) => setFormStatus(val as ProductItem["status"])}
-                    >
-                      <SelectTrigger className="h-10 text-xs bg-card border-border rounded-xl text-foreground">
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-card border-border">
-                        <SelectItem value="Active">Active (Live in Store)</SelectItem>
-                        <SelectItem value="Low Stock">Low Stock Warning</SelectItem>
-                        <SelectItem value="Out of Stock">Out of Stock (Hidden/Waitlist)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Sale / Featured Toggle */}
-                  <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-muted/20">
-                    <div>
-                      <span className="text-xs font-bold text-foreground block">Mark as Sale</span>
-                      <span className="text-[11px] text-muted-foreground">
-                        Display special sale badge on store
-                      </span>
-                    </div>
-                    <Switch
-                      checked={formFeatured}
-                      onCheckedChange={setFormFeatured}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "ingredients" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Botanical Ingredients
-                    </label>
-                    <Textarea
-                      placeholder="e.g. Nordic Lingonberry • Hibiscus • Spearmint • Alpine Spring Water"
-                      value={formIngredients}
-                      onChange={(e) => setFormIngredients(e.target.value)}
-                      rows={4}
-                      className="text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Tags & Aromas (Comma separated)
-                    </label>
-                    <Input
-                      placeholder="e.g. antioxidant, floral, sparkling, seasonal"
-                      value={formTags}
-                      onChange={(e) => setFormTags(e.target.value)}
-                      className="h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {activeTab === "media" && (
-                <div className="space-y-4 animate-in fade-in duration-150">
-                  <div>
-                    <label className="block text-xs font-semibold text-foreground mb-1.5">
-                      Main Bottle Image URL
-                    </label>
-                    <Input
-                      placeholder="https://images.unsplash.com/photo-..."
-                      value={formImage}
-                      onChange={(e) => setFormImage(e.target.value)}
-                      className="h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary"
-                    />
-                  </div>
-
-                  {formImage && (
-                    <div className="relative w-full h-36 rounded-xl overflow-hidden border border-border bg-muted/30">
-                      <img
-                        src={formImage}
-                        alt="Preview"
-                        className="w-full h-full object-cover"
-                        onError={(e) => {
-                          ;(e.target as HTMLImageElement).src =
-                            "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80"
-                        }}
-                      />
-                    </div>
+                    )}
+                  />
+                  {errors.category && (
+                    <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.category.message}</p>
                   )}
                 </div>
-              )}
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-foreground font-sans">
+                    Volume <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    placeholder="e.g. 330 ml"
+                    {...register("volume")}
+                    disabled={panelMode === "view"}
+                    className={cn(
+                      "h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary placeholder:text-muted-foreground/60",
+                      errors.volume && "border-rose-400 focus-visible:ring-rose-400"
+                    )}
+                  />
+                  {errors.volume && (
+                    <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.volume.message}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Price & Inventory Units */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-foreground font-sans">
+                    Price ($) <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative">
+                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
+                      $
+                    </span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      placeholder="0.00"
+                      {...register("price", { valueAsNumber: true })}
+                      disabled={panelMode === "view"}
+                      className={cn(
+                        "pl-8 h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary placeholder:text-muted-foreground/60",
+                        errors.price && "border-rose-400 focus-visible:ring-rose-400"
+                      )}
+                    />
+                  </div>
+                  {errors.price && (
+                    <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.price.message}</p>
+                  )}
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-foreground font-sans">
+                    Inventory Units <span className="text-rose-500">*</span>
+                  </label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 20"
+                    {...register("stock", { valueAsNumber: true })}
+                    disabled={panelMode === "view"}
+                    className={cn(
+                      "h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary placeholder:text-muted-foreground/60",
+                      errors.stock && "border-rose-400 focus-visible:ring-rose-400"
+                    )}
+                  />
+                  {errors.stock && (
+                    <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.stock.message}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Publication Status */}
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold text-foreground font-sans">
+                  Publication Status <span className="text-rose-500">*</span>
+                </label>
+                <Controller
+                  control={control}
+                  name="status"
+                  render={({ field }) => (
+                    <Select
+                      value={field.value}
+                      onValueChange={field.onChange}
+                      disabled={panelMode === "view"}
+                    >
+                      <SelectTrigger
+                        className={cn(
+                          "h-10 text-xs bg-card border-border rounded-xl text-foreground",
+                          errors.status && "border-rose-400"
+                        )}
+                      >
+                        <SelectValue placeholder="Select status" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border rounded-xl">
+                        <SelectItem value="Active">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                            <span>Active (Live in Store)</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Low Stock">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-amber-500" />
+                            <span>Low Stock Warning</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="Out of Stock">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full bg-rose-500" />
+                            <span>Out of Stock (Hidden/Waitlist)</span>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.status && (
+                  <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.status.message}</p>
+                )}
+              </div>
+
+              {/* Description */}
+              <div className="space-y-1.5 pt-1">
+                <label className="block text-xs font-semibold text-foreground font-sans">
+                  Description <span className="text-rose-500">*</span>
+                </label>
+                <Textarea
+                  placeholder="Enter product details..."
+                  {...register("description")}
+                  disabled={panelMode === "view"}
+                  rows={4}
+                  className={cn(
+                    "text-xs bg-card border-border rounded-xl focus-visible:ring-primary resize-none placeholder:text-muted-foreground/60",
+                    errors.description && "border-rose-400 focus-visible:ring-rose-400"
+                  )}
+                />
+                {errors.description && (
+                  <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.description.message}</p>
+                )}
+              </div>
+
+              {/* Product Image - Full Width, Mobile-First Responsive & High Clarity */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-semibold text-foreground font-sans">
+                    Product Image <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[11px] text-muted-foreground">PNG, JPG, WebP (max 5MB)</span>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+
+                {formImage && formImage !== "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80" ? (
+                  <div className="relative w-full h-52 sm:h-64 rounded-2xl overflow-hidden border border-border bg-muted/15 dark:bg-muted/10 group flex items-center justify-center shadow-xs">
+                    <img
+                      src={formImage}
+                      alt="Product preview"
+                      className="w-full h-full object-contain p-3 sm:p-4 transition-transform duration-300 group-hover:scale-[1.02]"
+                      loading="lazy"
+                    />
+
+                    {/* Desktop Hover / Mobile Touch Action Bar */}
+                    <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 p-4">
+                      {panelMode !== "view" && (
+                        <>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="text-xs rounded-full h-9 px-4 cursor-pointer shadow-md bg-white text-foreground hover:bg-neutral-100 font-medium"
+                          >
+                            Change Photo
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => {
+                              setFormImage("")
+                              setSelectedImageFile(null)
+                              setValue("image", "", { shouldValidate: true })
+                            }}
+                            className="text-xs rounded-full h-9 px-4 cursor-pointer shadow-md font-medium"
+                          >
+                            Remove
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => {
+                      if (panelMode !== "view") fileInputRef.current?.click()
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      if (panelMode !== "view") setIsDragging(true)
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault()
+                      setIsDragging(false)
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      setIsDragging(false)
+                      if (panelMode === "view") return
+                      const file = e.dataTransfer.files?.[0]
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error("File size exceeds 5MB limit")
+                          return
+                        }
+                        setSelectedImageFile(file)
+                        const reader = new FileReader()
+                        reader.onload = () => {
+                          const dataUrl = reader.result as string
+                          setFormImage(dataUrl)
+                          setValue("image", dataUrl, { shouldValidate: true })
+                          toast.success("Image selected for upload")
+                        }
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                    className={cn(
+                      "w-full border-2 border-dashed rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all text-center select-none min-h-[170px] sm:min-h-[200px]",
+                      isDragging
+                        ? "border-[#183626] bg-[#183626]/5 dark:border-emerald-400 dark:bg-emerald-950/20"
+                        : "border-border/80 hover:border-primary/60 bg-muted/10 hover:bg-muted/20",
+                      errors.image && "border-rose-400 bg-rose-50/20 dark:bg-rose-950/20",
+                      panelMode === "view" && "cursor-default hover:border-border/80 hover:bg-muted/10"
+                    )}
+                  >
+                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-card border border-border shadow-xs flex items-center justify-center text-muted-foreground transition-transform group-hover:scale-105">
+                      <ImageIcon className="w-6 h-6 sm:w-7 sm:h-7 stroke-[1.5] text-primary" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-xs sm:text-sm font-semibold text-foreground">
+                        {panelMode === "view" ? "No product image uploaded" : "Click to upload or drag and drop"}
+                      </p>
+                      <p className="text-[11px] sm:text-xs text-muted-foreground">
+                        High resolution recommended (1:1 or 4:5 ratio)
+                      </p>
+                    </div>
+                  </div>
+                )}
+                {errors.image && (
+                  <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.image.message}</p>
+                )}
+              </div>
             </div>
 
-            {/* Footer Buttons Pinned At The Bottom Down (Matching Image 2) */}
-            <div className="p-4 sm:p-5 border-t border-border flex items-center justify-end gap-3 bg-card mt-auto shrink-0">
-              {panelMode === "view" ? (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsPanelOpen(false)}
-                    className="h-10 px-6 rounded-full border-border text-xs text-foreground hover:bg-muted font-medium"
-                  >
-                    Close
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    onClick={() => {
-                      setPanelMode("edit")
-                      toast.info("Switched to edit mode")
-                    }}
-                    className="h-10 px-6 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-sm hover:opacity-90 gap-1.5"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    <span>Edit Product</span>
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setIsPanelOpen(false)}
-                    className="h-10 px-6 rounded-full border-border text-xs text-foreground hover:bg-muted font-medium"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    className="h-10 px-6 rounded-full bg-primary text-primary-foreground text-xs font-semibold shadow-sm hover:opacity-90"
-                  >
-                    {panelMode === "edit" ? "Save Changes" : "Create Product"}
-                  </Button>
-                </>
+            {/* Footer Buttons: Cancel/Close on left, Create/Save Product on right */}
+            <div className="p-4 sm:p-5 border-t border-border flex items-center justify-between bg-card shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsPanelOpen(false)}
+                className="h-10 px-6 rounded-full border-border text-xs text-foreground hover:bg-muted font-medium cursor-pointer"
+              >
+                {panelMode === "view" ? "Close" : "Cancel"}
+              </Button>
+              {panelMode !== "view" && (
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  className="h-10 px-6 rounded-full bg-[#183626] hover:bg-[#12281c] text-white dark:bg-[#dca038] dark:text-[#0d1a14] dark:hover:bg-[#c58d2e] text-xs font-semibold shadow-xs transition-all cursor-pointer disabled:opacity-60"
+                >
+                  {isSaving && <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />}
+                  {panelMode === "edit" ? (isSaving ? "Saving..." : "Save Changes") : (isSaving ? "Creating..." : "Create Product")}
+                </Button>
               )}
             </div>
           </form>
@@ -1702,7 +1861,9 @@ export function ProductManagement() {
       {/* SINGLE DELETE CONFIRMATION ALERT DIALOG */}
       <AlertDialog
         open={Boolean(deleteCandidate)}
-        onOpenChange={(open) => !open && setDeleteCandidate(null)}
+        onOpenChange={(open) => {
+          if (!isDeleting && !open) setDeleteCandidate(null)
+        }}
       >
         <AlertDialogContent className="rounded-2xl max-w-sm bg-card border-border">
           <AlertDialogHeader>
@@ -1710,27 +1871,40 @@ export function ProductManagement() {
               Delete Product?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs text-muted-foreground">
-              Are you sure you want to remove{" "}
-              <strong className="text-foreground">"{deleteCandidate?.name}"</strong> from your catalog?
+              Are you sure you want to permanently delete{" "}
+              <strong className="text-foreground">"{deleteCandidate?.name}"</strong> from Supabase?
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-full text-xs border-border">
+            <AlertDialogCancel
+              disabled={isDeleting}
+              className="rounded-full text-xs border-border cursor-pointer"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmSingleDelete}
-              className="rounded-full text-xs bg-rose-600 hover:bg-rose-700 text-white"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault()
+                handleConfirmSingleDelete()
+              }}
+              className="rounded-full text-xs bg-rose-600 hover:bg-rose-700 text-white cursor-pointer disabled:opacity-60"
             >
-              Delete
+              {isDeleting && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              {isDeleting ? "Deleting..." : "Delete Permanently"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       {/* BULK DELETE CONFIRMATION ALERT DIALOG */}
-      <AlertDialog open={isBulkDeleteOpen} onOpenChange={setIsBulkDeleteOpen}>
+      <AlertDialog
+        open={isBulkDeleteOpen}
+        onOpenChange={(open) => {
+          if (!isDeleting) setIsBulkDeleteOpen(open)
+        }}
+      >
         <AlertDialogContent className="rounded-2xl max-w-sm bg-card border-border">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-lg font-bold text-foreground">
@@ -1742,14 +1916,22 @@ export function ProductManagement() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2">
-            <AlertDialogCancel className="rounded-full text-xs border-border">
+            <AlertDialogCancel
+              disabled={isDeleting}
+              className="rounded-full text-xs border-border cursor-pointer"
+            >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleConfirmBulkDelete}
-              className="rounded-full text-xs bg-rose-600 hover:bg-rose-700 text-white"
+              disabled={isDeleting}
+              onClick={(e) => {
+                e.preventDefault()
+                handleConfirmBulkDelete()
+              }}
+              className="rounded-full text-xs bg-rose-600 hover:bg-rose-700 text-white cursor-pointer disabled:opacity-60"
             >
-              Delete All Selected
+              {isDeleting && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+              {isDeleting ? "Deleting..." : "Delete All Selected"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
