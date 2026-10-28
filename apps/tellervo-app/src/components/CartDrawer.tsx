@@ -14,6 +14,7 @@ export const CartDrawer: React.FC = () => {
     cartCount,
     triggerConfetti,
     showToast,
+    addOrder,
     t
   } = useApp();
 
@@ -43,6 +44,22 @@ export const CartDrawer: React.FC = () => {
     setIsCheckingOut(true);
     setTimeout(() => {
       setIsCheckingOut(false);
+      addOrder({
+        id: `ord-${Date.now()}`,
+        orderNumber: `#TL-${Math.floor(10000 + Math.random() * 90000)}`,
+        date: 'Today',
+        status: 'In Transit • Express Courier',
+        statusType: 'in-transit',
+        courier: 'Posti Eco',
+        total: finalTotal,
+        summary: cart.map(item => `${item.quantity}x ${item.product.name}`).join(', '),
+        items: cart.map(item => ({
+          name: item.product.name,
+          qty: item.quantity,
+          price: item.product.price,
+        })),
+        trackingId: `POSTI-FI-${Math.floor(100000 + Math.random() * 900000)}`,
+      });
       setOrderCompleted(true);
       triggerConfetti();
       clearCart();

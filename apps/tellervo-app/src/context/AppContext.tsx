@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { TabType, Product, CartItem, UserProfile, RewardItem, OrderItem, Language } from '../types';
-import { PRODUCTS, INITIAL_USER, INITIAL_CART, RECENT_ORDERS } from '../data/mockData';
+import { PRODUCTS, INITIAL_USER, RECENT_ORDERS } from '../data/mockData';
 import { translations, Translations } from '../i18n/translations';
 import confetti from 'canvas-confetti';
-import { authService, profileService, AuthUser, AuthResult, supabase } from '@tellervo/supabase';
+import { authService, profileService, AuthUser, AuthResult, supabase, productService } from '@tellervo/supabase';
+import { mapRecordToProduct } from '../lib/productMapper';
 import { ALL_ROUTES } from '../routes/routes.config';
 import { navigateTo } from '../routes/hooks/useNavigation';
 
@@ -29,12 +30,20 @@ interface AppContextType {
   cartCount: number;
   cartTotal: number;
   products: Product[];
+  isLoadingProducts: boolean;
+  isFetchingMore: boolean;
+  hasMoreProducts: boolean;
+  productsError: string | null;
+  isLiveProducts: boolean;
+  refetchProducts: () => Promise<void>;
+  fetchMoreProducts: () => Promise<void>;
   favorites: string[];
   toggleFavorite: (productId: string) => void;
   user: UserProfile;
   addSeeds: (amount: number, title: string) => void;
   redeemReward: (reward: RewardItem) => boolean;
   orders: OrderItem[];
+  addOrder: (order: OrderItem) => void;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   isNotificationsOpen: boolean;
@@ -123,8 +132,117 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       window.removeEventListener('popstate', handlePopState);
     };
   }, []);
-  const [products] = useState<Product[]>(PRODUCTS);
-  const [cart, setCart] = useState<CartItem[]>(INITIAL_CART);
+  const PAGE_SIZE = 20;
+  const [products, setProducts] = useState<Product[]>([]);
+  const [isLoadingProducts, setIsLoadingProducts] = useState<boolean>(true);
+  const [isFetchingMore, setIsFetchingMore] = useState<boolean>(false);
+  const [hasMoreProducts, setHasMoreProducts] = useState<boolean>(true);
+  const [productsError, setProductsError] = useState<string | null>(null);
+  const [isLiveProducts, setIsLiveProducts] = useState<boolean>(false);
+
+  // Initial fetch: 20 products from database
+  const refetchProducts = async () => {
+    try {
+      setIsLoadingProducts(true);
+      setProductsError(null);
+      const { data, error } = await productService.fetchProducts({ limit: PAGE_SIZE, offset: 0 });
+
+      if (error) {
+        console.error('[AppContext] Error fetching database products:', error.message);
+        setProductsError(error.message);
+        setProducts([]);
+        setHasMoreProducts(false);
+        setIsLiveProducts(false);
+        return;
+      }
+
+      const liveItems = (data || []).map(record => mapRecordToProduct(record));
+      setProducts(liveItems);
+      setIsLiveProducts(liveItems.length > 0);
+      setHasMoreProducts(liveItems.length === PAGE_SIZE);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to fetch products';
+      console.error('[AppContext] Exception fetching products:', msg);
+      setProductsError(msg);
+      setProducts([]);
+      setHasMoreProducts(false);
+      setIsLiveProducts(false);
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  };
+
+  // Infinite scroll: fetch next 20 products from database
+  const fetchMoreProducts = async () => {
+    if (!hasMoreProducts || isFetchingMore || isLoadingProducts) return;
+
+    try {
+      setIsFetchingMore(true);
+      const currentOffset = products.length;
+      const { data, error } = await productService.fetchProducts({
+        limit: PAGE_SIZE,
+        offset: currentOffset,
+      });
+
+      if (error) {
+        console.error('[AppContext] Error fetching more products:', error.message);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        const nextItems = data.map(record => mapRecordToProduct(record));
+        setProducts(prev => {
+          const existingIds = new Set(prev.map(p => p.id));
+          const uniqueNew = nextItems.filter(p => !existingIds.has(p.id));
+          return [...prev, ...uniqueNew];
+        });
+        setHasMoreProducts(nextItems.length === PAGE_SIZE);
+      } else {
+        setHasMoreProducts(false);
+      }
+    } catch (err: unknown) {
+      console.error('[AppContext] Exception in fetchMoreProducts:', err);
+    } finally {
+      setIsFetchingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    refetchProducts();
+
+    // Listen to real-time changes on products table in Supabase
+    const channel = supabase
+      .channel('tellervo-products-channel')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'products' },
+        () => {
+          refetchProducts();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+  const [cart, setCart] = useState<CartItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('tellervo_cart');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tellervo_cart', JSON.stringify(cart));
+    } catch {
+      // ignore
+    }
+  }, [cart]);
   const [favorites, setFavorites] = useState<string[]>([
     'spruce-needle-lime',
     'taiga-botanical-reserve',
@@ -134,7 +252,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     'bilberry-forest-nectar',
   ]);
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
-  const [orders] = useState<OrderItem[]>(RECENT_ORDERS);
+  const [orders, setOrders] = useState<OrderItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('tellervo_orders');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  const addOrder = (newOrder: OrderItem) => {
+    setOrders(prev => {
+      const updated = [newOrder, ...prev];
+      try {
+        localStorage.setItem('tellervo_orders', JSON.stringify(updated));
+      } catch {
+        // ignore
+      }
+      return updated;
+    });
+  };
 
   // Authentication State
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
@@ -422,12 +560,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         cartCount,
         cartTotal,
         products,
+        isLoadingProducts,
+        isFetchingMore,
+        hasMoreProducts,
+        productsError,
+        isLiveProducts,
+        refetchProducts,
+        fetchMoreProducts,
         favorites,
         toggleFavorite,
         user,
         addSeeds,
         redeemReward,
         orders,
+        addOrder,
         isCartOpen,
         setIsCartOpen,
         isNotificationsOpen,

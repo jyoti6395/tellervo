@@ -6,7 +6,7 @@ export interface Product {
   name: string;
   category: string;
   badge?: string;
-  badgeType?: 'bestseller' | 'seasonal' | 'organic' | 'adaptogenic' | 'new-harvest' | 'zero-proof' | 'exclusive';
+  badgeType?: 'bestseller' | 'seasonal' | 'organic' | 'adaptogenic' | 'new-harvest' | 'zero-proof' | 'exclusive' | 'database';
   price: number;
   originalPrice?: number;
   size: string;
@@ -51,6 +51,8 @@ export interface Product {
     text: string;
     date: string;
   }[];
+  isFromDatabase?: boolean;
+  sku?: string;
 }
 
 export interface CartItem {

@@ -263,7 +263,7 @@ export const HomeScreen: React.FC = () => {
             <button
               onClick={() => {
                 const p = products.find(prod => prod.id === 'arctic-juniper-tonic') || products[0];
-                addToCart(p);
+                if (p) addToCart(p);
               }}
               className="w-full py-2 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#234330] transition-colors"
             >
@@ -291,8 +291,8 @@ export const HomeScreen: React.FC = () => {
             </div>
             <button
               onClick={() => {
-                const p = products.find(prod => prod.id === 'cloudberry-golden-sparkler') || products[1];
-                addToCart(p);
+                const p = products.find(prod => prod.id === 'cloudberry-golden-sparkler') || products[1] || products[0];
+                if (p) addToCart(p);
               }}
               className="w-full py-2 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#234330] transition-colors"
             >

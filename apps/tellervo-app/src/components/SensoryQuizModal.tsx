@@ -19,7 +19,15 @@ export const SensoryQuizModal: React.FC = () => {
     triggerConfetti();
   };
 
-  const recommendedProduct = products[0]; // Spruce Needle & Lime Tonic
+  const recommendedProduct = products[0] || {
+    id: 'preview-drink',
+    name: 'Nordic Botanical Tonic',
+    price: 14.50,
+    size: '330 ml',
+    category: 'ADAPTOGENIC TONIC',
+    description: 'Artisanal Nordic botanical drink',
+    imageUrl: 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80',
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

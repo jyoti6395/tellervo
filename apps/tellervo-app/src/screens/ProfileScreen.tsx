@@ -83,8 +83,9 @@ export const ProfileScreen: React.FC = () => {
   };
 
   const handleReorderEverything = () => {
-    addToCart(products[3]); // Taiga reserve
-    addToCart(products[7]); // Lingonberry wild soda
+    if (products[3]) addToCart(products[3]);
+    if (products[7]) addToCart(products[7]);
+    if (!products[3] && !products[7] && products[0]) addToCart(products[0]);
     showToast('Reordered all 8 items from Order #TL-84102');
   };
 
@@ -273,84 +274,65 @@ export const ProfileScreen: React.FC = () => {
           </button>
         </div>
 
-        <div className="space-y-3">
-          {/* Order 1 (In transit) */}
-          <div className="bg-white rounded-3xl p-4 border border-[#E8E2D5] shadow-soft-sm space-y-3">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-xs font-bold text-[#183122]">
-                  {orders[0].orderNumber} • {orders[0].date}
-                </span>
-                <p className="text-[11px] text-[#718274] mt-0.5">
-                  {orders[0].summary}
-                </p>
-              </div>
-              <span className="font-editorial text-base font-bold text-[#14261B]">
-                €{orders[0].total.toFixed(2)}
-              </span>
-            </div>
-
-            {/* Out for delivery badge */}
-            <div className="bg-[#EAF3ED] border border-[#CFE2D4] rounded-xl px-3 py-2 flex items-center justify-between text-xs text-[#20492E]">
-              <span className="flex items-center gap-1.5 font-medium">
-                <Truck className="w-3.5 h-3.5" />
-                <span>Out for delivery with Posti Eco</span>
-              </span>
-              <span className="px-2 py-0.5 rounded-md bg-[#D4E8DC] text-[#163821] font-bold text-[10px]">
-                Today
-              </span>
-            </div>
-
-            {/* Action buttons */}
-            <div className="flex gap-2 pt-0.5">
-              <button
-                type="button"
-                onClick={() => setSelectedOrderForTracking(orders[0])}
-                className="flex-1 py-2 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#254632] transition-colors"
-              >
-                <MapPin className="w-3.5 h-3.5 text-[#E5A953]" />
-                <span>Track Order</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsReceiptOpen(true)}
-                className="px-4 py-2 bg-[#F5F2EB] text-[#293E30] text-xs font-semibold rounded-xl hover:bg-[#ECE7DC] transition-colors"
-              >
-                Receipt
-              </button>
-            </div>
-          </div>
-
-          {/* Order 2 (Delivered) */}
-          <div className="bg-white rounded-3xl p-4 border border-[#E8E2D5] shadow-soft-sm space-y-3">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-xs font-bold text-[#183122]">
-                  {orders[1].orderNumber} • {orders[1].date}
-                </span>
-                <div className="flex items-center gap-1 text-[11px] text-[#2F6540] font-medium mt-0.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  <span>Delivered to Helsinki Parcel Lockers</span>
+        {orders && orders.length > 0 ? (
+          <div className="space-y-3">
+            {orders.map((order, idx) => (
+              <div key={order.id || idx} className="bg-white rounded-3xl p-4 border border-[#E8E2D5] shadow-soft-sm space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-[#183122]">
+                      {order.orderNumber} • {order.date}
+                    </span>
+                    <p className="text-[11px] text-[#718274] mt-0.5">
+                      {order.summary}
+                    </p>
+                  </div>
+                  <span className="font-editorial text-base font-bold text-[#14261B]">
+                    €{order.total.toFixed(2)}
+                  </span>
                 </div>
-                <p className="text-[11px] text-[#718274] mt-0.5">
-                  {orders[1].summary}
-                </p>
-              </div>
-              <span className="font-editorial text-base font-bold text-[#14261B]">
-                €{orders[1].total.toFixed(2)}
-              </span>
-            </div>
 
-            <button
-              type="button"
-              onClick={handleReorderEverything}
-              className="w-full py-2 bg-[#F5F2EB] text-[#293E30] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#ECE7DC] transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reorder Everything</span>
-            </button>
+                <div className="bg-[#EAF3ED] border border-[#CFE2D4] rounded-xl px-3 py-2 flex items-center justify-between text-xs text-[#20492E]">
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <Truck className="w-3.5 h-3.5" />
+                    <span>{order.status || 'Out for delivery with Posti Eco'}</span>
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md bg-[#D4E8DC] text-[#163821] font-bold text-[10px]">
+                    Active
+                  </span>
+                </div>
+
+                <div className="flex gap-2 pt-0.5">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedOrderForTracking(order)}
+                    className="flex-1 py-2 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#254632] transition-colors"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-[#E5A953]" />
+                    <span>Track Order</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsReceiptOpen(true)}
+                    className="px-4 py-2 bg-[#F5F2EB] text-[#293E30] text-xs font-semibold rounded-xl hover:bg-[#ECE7DC] transition-colors"
+                  >
+                    Receipt
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        ) : (
+          <div className="bg-white rounded-3xl p-6 border border-[#E8E2D5] shadow-soft-sm text-center space-y-2">
+            <div className="w-10 h-10 rounded-2xl bg-[#F5F2EB] flex items-center justify-center text-lg mx-auto">
+              📦
+            </div>
+            <div className="text-xs font-bold text-[#183122]">No orders placed yet</div>
+            <p className="text-[11px] text-[#718274] max-w-xs mx-auto">
+              Your dispatched botanical deliveries and subscription dispatches will appear here.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Account & Settings Section */}

@@ -1,6 +1,5 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { Product } from '../types';
 import { 
   Search, 
   Mic, 
@@ -10,7 +9,10 @@ import {
   ShoppingBag, 
   ArrowRight,
   ChevronDown,
-  Sparkles
+  Sparkles,
+  RotateCcw,
+  Database,
+  AlertCircle
 } from 'lucide-react';
 import { FilterDrawer } from '../components/FilterDrawer';
 
@@ -20,13 +22,18 @@ export const ShopScreen: React.FC = () => {
     addToCart, 
     favorites, 
     toggleFavorite, 
-    cart, 
     cartCount, 
     cartTotal, 
     setIsCartOpen,
     setSelectedProduct,
     showToast,
-    t
+    t,
+    isLoadingProducts,
+    isFetchingMore,
+    hasMoreProducts,
+    refetchProducts,
+    fetchMoreProducts,
+    productsError
   } = useApp();
 
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -37,7 +44,7 @@ export const ShopScreen: React.FC = () => {
   const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc' | 'rating'>('popular');
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
 
-  const categories = [
+  const categories = useMemo(() => [
     { id: 'all', label: t.shop.allDrinks },
     { id: 'juices', label: t.shop.juices },
     { id: 'smoothies', label: t.shop.smoothies },
@@ -45,60 +52,140 @@ export const ShopScreen: React.FC = () => {
     { id: 'tonics', label: t.shop.tonicsMixers },
     { id: 'sparkling', label: t.shop.wildSparkling },
     { id: 'spirits', label: t.shop.zeroProofSpirits },
-  ];
+  ], [t.shop]);
 
-  // Dynamic counts for each category
+  // Dynamic counts for each category computed strictly from database products
   const categoryCounts = useMemo(() => {
     return {
       all: products.length,
-      juices: products.filter(p => p.category.includes('JUICE') || p.name.toLowerCase().includes('juice')).length,
-      smoothies: products.filter(p => p.category.includes('SMOOTHIE') || p.name.toLowerCase().includes('smoothie')).length,
-      detox: products.filter(p => p.category.includes('DETOX') || p.category.includes('ELIXIR') || p.name.toLowerCase().includes('detox') || p.name.toLowerCase().includes('cleanse') || p.name.toLowerCase().includes('flush')).length,
-      tonics: products.filter(p => p.category.includes('TONIC') || p.name.toLowerCase().includes('tonic')).length,
-      sparkling: products.filter(p => p.category.includes('SPARKLING') || p.category.includes('SPRITZ') || p.category.includes('Soda') || p.name.toLowerCase().includes('sparkler') || p.name.toLowerCase().includes('soda') || p.name.toLowerCase().includes('spritz')).length,
-      spirits: products.filter(p => p.category.includes('SPIRIT') || p.category.includes('APERITIF')).length,
+      juices: products.filter(p => (p.category || '').toUpperCase().includes('JUICE') || p.name.toLowerCase().includes('juice')).length,
+      smoothies: products.filter(p => (p.category || '').toUpperCase().includes('SMOOTHIE') || p.name.toLowerCase().includes('smoothie')).length,
+      detox: products.filter(p => {
+        const cat = (p.category || '').toUpperCase();
+        const name = p.name.toLowerCase();
+        const badge = (p.badge || '').toLowerCase();
+        return (
+          cat.includes('DETOX') || 
+          cat.includes('ELIXIR') || 
+          name.includes('detox') || 
+          name.includes('cleanse') || 
+          name.includes('flush') || 
+          badge.includes('detox') || 
+          badge.includes('purifying') || 
+          badge.includes('liver')
+        );
+      }).length,
+      tonics: products.filter(p => (p.category || '').toUpperCase().includes('TONIC') || p.name.toLowerCase().includes('tonic')).length,
+      sparkling: products.filter(p => {
+        const cat = (p.category || '').toUpperCase();
+        const name = p.name.toLowerCase();
+        return (
+          cat.includes('SPARKLING') || 
+          cat.includes('SPRITZ') || 
+          cat.includes('SODA') || 
+          name.includes('sparkler') || 
+          name.includes('soda') || 
+          name.includes('spritz')
+        );
+      }).length,
+      spirits: products.filter(p => {
+        const cat = (p.category || '').toUpperCase();
+        return cat.includes('SPIRIT') || cat.includes('APERITIF');
+      }).length,
     };
   }, [products]);
+
+  // Infinite Scroll Sentinel Observer
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    if (!hasMoreProducts || isFetchingMore || isLoadingProducts) return;
+
+    const observer = new IntersectionObserver(
+      entries => {
+        const first = entries[0];
+        if (first && first.isIntersecting) {
+          fetchMoreProducts();
+        }
+      },
+      {
+        root: null,
+        rootMargin: '250px',
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [hasMoreProducts, isFetchingMore, isLoadingProducts, fetchMoreProducts]);
 
   const handleVoiceSearch = () => {
     setIsListening(true);
     showToast('Listening for botanical infusions...', 'info');
     setTimeout(() => {
       setIsListening(false);
-      setSearchQuery('Cloudberry');
-      showToast('Found "Cloudberry" infusions', 'success');
+      setSearchQuery('Coconut');
+      showToast('Found "Coconut" infusions', 'success');
     }, 1500);
   };
 
-  // Filter products
+  // Filter products strictly from database data
   const filteredProducts = products.filter(product => {
     // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       const match = product.name.toLowerCase().includes(q) || 
                     product.category.toLowerCase().includes(q) ||
-                    (product.notes && product.notes.toLowerCase().includes(q));
+                    (product.notes && product.notes.toLowerCase().includes(q)) ||
+                    (product.description && product.description.toLowerCase().includes(q));
       if (!match) return false;
     }
 
     // Category Filter Bar logic
     if (activeCategory === 'juices') {
-      return product.category.includes('JUICE') || product.name.toLowerCase().includes('juice');
+      return (product.category || '').toUpperCase().includes('JUICE') || product.name.toLowerCase().includes('juice');
     }
     if (activeCategory === 'smoothies') {
-      return product.category.includes('SMOOTHIE') || product.name.toLowerCase().includes('smoothie');
+      return (product.category || '').toUpperCase().includes('SMOOTHIE') || product.name.toLowerCase().includes('smoothie');
     }
     if (activeCategory === 'detox') {
-      return product.category.includes('DETOX') || product.category.includes('ELIXIR') || product.name.toLowerCase().includes('detox') || product.name.toLowerCase().includes('cleanse') || product.name.toLowerCase().includes('flush') || product.badge?.toLowerCase().includes('detox') || product.badge?.toLowerCase().includes('purifying') || product.badge?.toLowerCase().includes('liver');
+      const cat = (product.category || '').toUpperCase();
+      const name = product.name.toLowerCase();
+      const badge = (product.badge || '').toLowerCase();
+      return (
+        cat.includes('DETOX') || 
+        cat.includes('ELIXIR') || 
+        name.includes('detox') || 
+        name.includes('cleanse') || 
+        name.includes('flush') || 
+        badge.includes('detox') || 
+        badge.includes('purifying') || 
+        badge.includes('liver')
+      );
     }
     if (activeCategory === 'tonics') {
-      return product.category.includes('TONIC') || product.name.includes('Tonic');
+      return (product.category || '').toUpperCase().includes('TONIC') || product.name.toLowerCase().includes('tonic');
     }
     if (activeCategory === 'sparkling') {
-      return product.category.includes('SPARKLING') || product.category.includes('Soda') || product.category.includes('SPRITZ') || product.name.includes('Sparkler');
+      const cat = (product.category || '').toUpperCase();
+      const name = product.name.toLowerCase();
+      return (
+        cat.includes('SPARKLING') || 
+        cat.includes('SPRITZ') || 
+        cat.includes('SODA') || 
+        name.includes('sparkler') || 
+        name.includes('soda') || 
+        name.includes('spritz')
+      );
     }
     if (activeCategory === 'spirits') {
-      return product.category.includes('SPIRIT') || product.category.includes('APERITIF');
+      const cat = (product.category || '').toUpperCase();
+      return cat.includes('SPIRIT') || cat.includes('APERITIF');
     }
 
     // Filter Drawer selected tags logic
@@ -135,6 +222,22 @@ export const ShopScreen: React.FC = () => {
 
   return (
     <div className="pb-32 px-4 pt-3 max-w-md mx-auto space-y-4 animate-in fade-in duration-200 relative">
+      {/* Error Notice if fetch failed */}
+      {productsError && (
+        <div className="bg-[#FFF4E5] rounded-2xl p-2.5 px-3 border border-[#FFE0B2] flex items-center justify-between text-xs text-[#7A4100]">
+          <div className="flex items-center gap-2 min-w-0">
+            <AlertCircle className="w-4 h-4 text-[#E65100] shrink-0" />
+            <span className="truncate">Could not sync products from database: {productsError}</span>
+          </div>
+          <button
+            onClick={() => refetchProducts()}
+            className="text-[11px] font-bold underline shrink-0 hover:text-black ml-2"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {/* Search & Filter Bar */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
@@ -157,7 +260,7 @@ export const ShopScreen: React.FC = () => {
           </button>
         </div>
 
-        {/* Filters Button with yellow count badge */}
+        {/* Filters Button with count badge */}
         <button
           onClick={() => setIsFilterOpen(true)}
           className="px-3.5 py-2.5 rounded-2xl bg-[#183324] text-[#FAF8F3] text-xs font-semibold flex items-center gap-1.5 shadow-sm hover:bg-[#234330] active:scale-95 transition-all"
@@ -242,10 +345,10 @@ export const ShopScreen: React.FC = () => {
             <div className="min-w-0">
               <div className="font-bold text-[#183122] flex items-center gap-1.5 truncate">
                 <span>{categories.find(c => c.id === activeCategory)?.label}</span>
-                <span className="text-[10px] font-semibold text-[#869689] uppercase">• {sortedProducts.length} Blends</span>
+                <span className="text-[10px] font-semibold text-[#869689] uppercase">• {sortedProducts.length} {sortedProducts.length === 1 ? 'Blend' : 'Blends'}</span>
               </div>
               <p className="text-[11px] text-[#637568] truncate">
-                {t.shop.categoryDescriptions?.[activeCategory as keyof typeof t.shop.categoryDescriptions] || ''}
+                {t.shop.categoryDescriptions?.[activeCategory as keyof typeof t.shop.categoryDescriptions] || 'Artisanal Nordic craft beverages from database'}
               </p>
             </div>
           </div>
@@ -311,26 +414,47 @@ export const ShopScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Empty State when no products match filters */}
-      {sortedProducts.length === 0 && (
+      {/* Shimmer loading skeleton when products are fetching initial page */}
+      {isLoadingProducts && products.length === 0 && (
+        <div className="grid grid-cols-2 gap-3 animate-pulse">
+          {[1, 2, 3, 4].map(n => (
+            <div key={n} className="bg-white rounded-3xl p-3 border border-[#EAE4D7] space-y-2.5">
+              <div className="aspect-square bg-[#EFEAE0] rounded-2xl" />
+              <div className="h-3 bg-[#EFEAE0] rounded-md w-3/4" />
+              <div className="h-2.5 bg-[#EFEAE0] rounded-md w-1/2" />
+              <div className="h-4 bg-[#EFEAE0] rounded-md w-1/3 pt-1" />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Empty State when no products match filters or database is empty */}
+      {sortedProducts.length === 0 && !isLoadingProducts && (
         <div className="bg-white rounded-3xl p-8 border border-[#EAE4D7] text-center space-y-3 my-4 shadow-soft-sm">
           <div className="w-12 h-12 rounded-2xl bg-[#F6F3EB] flex items-center justify-center text-2xl mx-auto">
             🍃
           </div>
           <h3 className="font-editorial text-lg font-semibold text-[#183122]">
-            No botanical blends found
+            {products.length === 0 ? 'No products in database' : 'No matching blends found'}
           </h3>
           <p className="text-xs text-[#718274] max-w-xs mx-auto">
-            No drinks matching this category or search filter. Try clearing filters or exploring other categories.
+            {products.length === 0 
+              ? 'Add products in the Admin Dashboard or sync your Supabase collection.'
+              : 'Try selecting a different category or clearing your search filters.'}
           </p>
           <button
             onClick={() => {
-              setActiveCategory('all');
-              setSearchQuery('');
+              if (products.length === 0) {
+                refetchProducts();
+              } else {
+                setActiveCategory('all');
+                setSearchQuery('');
+                setSelectedTags([]);
+              }
             }}
             className="px-4 py-2 bg-[#183324] text-white rounded-xl text-xs font-semibold hover:bg-[#234330] active:scale-95 transition-all shadow-xs"
           >
-            Show All Drinks
+            {products.length === 0 ? 'Refresh Database' : 'Show All Drinks'}
           </button>
         </div>
       )}
@@ -374,7 +498,7 @@ export const ShopScreen: React.FC = () => {
                         ? 'bg-[#162B1D] text-white'
                         : product.badgeType === 'exclusive'
                         ? 'bg-[#E5A953] text-[#12281C]'
-                        : 'bg-white/90 text-[#183324]'
+                        : 'bg-[#183324] text-[#E5A953] border border-[#E5A953]/40'
                     }`}
                   >
                     {product.badge}
@@ -440,37 +564,57 @@ export const ShopScreen: React.FC = () => {
         })}
       </div>
 
-      {/* Floating Forest Box Bar (Fixed right above bottom nav) */}
-      <div className="fixed bottom-16 left-0 right-0 z-30 px-4 pointer-events-none">
-        <div className="max-w-md mx-auto pointer-events-auto">
-          <div className="bg-[#183324] text-white rounded-2xl p-2.5 px-3.5 shadow-float border border-[#284B36] flex items-center justify-between animate-in slide-in-from-bottom-3 duration-200">
-            {/* Left bag & count */}
-            <div className="flex items-center gap-2.5">
-              <div className="relative w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-[#E5A953]">
-                <ShoppingBag className="w-4 h-4" />
-                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#E5A953] text-[#12281C] text-[9px] font-bold flex items-center justify-center">
-                  {cartCount}
-                </span>
-              </div>
-              <div>
-                <div className="text-xs font-bold leading-tight">{t.cart.title}</div>
-                <div className="text-[11px] text-[#A6C4B0]">
-                  {cartCount} ITEMS • €{cartTotal.toFixed(2)}
+      {/* Infinite Scroll Sentinel element */}
+      <div ref={sentinelRef} className="h-4 w-full pointer-events-none" />
+
+      {/* Infinite Scroll Loading Spinner */}
+      {isFetchingMore && (
+        <div className="flex items-center justify-center gap-2 py-4 text-xs font-semibold text-[#183324] animate-in fade-in duration-200">
+          <RotateCcw className="w-4 h-4 animate-spin text-[#2E7D32]" />
+          <span>Fetching next 20 botanical drinks...</span>
+        </div>
+      )}
+
+      {/* End of Catalog notice */}
+      {!hasMoreProducts && products.length > 0 && !isLoadingProducts && (
+        <div className="text-center py-4 text-[11px] text-[#839486] border-t border-[#EAE4D7] mt-2">
+          <span>✨ All {products.length} {products.length === 1 ? 'product' : 'products'} loaded from database</span>
+        </div>
+      )}
+
+      {/* Floating Forest Box Bar (Fixed right above bottom nav - only show when user has items selected) */}
+      {cartCount > 0 && (
+        <div className="fixed bottom-16 left-0 right-0 z-30 px-4 pointer-events-none">
+          <div className="max-w-md mx-auto pointer-events-auto">
+            <div className="bg-[#183324] text-white rounded-2xl p-2.5 px-3.5 shadow-float border border-[#284B36] flex items-center justify-between animate-in slide-in-from-bottom-3 duration-200">
+              {/* Left bag & count */}
+              <div className="flex items-center gap-2.5">
+                <div className="relative w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-[#E5A953]">
+                  <ShoppingBag className="w-4 h-4" />
+                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#E5A953] text-[#12281C] text-[9px] font-bold flex items-center justify-center">
+                    {cartCount}
+                  </span>
+                </div>
+                <div>
+                  <div className="text-xs font-bold leading-tight">{t.cart.title}</div>
+                  <div className="text-[11px] text-[#A6C4B0]">
+                    {cartCount} {cartCount === 1 ? 'ITEM' : 'ITEMS'} • €{cartTotal.toFixed(2)}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Right button */}
-            <button
-              onClick={() => setIsCartOpen(true)}
-              className="px-3.5 py-1.5 bg-[#E5A953] text-[#12281C] rounded-full text-xs font-bold flex items-center gap-1 hover:bg-[#F3BA68] active:scale-95 transition-all shadow-sm"
-            >
-              <span>{t.shop.viewBox}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
+              {/* Right button */}
+              <button
+                onClick={() => setIsCartOpen(true)}
+                className="px-3.5 py-1.5 bg-[#E5A953] text-[#12281C] rounded-full text-xs font-bold flex items-center gap-1 hover:bg-[#F3BA68] active:scale-95 transition-all shadow-sm"
+              >
+                <span>{t.shop.viewBox}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Filter Drawer */}
       <FilterDrawer

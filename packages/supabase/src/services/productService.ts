@@ -41,12 +41,11 @@ export class ProductService {
         );
       }
 
-      if (filters?.limit) {
+      if (filters?.offset !== undefined) {
+        const lim = filters?.limit || 20;
+        query = query.range(filters.offset, filters.offset + lim - 1);
+      } else if (filters?.limit) {
         query = query.limit(filters.limit);
-      }
-
-      if (filters?.offset) {
-        query = query.range(filters.offset, filters.offset + (filters.limit || 20) - 1);
       }
 
       const { data, error } = await query;
