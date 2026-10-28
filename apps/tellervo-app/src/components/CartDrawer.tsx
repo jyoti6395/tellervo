@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { X, Plus, Minus, Trash2, ArrowRight, ShieldCheck, Sparkles, CheckCircle2 } from 'lucide-react';
+import { navigateTo, AUTH_ROUTES } from '../routes/authRoutes';
 
 export const CartDrawer: React.FC = () => {
   const {
@@ -15,12 +16,11 @@ export const CartDrawer: React.FC = () => {
     triggerConfetti,
     showToast,
     addOrder,
+    isAuthenticated,
     t
   } = useApp();
 
-  const [promoCode, setPromoCode] = useState('');
-  const [promoDiscount, setPromoDiscount] = useState(0);
-  const [isCheckingOut, setIsCheckingOut] = useState(false);
+  const [isCheckingOut] = useState(false);
   const [orderCompleted, setOrderCompleted] = useState(false);
 
   if (!isCartOpen) return null;
@@ -29,41 +29,16 @@ export const CartDrawer: React.FC = () => {
   const progressToFreeShipping = Math.min(100, (cartTotal / freeShippingThreshold) * 100);
   const remainingForFreeShipping = Math.max(0, freeShippingThreshold - cartTotal);
 
-  const applyPromo = () => {
-    if (promoCode.trim().toUpperCase() === 'TAIGA10' || promoCode.trim().toUpperCase() === 'AUTUMN') {
-      setPromoDiscount(5.0);
-      showToast('Applied €5.00 Boreal Harvest voucher!', 'reward');
-    } else {
-      showToast('Code not recognized. Try TAIGA10', 'info');
-    }
-  };
-
-  const finalTotal = Math.max(0, cartTotal - promoDiscount);
+  const finalTotal = cartTotal;
 
   const handleCheckout = () => {
-    setIsCheckingOut(true);
-    setTimeout(() => {
-      setIsCheckingOut(false);
-      addOrder({
-        id: `ord-${Date.now()}`,
-        orderNumber: `#TL-${Math.floor(10000 + Math.random() * 90000)}`,
-        date: 'Today',
-        status: 'In Transit • Express Courier',
-        statusType: 'in-transit',
-        courier: 'Posti Eco',
-        total: finalTotal,
-        summary: cart.map(item => `${item.quantity}x ${item.product.name}`).join(', '),
-        items: cart.map(item => ({
-          name: item.product.name,
-          qty: item.quantity,
-          price: item.product.price,
-        })),
-        trackingId: `POSTI-FI-${Math.floor(100000 + Math.random() * 900000)}`,
-      });
-      setOrderCompleted(true);
-      triggerConfetti();
-      clearCart();
-    }, 1200);
+    setIsCartOpen(false);
+    if (!isAuthenticated) {
+      showToast('Please sign in to proceed to checkout', 'info');
+      navigateTo(`${AUTH_ROUTES.LOGIN}?redirect=${encodeURIComponent(AUTH_ROUTES.CHECKOUT)}`);
+    } else {
+      navigateTo(AUTH_ROUTES.CHECKOUT);
+    }
   };
 
   const handleClose = () => {
@@ -213,31 +188,7 @@ export const CartDrawer: React.FC = () => {
                 ))
               )}
 
-              {/* Promo voucher input */}
-              {cart.length > 0 && (
-                <div className="pt-2">
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Promo voucher (e.g. TAIGA10)"
-                      value={promoCode}
-                      onChange={e => setPromoCode(e.target.value)}
-                      className="flex-1 px-3 py-2 text-xs rounded-xl border border-[#DED7C8] bg-white text-[#1C3123] placeholder-[#9CA99F] focus:outline-none focus:ring-1 focus:ring-[#183324]"
-                    />
-                    <button
-                      onClick={applyPromo}
-                      className="px-3.5 py-2 bg-[#2D4E39] text-[#FAF8F3] text-xs font-semibold rounded-xl hover:bg-[#20392A] transition-colors"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                  {promoDiscount > 0 && (
-                    <p className="text-[11px] text-[#347648] font-medium mt-1 flex items-center gap-1">
-                      <CheckCircle2 className="w-3 h-3" /> €5.00 discount applied!
-                    </p>
-                  )}
-                </div>
-              )}
+
             </div>
 
             {/* Drawer Footer & Checkout */}
@@ -248,12 +199,6 @@ export const CartDrawer: React.FC = () => {
                     <span>{t.cart.subtotal}</span>
                     <span className="font-semibold text-[#183022]">€{cartTotal.toFixed(2)}</span>
                   </div>
-                  {promoDiscount > 0 && (
-                    <div className="flex justify-between text-[#357549]">
-                      <span>{t.cart.voucherDiscount}</span>
-                      <span>-€{promoDiscount.toFixed(2)}</span>
-                    </div>
-                  )}
                   <div className="flex justify-between">
                     <span>{t.cart.packaging}</span>
                     <span className="text-[#357549] font-medium">{t.cart.freeBiodegradable}</span>

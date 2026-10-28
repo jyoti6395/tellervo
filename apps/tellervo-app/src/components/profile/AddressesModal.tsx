@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, MapPin } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { addressService } from '@tellervo/supabase';
 import { SavedAddress, AddressFormData, AddressModalMode } from '../../types/address';
 import { SavedAddressCard } from './addresses/SavedAddressCard';
 import { AddressFormModal } from './addresses/AddressFormModal';
@@ -11,53 +12,99 @@ interface AddressesModalProps {
   onClose: () => void;
 }
 
+const getAddressStorageKey = (userId?: string) => `tellervo_addresses_${userId || 'guest'}`;
+
+const loadCachedAddresses = (userId?: string): SavedAddress[] => {
+  if (!userId) return [];
+  try {
+    const raw = localStorage.getItem(getAddressStorageKey(userId));
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+};
+
+const saveCachedAddresses = (userId: string | undefined, list: SavedAddress[]) => {
+  if (!userId) return;
+  try {
+    localStorage.setItem(getAddressStorageKey(userId), JSON.stringify(list));
+  } catch {
+    // ignore
+  }
+};
+
 export const AddressesModal: React.FC<AddressesModalProps> = ({
   isOpen,
   onClose,
 }) => {
-  const { user, updateUserProfile, showToast } = useApp();
+  const { user, authUser, updateUserProfile, showToast } = useApp();
+  const currentUserId = authUser?.id || user.handle || 'patron';
 
-  const [addresses, setAddresses] = useState<SavedAddress[]>([
-    {
-      id: 'addr-1',
-      recipientName: user.name || 'Matti Virtanen',
-      phone: user.phone || '+358 40 123 4567',
-      type: 'home',
-      title: 'Home (Central Helsinki)',
-      street: user.address ? user.address.replace(' (Default)', '').split(',')[0] || 'Mannerheimintie 14 B' : 'Mannerheimintie 14 B',
-      additionalDetails: 'Apt 4',
-      postalCode: '00100',
-      city: 'Helsinki',
-      countryCode: 'FI',
-      isDefault: true,
-    },
-    {
-      id: 'addr-2',
-      recipientName: user.name || 'Matti Virtanen',
-      phone: user.phone || '+358 40 123 4567',
-      type: 'work',
-      title: 'Design Studio / Office',
-      street: 'Pohjoisesplanadi 33',
-      additionalDetails: '3rd floor, suite 12',
-      postalCode: '00100',
-      city: 'Helsinki',
-      countryCode: 'FI',
-      isDefault: false,
-    },
-    {
-      id: 'addr-3',
-      recipientName: user.name || 'Matti Virtanen',
-      phone: user.phone || '+358 40 123 4567',
-      type: 'locker',
-      title: 'Posti SmartPost Locker #42',
-      street: 'Kamppi Shopping Centre, Urho Kekkosen katu 1',
-      additionalDetails: 'Level K1 (Next to K-Supermarket)',
-      postalCode: '00100',
-      city: 'Helsinki',
-      countryCode: 'FI',
-      isDefault: false,
-    },
-  ]);
+  const [addresses, setAddresses] = useState<SavedAddress[]>(() =>
+    loadCachedAddresses(currentUserId)
+  );
+  const [isLoadingAddresses, setIsLoadingAddresses] = useState(false);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    let isMounted = true;
+
+    const activeUserId = authUser?.id || user.handle || 'patron';
+    const cached = loadCachedAddresses(activeUserId);
+    if (cached.length > 0) {
+      setAddresses(cached);
+    }
+
+    async function loadAddresses() {
+      if (!authUser?.id) {
+        return;
+      }
+      setIsLoadingAddresses(true);
+      const { data, error } = await addressService.fetchAddresses(authUser.id);
+      if (isMounted) {
+        if (!error && data) {
+          const mapped: SavedAddress[] = data.map((rec) => ({
+            id: rec.id,
+            recipientName: rec.recipient_name,
+            phone: rec.phone || undefined,
+            type: rec.type,
+            title: rec.title || (rec.type === 'home' ? 'Home' : rec.type === 'work' ? 'Work' : 'Delivery Destination'),
+            street: rec.street,
+            additionalDetails: rec.additional_details || undefined,
+            postalCode: rec.postal_code,
+            city: rec.city,
+            countryCode: rec.country_code,
+            isDefault: rec.is_default,
+          }));
+
+          if (mapped.length > 0) {
+            setAddresses(mapped);
+            saveCachedAddresses(authUser.id, mapped);
+            const activeDefault = mapped.find((a) => a.isDefault);
+            if (activeDefault) {
+              const defaultSummary = `${activeDefault.street}, ${activeDefault.postalCode} ${activeDefault.city} (Default)`;
+              if (user.address !== defaultSummary) {
+                updateUserProfile({ address: defaultSummary });
+              }
+            }
+          } else if (cached.length === 0) {
+            setAddresses([]);
+          }
+        }
+        setIsLoadingAddresses(false);
+      }
+    }
+
+    loadAddresses();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, authUser?.id]);
 
   // Separate Modal States
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
@@ -69,18 +116,22 @@ export const AddressesModal: React.FC<AddressesModalProps> = ({
 
   if (!isOpen) return null;
 
-  const handleSetDefault = (id: string) => {
-    setAddresses((prev) =>
-      prev.map((a) => ({
-        ...a,
-        isDefault: a.id === id,
-      }))
-    );
-    const target = addresses.find((a) => a.id === id);
+  const handleSetDefault = async (id: string) => {
+    const updated = addresses.map((a) => ({
+      ...a,
+      isDefault: a.id === id,
+    }));
+    setAddresses(updated);
+    saveCachedAddresses(currentUserId, updated);
+
+    const target = updated.find((a) => a.id === id);
     if (target) {
       const fullAddressStr = `${target.street}, ${target.postalCode} ${target.city} (Default)`;
       updateUserProfile({ address: fullAddressStr });
       showToast(`Default delivery address set to ${target.title || target.street}`);
+      if (authUser?.id) {
+        await addressService.setDefaultAddress(id, authUser.id);
+      }
     }
   };
 
@@ -105,69 +156,99 @@ export const AddressesModal: React.FC<AddressesModalProps> = ({
     setIsDeleteDialogOpen(true);
   };
 
-  const handleConfirmDelete = (id: string) => {
+  const handleConfirmDelete = async (id: string) => {
     const target = addresses.find((a) => a.id === id);
     const wasDefault = target?.isDefault;
 
-    setAddresses((prev) => {
-      const remaining = prev.filter((a) => a.id !== id);
-      if (wasDefault && remaining.length > 0) {
-        remaining[0].isDefault = true;
-        const newDefault = remaining[0];
-        const fullAddressStr = `${newDefault.street}, ${newDefault.postalCode} ${newDefault.city} (Default)`;
-        updateUserProfile({ address: fullAddressStr });
+    const remaining = addresses.filter((a) => a.id !== id);
+    if (wasDefault && remaining.length > 0) {
+      remaining[0].isDefault = true;
+      const newDefault = remaining[0];
+      const fullAddressStr = `${newDefault.street}, ${newDefault.postalCode} ${newDefault.city} (Default)`;
+      updateUserProfile({ address: fullAddressStr });
+      if (authUser?.id) {
+        addressService.setDefaultAddress(newDefault.id, authUser.id);
       }
-      return remaining;
-    });
+    } else if (remaining.length === 0) {
+      updateUserProfile({ address: '' });
+    }
 
+    setAddresses(remaining);
+    saveCachedAddresses(currentUserId, remaining);
+
+    if (authUser?.id) {
+      await addressService.deleteAddress(id, authUser.id);
+    }
     showToast('Address removed from saved delivery destinations', 'info');
   };
 
-  const handleSaveAddress = (formData: AddressFormData, editId?: string) => {
+  const handleSaveAddress = async (formData: AddressFormData, editId?: string) => {
     if (formMode === 'edit' && editId) {
-      setAddresses((prev) => {
-        let updated = prev.map((item) => {
-          if (item.id === editId) {
-            return {
-              ...item,
-              recipientName: formData.recipientName,
-              type: formData.type,
-              title: formData.title || item.title,
-              street: formData.street,
-              additionalDetails: formData.additionalDetails,
-              postalCode: formData.postalCode,
-              city: formData.city,
-              countryCode: formData.countryCode,
-              phone: formData.phone,
-              isDefault: formData.isDefault,
-            };
-          }
-          if (formData.isDefault) {
-            return { ...item, isDefault: false };
-          }
-          return item;
-        });
-
-        // Ensure at least one is default
-        if (!updated.some((a) => a.isDefault) && updated.length > 0) {
-          updated[0].isDefault = true;
+      let updated = addresses.map((item) => {
+        if (item.id === editId) {
+          return {
+            ...item,
+            recipientName: formData.recipientName,
+            type: formData.type,
+            title: formData.title || item.title,
+            street: formData.street,
+            additionalDetails: formData.additionalDetails,
+            postalCode: formData.postalCode,
+            city: formData.city,
+            countryCode: formData.countryCode,
+            phone: formData.phone,
+            isDefault: formData.isDefault,
+          };
         }
-
-        const currentDefault = updated.find((a) => a.isDefault);
-        if (currentDefault) {
-          const fullAddressStr = `${currentDefault.street}, ${currentDefault.postalCode} ${currentDefault.city} (Default)`;
-          updateUserProfile({ address: fullAddressStr });
+        if (formData.isDefault) {
+          return { ...item, isDefault: false };
         }
-
-        return updated;
+        return item;
       });
 
+      // Ensure at least one is default
+      if (!updated.some((a) => a.isDefault) && updated.length > 0) {
+        updated[0].isDefault = true;
+      }
+
+      setAddresses(updated);
+      saveCachedAddresses(currentUserId, updated);
+
+      const currentDefault = updated.find((a) => a.isDefault);
+      if (currentDefault) {
+        const fullAddressStr = `${currentDefault.street}, ${currentDefault.postalCode} ${currentDefault.city} (Default)`;
+        updateUserProfile({ address: fullAddressStr });
+      }
+
       showToast('Address updated successfully', 'success');
+
+      if (authUser?.id) {
+        await addressService.updateAddress(
+          editId,
+          {
+            recipient_name: formData.recipientName,
+            phone: formData.phone,
+            type: formData.type,
+            title: formData.title,
+            street: formData.street,
+            additional_details: formData.additionalDetails,
+            postal_code: formData.postalCode,
+            city: formData.city,
+            country_code: formData.countryCode,
+            is_default: formData.isDefault,
+          },
+          authUser.id
+        );
+      }
     } else {
       // Add Mode
-      const newId = `addr-${Date.now()}`;
+      // Rule: First address automatically becomes default!
+      const isFirstAddress = addresses.length === 0;
+      const willBeDefault = isFirstAddress || Boolean(formData.isDefault);
+
+      const tempId = `addr-${Date.now()}`;
       const newAddress: SavedAddress = {
-        id: newId,
+        id: tempId,
         recipientName: formData.recipientName,
         type: formData.type,
         title: formData.title || (formData.type === 'home' ? 'Home' : formData.type === 'work' ? 'Workplace' : 'Posti Locker'),
@@ -177,24 +258,50 @@ export const AddressesModal: React.FC<AddressesModalProps> = ({
         city: formData.city,
         countryCode: formData.countryCode,
         phone: formData.phone,
-        isDefault: Boolean(formData.isDefault) || addresses.length === 0,
+        isDefault: willBeDefault,
       };
 
-      setAddresses((prev) => {
-        let updated = [...prev];
-        if (newAddress.isDefault) {
-          updated = updated.map((a) => ({ ...a, isDefault: false }));
-        }
-        updated.push(newAddress);
+      let updated = [...addresses];
+      if (willBeDefault) {
+        updated = updated.map((a) => ({ ...a, isDefault: false }));
+      }
+      updated.push(newAddress);
 
-        if (newAddress.isDefault) {
-          const fullAddressStr = `${newAddress.street}, ${newAddress.postalCode} ${newAddress.city} (Default)`;
-          updateUserProfile({ address: fullAddressStr });
-        }
-        return updated;
-      });
+      setAddresses(updated);
+      saveCachedAddresses(currentUserId, updated);
+
+      if (willBeDefault) {
+        const fullAddressStr = `${newAddress.street}, ${newAddress.postalCode} ${newAddress.city} (Default)`;
+        updateUserProfile({ address: fullAddressStr });
+      }
 
       showToast(`Added ${newAddress.title} to saved delivery locations`, 'success');
+
+      if (authUser?.id) {
+        const { data: created, error } = await addressService.createAddress(
+          {
+            recipient_name: formData.recipientName,
+            phone: formData.phone,
+            type: formData.type,
+            title: formData.title,
+            street: formData.street,
+            additional_details: formData.additionalDetails,
+            postal_code: formData.postalCode,
+            city: formData.city,
+            country_code: formData.countryCode,
+            is_default: willBeDefault,
+          },
+          authUser.id
+        );
+
+        if (created && !error) {
+          setAddresses((prev) => {
+            const synced = prev.map((a) => (a.id === tempId ? { ...a, id: created.id } : a));
+            saveCachedAddresses(currentUserId, synced);
+            return synced;
+          });
+        }
+      }
     }
   };
 
@@ -231,7 +338,7 @@ export const AddressesModal: React.FC<AddressesModalProps> = ({
           Carbon-neutral delivery via Posti Eco. Select your default drop point or manage delivery locations.
         </p>
 
-        {/* Saved Addresses List (Zero inline form expansion clutter!) */}
+        {/* Saved Addresses List */}
         <div className="space-y-3 overflow-y-auto pr-1 flex-1 no-scrollbar">
           {addresses.length === 0 ? (
             <div className="py-12 text-center text-xs text-[#7A8E80]">
@@ -280,6 +387,7 @@ export const AddressesModal: React.FC<AddressesModalProps> = ({
         isOpen={isFormModalOpen}
         mode={formMode}
         initialAddress={editingAddress}
+        isFirstAddress={addresses.length === 0}
         onSave={handleSaveAddress}
         onClose={() => {
           setIsFormModalOpen(false);

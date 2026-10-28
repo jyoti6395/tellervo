@@ -13,6 +13,7 @@ interface AddressFormModalProps {
   isOpen: boolean;
   mode: AddressModalMode;
   initialAddress?: SavedAddress | null;
+  isFirstAddress?: boolean;
   onSave: (data: AddressFormData, id?: string) => void;
   onClose: () => void;
 }
@@ -21,6 +22,7 @@ export const AddressFormModal: React.FC<AddressFormModalProps> = ({
   isOpen,
   mode,
   initialAddress,
+  isFirstAddress = false,
   onSave,
   onClose,
 }) => {
@@ -38,6 +40,7 @@ export const AddressFormModal: React.FC<AddressFormModalProps> = ({
     handleSubmit,
     setValue,
     watch,
+    trigger,
     reset,
     formState: { errors, isSubmitting },
   } = useForm<AddressSchemaType>({
@@ -62,6 +65,8 @@ export const AddressFormModal: React.FC<AddressFormModalProps> = ({
   const selectedType = watch('type');
   const phoneValue = watch('phone') || '';
   const isDefaultValue = watch('isDefault');
+  const isEffectiveDefault = isFirstAddress || Boolean(isDefaultValue);
+  const isPhoneRequired = isEffectiveDefault || selectedType !== 'home';
 
   // Sync form state when modal opens or initialAddress changes
   useEffect(() => {
@@ -95,7 +100,7 @@ export const AddressFormModal: React.FC<AddressFormModalProps> = ({
           city: '',
           countryCode: 'FI',
           phone: '',
-          isDefault: false,
+          isDefault: isFirstAddress,
         });
       }
     } else if (isRendered) {
@@ -106,7 +111,7 @@ export const AddressFormModal: React.FC<AddressFormModalProps> = ({
       }, 190);
       return () => clearTimeout(timer);
     }
-  }, [isOpen, mode, initialAddress, reset, isRendered]);
+  }, [isOpen, mode, initialAddress, isFirstAddress, reset, isRendered]);
 
   const handleSmoothClose = () => {
     setIsExiting(true);
@@ -126,7 +131,7 @@ export const AddressFormModal: React.FC<AddressFormModalProps> = ({
       city: data.city.trim(),
       countryCode: selectedCountry,
       phone: data.phone?.trim() || undefined,
-      isDefault: Boolean(data.isDefault),
+      isDefault: isFirstAddress ? true : Boolean(data.isDefault),
     };
 
     onSave(formData, initialAddress?.id);
@@ -200,7 +205,10 @@ export const AddressFormModal: React.FC<AddressFormModalProps> = ({
                   <button
                     key={opt.type}
                     type="button"
-                    onClick={() => setValue('type', opt.type, { shouldDirty: true })}
+                    onClick={() => {
+                      setValue('type', opt.type, { shouldDirty: true, shouldValidate: true });
+                      trigger('phone');
+                    }}
                     className={`py-2 px-1.5 rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5 border transition-all ${
                       isSelected
                         ? 'bg-[#183324] text-white border-[#183324] shadow-soft-sm'
@@ -359,6 +367,7 @@ export const AddressFormModal: React.FC<AddressFormModalProps> = ({
               id="address-phone"
               name="phone"
               label="Mobile Phone"
+              required={isPhoneRequired}
               value={phoneValue}
               onChange={(val) => setValue('phone', val, { shouldValidate: true, shouldDirty: true })}
               selectedCountry={selectedCountry}
@@ -367,25 +376,50 @@ export const AddressFormModal: React.FC<AddressFormModalProps> = ({
                 setValue('countryCode', c.code);
               }}
               error={errors.phone?.message}
-              helperText="Used for Posti courier arrival SMS & parcel locker PIN codes."
+              helperText={
+                isEffectiveDefault
+                  ? 'Required for default delivery destination (courier arrival SMS).'
+                  : selectedType !== 'home'
+                  ? `Required for ${selectedType === 'work' ? 'workplace' : selectedType === 'locker' ? 'parcel locker' : 'delivery'} drop-off coordination.`
+                  : 'Optional for secondary home delivery addresses.'
+              }
             />
           </div>
 
           {/* Set as Default Delivery Address Toggle */}
           <div className="pt-1">
-            <label className="flex items-center gap-2.5 p-3 rounded-2xl bg-white/80 border border-[#E5DFD2] cursor-pointer hover:bg-white transition-all select-none">
+            <label
+              className={`flex items-center gap-2.5 p-3 rounded-2xl border transition-all select-none ${
+                isFirstAddress
+                  ? 'bg-[#F2ECE1]/60 border-[#DFD6C7] cursor-default'
+                  : 'bg-white/80 border-[#E5DFD2] cursor-pointer hover:bg-white'
+              }`}
+            >
               <input
                 type="checkbox"
-                checked={isDefaultValue}
-                onChange={(e) => setValue('isDefault', e.target.checked, { shouldDirty: true })}
-                className="w-4 h-4 rounded text-[#183324] focus:ring-[#183324] accent-[#183324] cursor-pointer"
+                checked={isFirstAddress ? true : isDefaultValue}
+                disabled={isFirstAddress}
+                onChange={(e) => {
+                  if (!isFirstAddress) {
+                    setValue('isDefault', e.target.checked, { shouldDirty: true, shouldValidate: true });
+                    trigger('phone');
+                  }
+                }}
+                className="w-4 h-4 rounded text-[#183324] focus:ring-[#183324] accent-[#183324] cursor-pointer disabled:opacity-75"
               />
               <div>
                 <span className="text-xs font-bold text-[#14261B] block">
-                  Set as default delivery address
+                  Set as default delivery address{' '}
+                  {isFirstAddress && (
+                    <span className="text-[#937548] font-normal text-[11px]">
+                      (Primary Destination)
+                    </span>
+                  )}
                 </span>
                 <span className="text-[11px] text-[#718274]">
-                  Use this location automatically for future seasonal drop shipments.
+                  {isFirstAddress
+                    ? 'Your first address automatically becomes your primary default delivery location.'
+                    : 'Use this location automatically for future seasonal drop shipments.'}
                 </span>
               </div>
             </label>

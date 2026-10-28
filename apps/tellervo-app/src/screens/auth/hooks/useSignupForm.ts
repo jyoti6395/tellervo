@@ -3,16 +3,30 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { CountryCode } from 'libphonenumber-js';
 import { navigateTo, AUTH_ROUTES } from '../../../routes/authRoutes';
+import { useNavigation } from '../../../routes/hooks/useNavigation';
 import { useApp } from '../../../context/AppContext';
 import { createSignupSchema, SignupSchemaType } from '../schemas/authSchemas';
 import { normalizePhoneNumber } from '../../../utils/phoneUtils';
 import type { CountryConfig } from '../../../config/countries.config';
 
 /**
+ * Sanitizes redirect destination to prevent open redirect vulnerabilities.
+ */
+function getSafeRedirectPath(redirect: string | null): string {
+  if (!redirect) return AUTH_ROUTES.HOME;
+  const decoded = decodeURIComponent(redirect);
+  if (decoded.startsWith('/') && !decoded.startsWith('//')) {
+    return decoded;
+  }
+  return AUTH_ROUTES.HOME;
+}
+
+/**
  * Controller Hook for Signup Business Logic using React Hook Form & Country-Aware Zod Validation
  */
 export function useSignupForm() {
   const { signup, showToast } = useApp();
+  const { getRedirectQuery } = useNavigation();
 
   const [selectedCountry, setSelectedCountry] = useState<CountryCode>('FI');
   const [showPassword, setShowPassword] = useState(false);
@@ -84,8 +98,9 @@ export function useSignupForm() {
         return;
       }
 
+      const target = getSafeRedirectPath(getRedirectQuery());
       showToast(`Welcome to the Boreal Cellar, ${result.user?.name || 'Patron'}!`, 'success');
-      navigateTo(AUTH_ROUTES.HOME);
+      navigateTo(target);
     } catch {
       setIsSuccessNotice(false);
       setSubmissionFeedback('An unexpected error occurred during account creation. Please try again.');

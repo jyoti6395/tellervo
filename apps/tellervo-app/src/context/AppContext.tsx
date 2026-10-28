@@ -227,19 +227,41 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       supabase.removeChannel(channel);
     };
   }, []);
+
   const [cart, setCart] = useState<CartItem[]>(() => {
+    if (typeof window === 'undefined') return [];
     try {
       const saved = localStorage.getItem('tellervo_cart');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed
+            .map((item: { productId?: string; product?: { id: string }; quantity: number }) => {
+              const pId = item.productId || item.product?.id;
+              const foundProduct = PRODUCTS.find((p) => p.id === pId);
+              if (foundProduct && item.quantity > 0) {
+                return { product: foundProduct, quantity: item.quantity };
+              }
+              return null;
+            })
+            .filter(Boolean) as CartItem[];
+        }
+      }
     } catch {
       // ignore
     }
     return [];
   });
 
+  // Automatically synchronize cart updates to browser storage
   useEffect(() => {
+    if (typeof window === 'undefined') return;
     try {
-      localStorage.setItem('tellervo_cart', JSON.stringify(cart));
+      const simplified = cart.map((item) => ({
+        productId: item.product.id,
+        quantity: item.quantity,
+      }));
+      localStorage.setItem('tellervo_cart', JSON.stringify(simplified));
     } catch {
       // ignore
     }
@@ -262,8 +284,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // ignore
     }
   }, [favorites]);
-
-
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [orders, setOrders] = useState<OrderItem[]>(() => {
     try {

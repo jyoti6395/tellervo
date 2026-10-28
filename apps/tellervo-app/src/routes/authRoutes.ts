@@ -5,6 +5,7 @@ export const AUTH_ROUTES = {
   SIGNUP: APP_ROUTES.SIGNUP.path,
   LOGIN: APP_ROUTES.LOGIN.path,
   HOME: APP_ROUTES.HOME.path,
+  CHECKOUT: APP_ROUTES.CHECKOUT.path,
 } as const;
 
 export type AuthRouteType = typeof AUTH_ROUTES[keyof typeof AUTH_ROUTES];

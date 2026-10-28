@@ -1,6 +1,6 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
-import { Bell, ShoppingBag } from 'lucide-react';
+import { Bell, ShoppingBag, User } from 'lucide-react';
 import { navigateTo, AUTH_ROUTES } from '../routes/authRoutes';
 
 export const Header: React.FC = () => {
@@ -116,14 +116,18 @@ export const Header: React.FC = () => {
           {/* User Profile Avatar */}
           <button
             onClick={() => setActiveTab('profile')}
-            aria-label="Open profile"
-            className="w-8 h-8 rounded-full overflow-hidden shadow-xs hover:opacity-90 active:scale-95 transition-all shrink-0 cursor-pointer"
+            aria-label={isAuthenticated ? "Open profile" : "Sign in"}
+            className="w-8 h-8 rounded-full overflow-hidden shadow-xs hover:opacity-90 active:scale-95 transition-all shrink-0 cursor-pointer flex items-center justify-center bg-[#183324]/5 border border-[#183324]/10"
           >
-            <img
-              src={user.avatarUrl}
-              alt={user.name}
-              className="w-full h-full object-cover"
-            />
+            {isAuthenticated ? (
+              <img
+                src={user.avatarUrl}
+                alt={user.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <User className="w-4 h-4 text-[#183324]" />
+            )}
           </button>
         </div>
       </div>

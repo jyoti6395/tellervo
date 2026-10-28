@@ -3,14 +3,28 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { authService } from '@tellervo/supabase';
 import { navigateTo, AUTH_ROUTES } from '../../../routes/authRoutes';
+import { useNavigation } from '../../../routes/hooks/useNavigation';
 import { useApp } from '../../../context/AppContext';
 import { loginSchema, LoginSchemaType } from '../schemas/authSchemas';
+
+/**
+ * Sanitizes redirect destination to prevent open redirect vulnerabilities.
+ */
+function getSafeRedirectPath(redirect: string | null): string {
+  if (!redirect) return AUTH_ROUTES.HOME;
+  const decoded = decodeURIComponent(redirect);
+  if (decoded.startsWith('/') && !decoded.startsWith('//')) {
+    return decoded;
+  }
+  return AUTH_ROUTES.HOME;
+}
 
 /**
  * Controller Hook for Login Business Logic using React Hook Form & Zod
  */
 export function useLoginForm() {
   const { login, showToast } = useApp();
+  const { getRedirectQuery } = useNavigation();
 
   const [showPassword, setShowPassword] = useState(false);
   const [submissionFeedback, setSubmissionFeedback] = useState<string | null>(null);
@@ -44,8 +58,9 @@ export function useLoginForm() {
         return;
       }
 
+      const target = getSafeRedirectPath(getRedirectQuery());
       showToast(`Welcome, ${result.user?.name || 'Patron'}!`, 'success');
-      navigateTo(AUTH_ROUTES.HOME);
+      navigateTo(target);
     } catch {
       setSubmissionFeedback('An unexpected error occurred during sign in. Please try again.');
     }

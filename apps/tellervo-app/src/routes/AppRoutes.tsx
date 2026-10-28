@@ -15,6 +15,7 @@ import { ShopScreen } from '../screens/ShopScreen';
 import { RewardsScreen } from '../screens/RewardsScreen';
 import { FavoritesScreen } from '../screens/FavoritesScreen';
 import { ProfileScreen } from '../screens/ProfileScreen';
+import { CheckoutScreen } from '../screens/CheckoutScreen';
 import { LoginPage } from '../screens/auth/LoginPage';
 import { SignupPage } from '../screens/auth/SignupPage';
 import { APP_ROUTES, ALL_ROUTES, findRouteByPath } from './routes.config';
@@ -54,6 +55,14 @@ export const AppRoutes: React.FC = () => {
 
   // Render Active Screen inside Store Layout
   const renderScreen = () => {
+    if (currentRoute.path === APP_ROUTES.CHECKOUT.path) {
+      return (
+        <ProtectedRoute route={APP_ROUTES.CHECKOUT}>
+          <CheckoutScreen />
+        </ProtectedRoute>
+      );
+    }
+
     switch (effectiveTab) {
       case 'home':
         return <HomeScreen />;

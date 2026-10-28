@@ -51,7 +51,7 @@ export const ProfileScreen: React.FC = () => {
       await logout();
       showToast('Logged out of Tellervo session', 'info');
       setIsLogoutDialogOpen(false);
-      navigateTo(AUTH_ROUTES.LOGIN);
+      navigateTo(AUTH_ROUTES.HOME);
     } catch {
       showToast('Failed to log out. Please try again.', 'info');
     } finally {

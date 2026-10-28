@@ -58,6 +58,13 @@ export const APP_ROUTES = {
     layout: 'store' as const,
     title: 'Patron Account & Membership',
   },
+  CHECKOUT: {
+    path: '/checkout',
+    name: 'Checkout',
+    access: 'protected' as RouteAccessType,
+    layout: 'store' as const,
+    title: 'Boreal Checkout & Delivery',
+  },
   LOGIN: {
     path: '/login',
     name: 'Sign In',
