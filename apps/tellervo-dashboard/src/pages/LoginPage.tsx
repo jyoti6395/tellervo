@@ -115,7 +115,7 @@ export function LoginPage() {
               <input
                 id="email"
                 type="email"
-                placeholder="admin@tellervo.com"
+                placeholder="name@company.com"
                 autoComplete="email"
                 {...register('email')}
                 className={`w-full h-11 px-3.5 rounded-xl border bg-card text-foreground text-sm font-sans outline-none transition-all placeholder:text-muted-foreground ${
