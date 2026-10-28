@@ -43,7 +43,7 @@ export const HomeScreen: React.FC = () => {
   });
 
   return (
-    <div className="pb-28 px-4 pt-3 max-w-md mx-auto space-y-5 animate-in fade-in duration-200">
+    <div className="pb-28 px-4 pt-3 w-full space-y-5 animate-in fade-in duration-200">
       {/* Location, Weather & Greeting */}
       <div>
         <div className="flex items-center justify-between text-[11px] font-semibold tracking-wider text-[#7A8C7D] uppercase mb-1">
@@ -85,8 +85,9 @@ export const HomeScreen: React.FC = () => {
         </button>
       </div>
 
-      {/* Tellervo Forest Club Card */}
-      <div className="bg-[#12281C] text-white rounded-3xl p-4 shadow-soft border border-[#234230] relative overflow-hidden">
+      <div>
+        {/* Tellervo Forest Club Card */}
+        <div className="bg-[#12281C] text-white rounded-3xl p-4 shadow-soft border border-[#234230] relative overflow-hidden">
         {/* Subtle background glow */}
         <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#E5A953]/10 rounded-full blur-2xl pointer-events-none" />
 
@@ -133,8 +134,8 @@ export const HomeScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Featured Blend Banner: Lingonberry & Birch Bark Sparkler */}
-      <div className="relative rounded-3xl overflow-hidden shadow-soft border border-[#E5DFD1] group">
+        {/* Featured Blend Banner: Lingonberry & Birch Bark Sparkler */}
+        <div className="relative rounded-3xl overflow-hidden shadow-soft border border-[#E5DFD1] group mt-4">
         <div className="relative h-64 w-full">
           <img
             src={HERO_FEATURED.imageUrl}
@@ -200,6 +201,8 @@ export const HomeScreen: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
       </div>
 
       {/* Member Advantage Card */}

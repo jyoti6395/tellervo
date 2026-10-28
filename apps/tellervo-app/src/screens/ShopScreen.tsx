@@ -151,7 +151,7 @@ export const ShopScreen: React.FC = () => {
   });
 
   return (
-    <div className="pb-32 px-4 pt-3 max-w-md mx-auto space-y-4 animate-in fade-in duration-200 relative">
+    <div className="pb-32 px-4 pt-3 w-full space-y-4 animate-in fade-in duration-200 relative">
       {/* Error Notice if fetch failed */}
       {productsError && (
         <div className="bg-[#FFF4E5] rounded-2xl p-2.5 px-3 border border-[#FFE0B2] flex items-center justify-between text-xs text-[#7A4100]">
@@ -182,9 +182,8 @@ export const ShopScreen: React.FC = () => {
           <button
             onClick={handleVoiceSearch}
             aria-label="Voice search"
-            className={`absolute right-3 top-1/2 -translate-y-1/2 text-[#8C9C8F] hover:text-[#183324] transition-colors ${
-              isListening ? 'text-[#D49B4E] animate-pulse' : ''
-            }`}
+            className={`absolute right-3 top-1/2 -translate-y-1/2 text-[#8C9C8F] hover:text-[#183324] transition-colors ${isListening ? 'text-[#D49B4E] animate-pulse' : ''
+              }`}
           >
             <Mic className="w-4 h-4" />
           </button>
@@ -197,57 +196,87 @@ export const ShopScreen: React.FC = () => {
         >
           <SlidersHorizontal className="w-3.5 h-3.5" />
           <span>{t.shop.filters}</span>
-          {selectedTags.length > 0 && (
+          {((activeCategory !== 'all' ? 1 : 0) + selectedTags.length) > 0 && (
             <span className="w-4 h-4 rounded-full bg-[#E5A953] text-[#12281C] text-[10px] font-bold flex items-center justify-center">
-              {selectedTags.length}
+              {(activeCategory !== 'all' ? 1 : 0) + selectedTags.length}
             </span>
           )}
         </button>
       </div>
 
-      {/* Active Filter Chips (shown only when a filter is applied from the filter drawer) */}
-      {(selectedTags.length > 0 || activeCategory !== 'all') && (
-        <div className="flex flex-wrap items-center gap-1.5 pt-0.5 animate-in fade-in duration-150">
-          {activeCategory !== 'all' && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAE5D9] text-[#183324] text-xs font-medium border border-[#DCD5C6]">
-              <span>{categories.find(c => c.id === activeCategory)?.label || activeCategory}</span>
-              <button
-                onClick={() => setActiveCategory('all')}
-                aria-label="Remove category filter"
-                className="hover:text-red-700 transition-colors p-0.5"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </span>
-          )}
+      {/* Active Filter Chips with Section Name (Compact Horizontal Mobile View) */}
 
-          {selectedTags.map(tag => (
-            <span
-              key={tag}
-              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAE5D9] text-[#183324] text-xs font-medium border border-[#DCD5C6]"
+      {/* Active Filter Chips */}
+      {(selectedTags.length > 0 || activeCategory !== "all") && (
+        <div className="flex items-center justify-between gap-2 pt-0.5 pb-1 animate-in fade-in duration-150">
+          {/* Left-aligned selected filters with horizontal scroll */}
+          <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar whitespace-nowrap py-0.5">
+            {activeCategory !== "all" && (
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/80 py-0.5 pl-2.5 pr-1 text-[11px] text-gray-800 transition-colors hover:border-amber-300">
+                <span className="font-semibold">
+                  {categories.find((c) => c.id === activeCategory)?.label || activeCategory}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setActiveCategory("all")}
+                  aria-label="Remove category filter"
+                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-amber-200 hover:text-gray-900"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </span>
+            )}
+
+            {selectedTags.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 py-0.5 pl-2.5 pr-1 text-[11px] text-gray-800 transition-colors hover:border-gray-300 hover:bg-gray-100"
+              >
+                <span className="font-semibold">{tag}</span>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setSelectedTags((prev) =>
+                      prev.filter((t) => t !== tag)
+                    )
+                  }
+                  aria-label={`Remove ${tag} filter`}
+                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-900"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+
+          {/* Right-aligned filter actions */}
+          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+            {/* All filters button */}
+            <button
+              type="button"
+              onClick={() => setIsFilterOpen(true)}
+              className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[11px] font-medium text-gray-700 transition-colors hover:border-gray-500 hover:bg-gray-50"
             >
-              <span>{tag}</span>
-              <button
-                onClick={() => setSelectedTags(prev => prev.filter(t => t !== tag))}
-                aria-label={`Remove ${tag}`}
-                className="hover:text-red-700 transition-colors p-0.5"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </span>
-          ))}
+              <SlidersHorizontal className="h-3 w-3" />
+              All filters
+            </button>
 
-          <button
-            onClick={() => {
-              setSelectedTags([]);
-              setActiveCategory('all');
-            }}
-            className="text-[10px] text-[#8C7443] font-semibold underline hover:text-[#5F4E2B] ml-1"
-          >
-            Reset All
-          </button>
+            {/* Clear all button */}
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedTags([]);
+                setActiveCategory("all");
+              }}
+              className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[11px] font-medium text-gray-700 transition-colors hover:border-gray-500 hover:bg-gray-50"
+            >
+              <RotateCcw className="h-3 w-3" />
+              Clear all
+            </button>
+          </div>
         </div>
       )}
+
 
       {/* Product count and Sort Dropdown */}
       <div className="flex items-center justify-between text-xs text-[#6C7E71] pt-1">
@@ -304,7 +333,7 @@ export const ShopScreen: React.FC = () => {
 
       {/* Shimmer loading skeleton when products are fetching initial page */}
       {isLoadingProducts && products.length === 0 && (
-        <div className="grid grid-cols-2 gap-3 animate-pulse">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 animate-pulse">
           {[1, 2, 3, 4].map(n => (
             <div key={n} className="bg-white rounded-3xl p-3 border border-[#EAE4D7] space-y-2.5">
               <div className="aspect-square bg-[#EFEAE0] rounded-2xl" />
@@ -326,7 +355,7 @@ export const ShopScreen: React.FC = () => {
             {products.length === 0 ? 'No products in database' : 'No matching blends found'}
           </h3>
           <p className="text-xs text-[#718274] max-w-xs mx-auto">
-            {products.length === 0 
+            {products.length === 0
               ? 'Add products in the Admin Dashboard or sync your Supabase collection.'
               : 'Try selecting a different category or clearing your search filters.'}
           </p>
@@ -354,10 +383,10 @@ export const ShopScreen: React.FC = () => {
           return (
             <div
               key={product.id}
-              className="bg-white rounded-3xl p-3 border border-[#EAE4D7] shadow-soft-sm flex flex-col justify-between group hover:border-[#D6CEBF] transition-all"
+              className="bg-white rounded-3xl p-3 sm:p-4 border border-[#EAE4D7] shadow-soft-sm flex flex-col justify-between group hover:border-[#D6CEBF] transition-all hover:shadow-md"
             >
               {/* Image & Badges */}
-              <div 
+              <div
                 onClick={() => setSelectedProduct(product)}
                 className="relative rounded-2xl overflow-hidden aspect-square mb-2.5 bg-[#F6F3EB] cursor-pointer"
               >
@@ -373,21 +402,20 @@ export const ShopScreen: React.FC = () => {
                 {/* Badge top-left */}
                 {product.badge && (
                   <span
-                    className={`absolute top-2 left-2 text-[8px] font-bold tracking-wider px-2 py-0.5 rounded-md uppercase ${
-                      product.badgeType === 'bestseller'
+                    className={`absolute top-2 left-2 text-[8px] font-bold tracking-wider px-2 py-0.5 rounded-md uppercase ${product.badgeType === 'bestseller'
                         ? 'bg-[#183324] text-white'
                         : product.badgeType === 'organic'
-                        ? 'bg-[#E5A953] text-[#12281C]'
-                        : product.badgeType === 'adaptogenic'
-                        ? 'bg-[#D2E7DA] text-[#183624]'
-                        : product.badgeType === 'new-harvest'
-                        ? 'bg-[#D2E8DA] text-[#183624]'
-                        : product.badgeType === 'zero-proof'
-                        ? 'bg-[#162B1D] text-white'
-                        : product.badgeType === 'exclusive'
-                        ? 'bg-[#E5A953] text-[#12281C]'
-                        : 'bg-[#183324] text-[#E5A953] border border-[#E5A953]/40'
-                    }`}
+                          ? 'bg-[#E5A953] text-[#12281C]'
+                          : product.badgeType === 'adaptogenic'
+                            ? 'bg-[#D2E7DA] text-[#183624]'
+                            : product.badgeType === 'new-harvest'
+                              ? 'bg-[#D2E8DA] text-[#183624]'
+                              : product.badgeType === 'zero-proof'
+                                ? 'bg-[#162B1D] text-white'
+                                : product.badgeType === 'exclusive'
+                                  ? 'bg-[#E5A953] text-[#12281C]'
+                                  : 'bg-[#183324] text-[#E5A953] border border-[#E5A953]/40'
+                      }`}
                   >
                     {product.badge}
                   </span>
@@ -403,15 +431,14 @@ export const ShopScreen: React.FC = () => {
                   className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-[#21382A] hover:bg-white shadow-sm transition-transform active:scale-90"
                 >
                   <Heart
-                    className={`w-3.5 h-3.5 ${
-                      isFav ? 'fill-[#C53D43] text-[#C53D43]' : 'text-[#21382A]'
-                    }`}
+                    className={`w-3.5 h-3.5 ${isFav ? 'fill-[#C53D43] text-[#C53D43]' : 'text-[#21382A]'
+                      }`}
                   />
                 </button>
               </div>
 
               {/* Subtitle / Category Notes */}
-              <div 
+              <div
                 onClick={() => setSelectedProduct(product)}
                 className="flex-1 cursor-pointer"
               >
@@ -463,17 +490,10 @@ export const ShopScreen: React.FC = () => {
         </div>
       )}
 
-      {/* End of Catalog notice */}
-      {!hasMoreProducts && products.length > 0 && !isLoadingProducts && (
-        <div className="text-center py-4 text-[11px] text-[#839486] border-t border-[#EAE4D7] mt-2">
-          <span>✨ All {products.length} {products.length === 1 ? 'product' : 'products'} loaded from database</span>
-        </div>
-      )}
-
       {/* Floating Forest Box Bar (Fixed right above bottom nav - only show when user has items selected) */}
       {cartCount > 0 && (
-        <div className="fixed bottom-16 left-0 right-0 z-30 px-4 pointer-events-none">
-          <div className="max-w-md mx-auto pointer-events-auto">
+        <div className="fixed bottom-16 left-0 right-0 w-full z-30 px-4 pointer-events-none">
+          <div className="w-full pointer-events-auto">
             <div className="bg-[#183324] text-white rounded-2xl p-2.5 px-3.5 shadow-float border border-[#284B36] flex items-center justify-between animate-in slide-in-from-bottom-3 duration-200">
               {/* Left bag & count */}
               <div className="flex items-center gap-2.5">

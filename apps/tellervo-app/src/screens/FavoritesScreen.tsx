@@ -64,7 +64,7 @@ export const FavoritesScreen: React.FC = () => {
   };
 
   return (
-    <div className="pb-28 px-4 pt-3 max-w-md mx-auto space-y-4 animate-in fade-in duration-200">
+    <div className="pb-28 px-4 pt-3 w-full space-y-5 animate-in fade-in duration-200">
       {/* Title */}
       <div>
         <h1 className="font-editorial text-[32px] leading-tight font-medium text-[#14261B]">

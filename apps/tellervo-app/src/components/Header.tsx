@@ -47,8 +47,8 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 bg-[#FBF9F5]/95 backdrop-blur-md px-4 py-3 transition-all w-full">
-      <div className="max-w-md mx-auto flex items-center justify-between">
+    <header className="sticky top-0 z-40 bg-[#FBF9F5]/95 backdrop-blur-md px-4 py-3 transition-all w-full border-b border-[#EAE5D9]/60">
+      <div className="w-full flex items-center justify-between">
         {/* Brand Logo & Section exactly as in screenshot */}
         <div
           onClick={() => setActiveTab('home')}
@@ -72,6 +72,8 @@ export const Header: React.FC = () => {
             </span>
           </div>
         </div>
+
+        
 
         {/* Action Controls: Language Pill, Cart, Bell & Avatar */}
         <div className="flex items-center gap-2 sm:gap-2.5">

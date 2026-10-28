@@ -100,7 +100,7 @@ export const ProfileScreen: React.FC = () => {
   const firstName = user.name ? user.name.split(' ')[0] : 'Patron';
 
   return (
-    <div className="pb-28 px-4 pt-3 max-w-md mx-auto space-y-5 animate-in fade-in duration-200">
+    <div className="pb-28 px-4 pt-3 w-full space-y-5 animate-in fade-in duration-200">
       {/* Dynamic Account Overview Greeting Banner */}
       <div className="space-y-0.5 pt-1">
         <span className="text-[10px] font-bold tracking-widest text-[#937548] uppercase block">

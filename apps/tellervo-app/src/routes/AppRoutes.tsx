@@ -75,9 +75,9 @@ export const AppRoutes: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F4EFE6] text-[#1B2B20] flex flex-col items-center">
+    <div className="min-h-screen bg-[#FBF9F5] text-[#1B2B20] flex flex-col selection:bg-[#E5A953]/30 w-full">
       {/* Mobile Web Container */}
-      <div className="w-full max-w-md min-h-screen bg-[#FBF9F5] flex flex-col relative shadow-sm border-x border-[#EBE6DC]/70">
+      <div className="w-full min-h-screen flex flex-col relative">
         {/* Sticky Mobile Header */}
         <Header />
 
@@ -86,7 +86,7 @@ export const AppRoutes: React.FC = () => {
 
         {/* Floating Sommelier AI Chatbot Button (Hidden on Shop page) */}
         {activeTab !== 'shop' && (
-          <div className="fixed bottom-20 right-4 sm:right-[calc(50%-208px+16px)] z-30">
+          <div className="fixed bottom-20 right-4 sm:right-6 z-30">
             <button
               onClick={() => setIsChatbotOpen(true)}
               aria-label="Chat with Tellervo Botanical Sommelier"
