@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Check, RotateCcw } from 'lucide-react';
 import { Product } from '../types';
 
@@ -64,12 +65,12 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
 
   const activeCount = (activeCategory !== 'all' ? 1 : 0) + selectedTags.length;
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+  const drawerContent = (
+    <div className="fixed inset-0 top-0 bottom-0 left-0 right-0 z-50 flex justify-end">
       <div onClick={onClose} className="fixed inset-0 bg-[#0E1D14]/60 backdrop-blur-sm" />
-      <div className="relative w-full max-w-sm bg-[#FBF9F5] h-full flex flex-col shadow-2xl z-10 animate-in slide-in-from-right duration-200">
+      <div className="relative w-full max-w-sm bg-[#FBF9F5] h-full h-screen h-[100dvh] min-h-screen flex flex-col shadow-2xl z-10 animate-in slide-in-from-right duration-200">
         {/* Header */}
-        <div className="p-4 bg-white border-b border-[#EAE4D7] flex items-center justify-between">
+        <div className="p-4 bg-white border-b border-[#EAE4D7] flex items-center justify-between shrink-0">
           <div>
             <h3 className="font-editorial text-xl font-medium text-[#14261B]">Infusion Filters</h3>
             <p className="text-[11px] text-[#78887C]">{activeCount} active criteria</p>
@@ -144,7 +145,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-4 bg-white border-t border-[#EAE4D7] flex items-center gap-3">
+        <div className="p-4 bg-white border-t border-[#EAE4D7] flex items-center gap-3 shrink-0">
           <button
             onClick={clearAll}
             className="flex-1 py-3 border border-[#DCD5C6] text-[#4F6456] text-xs font-semibold rounded-xl hover:bg-[#F6F3EC] flex items-center justify-center gap-1.5"
@@ -161,4 +162,8 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined'
+    ? createPortal(drawerContent, document.body)
+    : drawerContent;
 };
