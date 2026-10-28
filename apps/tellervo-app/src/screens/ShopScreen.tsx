@@ -205,9 +205,22 @@ export const ShopScreen: React.FC = () => {
         </button>
       </div>
 
-      {/* Active Filter Chips */}
-      {selectedTags.length > 0 && (
-        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+      {/* Active Filter Chips (shown only when a filter is applied from the filter drawer) */}
+      {(selectedTags.length > 0 || activeCategory !== 'all') && (
+        <div className="flex flex-wrap items-center gap-1.5 pt-0.5 animate-in fade-in duration-150">
+          {activeCategory !== 'all' && (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAE5D9] text-[#183324] text-xs font-medium border border-[#DCD5C6]">
+              <span>{categories.find(c => c.id === activeCategory)?.label || activeCategory}</span>
+              <button
+                onClick={() => setActiveCategory('all')}
+                aria-label="Remove category filter"
+                className="hover:text-red-700 transition-colors p-0.5"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </span>
+          )}
+
           {selectedTags.map(tag => (
             <span
               key={tag}
@@ -223,60 +236,16 @@ export const ShopScreen: React.FC = () => {
               </button>
             </span>
           ))}
+
           <button
-            onClick={() => setSelectedTags([])}
+            onClick={() => {
+              setSelectedTags([]);
+              setActiveCategory('all');
+            }}
             className="text-[10px] text-[#8C7443] font-semibold underline hover:text-[#5F4E2B] ml-1"
           >
             Reset All
           </button>
-        </div>
-      )}
-
-      {/* Category Filter Bar */}
-      <div className="relative -mx-4 px-4 py-0.5">
-        <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 scroll-smooth">
-          {categories.map(cat => {
-            const isActive = activeCategory === cat.id;
-            const count = categoryCounts[cat.id as keyof typeof categoryCounts] || 0;
-            return (
-              <button
-                key={cat.id}
-                onClick={() => setActiveCategory(cat.id)}
-                className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-semibold whitespace-nowrap transition-all duration-200 active:scale-95 ${
-                  isActive
-                    ? 'bg-[#183324] text-[#FAF8F3] shadow-md shadow-[#183324]/20 ring-1 ring-[#183324]'
-                    : 'bg-white border border-[#E5DFD2] text-[#4F6355] hover:bg-[#F7F4EB] hover:text-[#183324] shadow-soft-sm'
-                }`}
-              >
-                <span>{cat.label}</span>
-                <span
-                  className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full transition-colors ${
-                    isActive
-                      ? 'bg-[#E5A953] text-[#14261B] font-bold'
-                      : 'bg-[#F2ECE1] text-[#78887C] group-hover:bg-[#EAE4D7]'
-                  }`}
-                >
-                  {count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Selected Category Filter Chip */}
-      {activeCategory !== 'all' && (
-        <div className="flex items-center gap-2 pt-0.5 animate-in fade-in duration-150">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAE5D9] text-[#183324] text-xs font-medium border border-[#DCD5C6]">
-            <span>{categories.find(c => c.id === activeCategory)?.label || activeCategory}</span>
-            <button
-              onClick={() => setActiveCategory('all')}
-              aria-label="Remove category filter"
-              className="hover:text-red-700 transition-colors p-0.5"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </span>
         </div>
       )}
 
