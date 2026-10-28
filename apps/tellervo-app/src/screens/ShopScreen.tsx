@@ -1,12 +1,12 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import { 
-  Search, 
-  Mic, 
-  SlidersHorizontal, 
-  Heart, 
-  Plus, 
-  ShoppingBag, 
+import {
+  Search,
+  Mic,
+  SlidersHorizontal,
+  Heart,
+  Plus,
+  ShoppingBag,
   ArrowRight,
   ChevronDown,
   Sparkles,
@@ -18,13 +18,13 @@ import {
 import { FilterDrawer } from '../components/FilterDrawer';
 
 export const ShopScreen: React.FC = () => {
-  const { 
-    products, 
-    addToCart, 
-    favorites, 
-    toggleFavorite, 
-    cartCount, 
-    cartTotal, 
+  const {
+    products,
+    addToCart,
+    favorites,
+    toggleFavorite,
+    cartCount,
+    cartTotal,
     setIsCartOpen,
     setSelectedProduct,
     showToast,
@@ -117,10 +117,10 @@ export const ShopScreen: React.FC = () => {
     // Search query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
-      const match = product.name.toLowerCase().includes(q) || 
-                    product.category.toLowerCase().includes(q) ||
-                    (product.notes && product.notes.toLowerCase().includes(q)) ||
-                    (product.description && product.description.toLowerCase().includes(q));
+      const match = product.name.toLowerCase().includes(q) ||
+        product.category.toLowerCase().includes(q) ||
+        (product.notes && product.notes.toLowerCase().includes(q)) ||
+        (product.description && product.description.toLowerCase().includes(q));
       if (!match) return false;
     }
 
@@ -348,30 +348,26 @@ export const ShopScreen: React.FC = () => {
       {/* Empty State when no products match filters or database is empty */}
       {sortedProducts.length === 0 && !isLoadingProducts && (
         <div className="bg-white rounded-3xl p-8 border border-[#EAE4D7] text-center space-y-3 my-4 shadow-soft-sm">
-          <div className="w-12 h-12 rounded-2xl bg-[#F6F3EB] flex items-center justify-center text-2xl mx-auto">
+          <div className="w-12 h-12 rounded-2xl bg-[#F6F3EB] border border-[#EAE4D7] flex items-center justify-center text-2xl mx-auto shadow-2xs">
             🍃
           </div>
           <h3 className="font-editorial text-lg font-semibold text-[#183122]">
-            {products.length === 0 ? 'No products in database' : 'No matching blends found'}
+            No data available
           </h3>
-          <p className="text-xs text-[#718274] max-w-xs mx-auto">
-            {products.length === 0
-              ? 'Add products in the Admin Dashboard or sync your Supabase collection.'
-              : 'Try selecting a different category or clearing your search filters.'}
+          <p className="text-xs text-[#718274] max-w-xs mx-auto leading-relaxed">
+            We couldn't find any botanical provisions right now. Tap reload to refresh the catalog and check for updates.
           </p>
           <button
             onClick={() => {
-              if (products.length === 0) {
-                refetchProducts();
-              } else {
-                setActiveCategory('all');
-                setSearchQuery('');
-                setSelectedTags([]);
-              }
+              setActiveCategory('all');
+              setSearchQuery('');
+              setSelectedTags([]);
+              refetchProducts();
             }}
-            className="px-4 py-2 bg-[#183324] text-white rounded-xl text-xs font-semibold hover:bg-[#234330] active:scale-95 transition-all shadow-xs"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#183324] text-white rounded-xl text-xs font-semibold hover:bg-[#234330] active:scale-95 transition-all shadow-xs"
           >
-            {products.length === 0 ? 'Refresh Database' : 'Show All Drinks'}
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reload</span>
           </button>
         </div>
       )}
@@ -399,27 +395,7 @@ export const ShopScreen: React.FC = () => {
                   className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
 
-                {/* Badge top-left */}
-                {product.badge && (
-                  <span
-                    className={`absolute top-2 left-2 text-[8px] font-bold tracking-wider px-2 py-0.5 rounded-md uppercase ${product.badgeType === 'bestseller'
-                        ? 'bg-[#183324] text-white'
-                        : product.badgeType === 'organic'
-                          ? 'bg-[#E5A953] text-[#12281C]'
-                          : product.badgeType === 'adaptogenic'
-                            ? 'bg-[#D2E7DA] text-[#183624]'
-                            : product.badgeType === 'new-harvest'
-                              ? 'bg-[#D2E8DA] text-[#183624]'
-                              : product.badgeType === 'zero-proof'
-                                ? 'bg-[#162B1D] text-white'
-                                : product.badgeType === 'exclusive'
-                                  ? 'bg-[#E5A953] text-[#12281C]'
-                                  : 'bg-[#183324] text-[#E5A953] border border-[#E5A953]/40'
-                      }`}
-                  >
-                    {product.badge}
-                  </span>
-                )}
+
 
                 {/* Favorite Heart Button */}
                 <button

@@ -137,6 +137,86 @@ export class FavouriteService {
       return { data: [], isFavorite: false, error: new Error(msg) };
     }
   }
+
+  /**
+   * Removes one or more order/product IDs from ALL users' favourite collections.
+   * Ensures that when an admin deletes a product or order, no orphaned schema IDs remain
+   * in any user's favourite list across the entire database.
+   */
+  public async removeIdFromAllFavorites(
+    targetIds: string | string[]
+  ): Promise<{ error: Error | null; affectedCount: number }> {
+    try {
+      const idsToRemove = (Array.isArray(targetIds) ? targetIds : [targetIds]).filter(Boolean);
+      if (idsToRemove.length === 0) {
+        return { error: null, affectedCount: 0 };
+      }
+
+      // 1. First, attempt to call the RPC function if it exists in the database
+      try {
+        const { error: rpcErr } = await this.client.rpc('remove_deleted_ids_from_favourites', {
+          target_ids: idsToRemove,
+        });
+        if (!rpcErr) {
+          return { error: null, affectedCount: idsToRemove.length };
+        }
+      } catch {
+        // RPC might not be created yet, proceed to table-level fallback
+      }
+
+      // 2. Fallback: Query all rows in the favourite table
+      const { data: rows, error: fetchErr } = await this.client
+        .from('favourite')
+        .select('user_id, order_ids');
+
+      if (fetchErr) {
+        console.error('[FavouriteService] Error querying favourite table during cleanup:', fetchErr);
+        return { error: new Error(fetchErr.message), affectedCount: 0 };
+      }
+
+      if (!rows || rows.length === 0) {
+        return { error: null, affectedCount: 0 };
+      }
+
+      const idSet = new Set(idsToRemove);
+      const affectedRows = rows.filter(
+        (row: Pick<FavouriteRecord, 'user_id' | 'order_ids'>) =>
+          Array.isArray(row.order_ids) && row.order_ids.some((id: string) => idSet.has(id))
+      );
+
+      if (affectedRows.length === 0) {
+        return { error: null, affectedCount: 0 };
+      }
+
+      let errorCount = 0;
+      await Promise.all(
+        affectedRows.map(async (row) => {
+          const nextOrderIds = (row.order_ids || []).filter((id: string) => !idSet.has(id));
+          const { error: updateErr } = await this.client
+            .from('favourite')
+            .update({
+              order_ids: nextOrderIds,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', row.user_id);
+
+          if (updateErr) {
+            console.error(`[FavouriteService] Failed to clean favorites for user ${row.user_id}:`, updateErr.message);
+            errorCount++;
+          }
+        })
+      );
+
+      return {
+        error: errorCount > 0 ? new Error(`Failed to clean favorites for ${errorCount} users`) : null,
+        affectedCount: affectedRows.length - errorCount,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Unknown error cleaning favorites';
+      console.error('[FavouriteService] Exception in removeIdFromAllFavorites:', err);
+      return { error: new Error(msg), affectedCount: 0 };
+    }
+  }
 }
 
 export const favouriteService = new FavouriteService();

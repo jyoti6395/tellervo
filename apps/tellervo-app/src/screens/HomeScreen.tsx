@@ -374,21 +374,7 @@ export const HomeScreen: React.FC = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
 
-                  {product.badge && (
-                    <span
-                      className={`absolute top-2 left-2 text-[9px] font-bold tracking-wider px-2 py-0.5 rounded-md uppercase ${
-                        product.badgeType === 'bestseller'
-                          ? 'bg-white/90 text-[#183324] backdrop-blur-sm'
-                          : product.badgeType === 'seasonal'
-                          ? 'bg-[#E5A953] text-[#12281C]'
-                          : product.badgeType === 'zero-proof'
-                          ? 'bg-[#D2E7DA] text-[#183624]'
-                          : 'bg-white/90 text-[#183324]'
-                      }`}
-                    >
-                      {product.badge}
-                    </span>
-                  )}
+                  
 
                   <button
                     onClick={(e) => {

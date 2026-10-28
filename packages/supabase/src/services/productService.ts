@@ -1,5 +1,6 @@
 ﻿import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase as defaultSupabase } from '../client';
+import { FavouriteService } from './favouriteService';
 import type {
   ProductRecord,
   CreateProductInput,
@@ -207,6 +208,14 @@ export class ProductService {
         return { error: new Error(error.message) };
       }
 
+      // Clean up deleted product ID from all users' favourite collections
+      try {
+        const favService = new FavouriteService(this.client);
+        await favService.removeIdFromAllFavorites(id);
+      } catch (favErr) {
+        console.warn('[ProductService] Warning during favourite cleanup after deletion:', favErr);
+      }
+
       return { error: null };
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'Failed to delete product';
@@ -240,6 +249,14 @@ export class ProductService {
       if (error) {
         console.error('[ProductService] Error deleting multiple products:', error);
         return { error: new Error(error.message) };
+      }
+
+      // Clean up deleted product IDs from all users' favourite collections
+      try {
+        const favService = new FavouriteService(this.client);
+        await favService.removeIdFromAllFavorites(ids);
+      } catch (favErr) {
+        console.warn('[ProductService] Warning during favourite cleanup after bulk deletion:', favErr);
       }
 
       return { error: null };

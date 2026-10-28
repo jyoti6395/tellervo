@@ -217,7 +217,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'products' },
-        () => {
+        (payload: any) => {
+          if (payload?.eventType === 'DELETE' && payload.old?.id) {
+            const deletedId = payload.old.id;
+            setFavorites(prev => prev.filter(id => id !== deletedId));
+            setCart(prev => prev.filter(item => item.product.id !== deletedId));
+          }
           refetchProducts();
         }
       )
@@ -406,14 +411,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setIsLoadingFavorites(true);
       try {
         const { data, error } = await favouriteService.getFavoriteIds(authUser.id);
-        if (!isCancelled && !error && data) {
-          setFavorites(prev => {
-            const merged = Array.from(new Set([...prev, ...data]));
-            if (merged.length !== data.length) {
-              favouriteService.setFavoriteIds(authUser.id, merged);
-            }
-            return merged;
-          });
+        if (!isCancelled && !error && Array.isArray(data)) {
+          // The database is the authoritative source of truth
+          setFavorites(data);
         }
       } catch (err) {
         console.error('[AppContext] Error loading user favorites:', err);
@@ -437,6 +437,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           filter: `user_id=eq.${authUser.id}`,
         },
         (payload: any) => {
+          if (payload?.eventType === 'DELETE') {
+            setFavorites([]);
+            return;
+          }
           const newRow = payload?.new as { order_ids?: string[] } | undefined;
           if (newRow && Array.isArray(newRow.order_ids)) {
             setFavorites(newRow.order_ids);
