@@ -51,7 +51,7 @@ export function mapRecordToProduct(record: ProductRecord): Product {
   return {
     id: record.id,
     name: record.name,
-    category: record.category ? record.category.toUpperCase() : 'BOTANICAL BLEND',
+    category: record.category ? record.category.trim() : 'Botanical Blend',
     badge,
     badgeType,
     price,

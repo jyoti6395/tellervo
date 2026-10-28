@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useMemo } from 'react';
 import { X, Check, RotateCcw } from 'lucide-react';
+import { Product } from '../types';
 
 interface FilterDrawerProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface FilterDrawerProps {
   setSelectedTags: React.Dispatch<React.SetStateAction<string[]>>;
   activeCategory?: string;
   setActiveCategory?: (category: string) => void;
+  products?: Product[];
 }
 
 export const FilterDrawer: React.FC<FilterDrawerProps> = ({
@@ -17,33 +19,35 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
   setSelectedTags,
   activeCategory = 'all',
   setActiveCategory,
+  products = [],
 }) => {
   if (!isOpen) return null;
 
-  const drinkCategories = [
-    { id: 'all', label: '🍸 All Drinks' },
-    { id: 'juices', label: '🧃 Juices' },
-    { id: 'smoothies', label: '🥤 Smoothies' },
-    { id: 'detox', label: '🌿 Detox Drinks' },
-    { id: 'tonics', label: '💧 Tonics & Mixers' },
-    { id: 'sparkling', label: '✨ Wild Sparkling' },
-    { id: 'spirits', label: '🍂 Zero-Proof Spirits' },
-  ];
+  // 1. Dynamic drink categories extracted from the product table category field
+  const dynamicCategories = useMemo(() => {
+    const uniqueCats = Array.from(
+      new Set(
+        products
+          .map(p => (p.category || '').trim())
+          .filter(Boolean)
+      )
+    );
+    return [
+      { id: 'all', label: 'All Drinks' },
+      ...uniqueCats.map(cat => ({ id: cat, label: cat })),
+    ];
+  }, [products]);
 
-  const filterCategories = [
-    {
-      title: 'Dietary & Purity',
-      options: ['Organic', 'Zero Sugar', 'Adaptogenic', 'Zero-Proof 0.0%', 'Wild Foraged'],
-    },
-    {
-      title: 'Packaging & Vessel',
-      options: ['330ml Can', '250ml Glass', '500ml Bottle', '6-Pack Flight'],
-    },
-    {
-      title: 'Harvest Region',
-      options: ['Lapland Boreal Forest', 'Oulu Coastal Taiga', 'Kainuu Wilderness'],
-    },
-  ];
+  // 2. Dynamic packaging & vessels extracted from the product table volume field
+  const dynamicVessels = useMemo(() => {
+    return Array.from(
+      new Set(
+        products
+          .map(p => (p.size || '').trim())
+          .filter(Boolean)
+      )
+    );
+  }, [products]);
 
   const toggleOption = (opt: string) => {
     setSelectedTags(prev =>
@@ -58,6 +62,8 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
     }
   };
 
+  const activeCount = (activeCategory !== 'all' ? 1 : 0) + selectedTags.length;
+
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <div onClick={onClose} className="fixed inset-0 bg-[#0E1D14]/60 backdrop-blur-sm" />
@@ -66,7 +72,7 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
         <div className="p-4 bg-white border-b border-[#EAE4D7] flex items-center justify-between">
           <div>
             <h3 className="font-editorial text-xl font-medium text-[#14261B]">Infusion Filters</h3>
-            <p className="text-[11px] text-[#78887C]">{selectedTags.length} active criteria</p>
+            <p className="text-[11px] text-[#78887C]">{activeCount} active criteria</p>
           </div>
           <button
             onClick={onClose}
@@ -78,15 +84,15 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {/* Drink Category Selection */}
+          {/* Drink Category Selection (from product table category field) */}
           {setActiveCategory && (
             <div>
               <h4 className="text-xs font-bold text-[#14261B] uppercase tracking-wider mb-2.5">
                 Drink Category
               </h4>
               <div className="flex flex-wrap gap-2">
-                {drinkCategories.map(cat => {
-                  const isActive = activeCategory === cat.id;
+                {dynamicCategories.map(cat => {
+                  const isActive = (activeCategory || 'all').toLowerCase() === cat.id.toLowerCase();
                   return (
                     <button
                       key={cat.id}
@@ -106,18 +112,19 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
             </div>
           )}
 
-          {filterCategories.map(cat => (
-            <div key={cat.title}>
-              <h4 className="text-xs font-bold text-[#14261B] uppercase tracking-wider mb-2.5">
-                {cat.title}
-              </h4>
+          {/* Packaging & Vessel Selection (from product table volume field) */}
+          <div>
+            <h4 className="text-xs font-bold text-[#14261B] uppercase tracking-wider mb-2.5">
+              Packaging & Vessel
+            </h4>
+            {dynamicVessels.length > 0 ? (
               <div className="flex flex-wrap gap-2">
-                {cat.options.map(opt => {
-                  const active = selectedTags.includes(opt);
+                {dynamicVessels.map(vessel => {
+                  const active = selectedTags.includes(vessel);
                   return (
                     <button
-                      key={opt}
-                      onClick={() => toggleOption(opt)}
+                      key={vessel}
+                      onClick={() => toggleOption(vessel)}
                       className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 ${
                         active
                           ? 'bg-[#183324] text-white border-[#183324] shadow-sm'
@@ -125,13 +132,15 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                       }`}
                     >
                       {active && <Check className="w-3 h-3 text-[#E5A953]" />}
-                      <span>{opt}</span>
+                      <span>{vessel}</span>
                     </button>
                   );
                 })}
               </div>
-            </div>
-          ))}
+            ) : (
+              <p className="text-xs text-[#78887C]">No vessels found in products</p>
+            )}
+          </div>
         </div>
 
         {/* Footer */}

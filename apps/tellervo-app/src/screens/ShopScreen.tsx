@@ -44,55 +44,32 @@ export const ShopScreen: React.FC = () => {
   const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc' | 'rating'>('popular');
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
 
-  const categories = useMemo(() => [
-    { id: 'all', label: t.shop.allDrinks },
-    { id: 'juices', label: t.shop.juices },
-    { id: 'smoothies', label: t.shop.smoothies },
-    { id: 'detox', label: t.shop.detoxDrinks },
-    { id: 'tonics', label: t.shop.tonicsMixers },
-    { id: 'sparkling', label: t.shop.wildSparkling },
-    { id: 'spirits', label: t.shop.zeroProofSpirits },
-  ], [t.shop]);
+  const categories = useMemo(() => {
+    const uniqueCats = Array.from(
+      new Set(
+        products
+          .map(p => (p.category || '').trim())
+          .filter(Boolean)
+      )
+    );
+    return [
+      { id: 'all', label: t.shop?.allDrinks || 'All Drinks' },
+      ...uniqueCats.map(cat => ({ id: cat, label: cat }))
+    ];
+  }, [products, t.shop]);
 
   // Dynamic counts for each category computed strictly from database products
   const categoryCounts = useMemo(() => {
-    return {
+    const counts: Record<string, number> = {
       all: products.length,
-      juices: products.filter(p => (p.category || '').toUpperCase().includes('JUICE') || p.name.toLowerCase().includes('juice')).length,
-      smoothies: products.filter(p => (p.category || '').toUpperCase().includes('SMOOTHIE') || p.name.toLowerCase().includes('smoothie')).length,
-      detox: products.filter(p => {
-        const cat = (p.category || '').toUpperCase();
-        const name = p.name.toLowerCase();
-        const badge = (p.badge || '').toLowerCase();
-        return (
-          cat.includes('DETOX') || 
-          cat.includes('ELIXIR') || 
-          name.includes('detox') || 
-          name.includes('cleanse') || 
-          name.includes('flush') || 
-          badge.includes('detox') || 
-          badge.includes('purifying') || 
-          badge.includes('liver')
-        );
-      }).length,
-      tonics: products.filter(p => (p.category || '').toUpperCase().includes('TONIC') || p.name.toLowerCase().includes('tonic')).length,
-      sparkling: products.filter(p => {
-        const cat = (p.category || '').toUpperCase();
-        const name = p.name.toLowerCase();
-        return (
-          cat.includes('SPARKLING') || 
-          cat.includes('SPRITZ') || 
-          cat.includes('SODA') || 
-          name.includes('sparkler') || 
-          name.includes('soda') || 
-          name.includes('spritz')
-        );
-      }).length,
-      spirits: products.filter(p => {
-        const cat = (p.category || '').toUpperCase();
-        return cat.includes('SPIRIT') || cat.includes('APERITIF');
-      }).length,
     };
+    products.forEach(p => {
+      const cat = (p.category || '').trim();
+      if (cat) {
+        counts[cat] = (counts[cat] || 0) + 1;
+      }
+    });
+    return counts;
   }, [products]);
 
   // Infinite Scroll Sentinel Observer
@@ -146,67 +123,19 @@ export const ShopScreen: React.FC = () => {
       if (!match) return false;
     }
 
-    // Category Filter Bar logic
-    if (activeCategory === 'juices') {
-      return (product.category || '').toUpperCase().includes('JUICE') || product.name.toLowerCase().includes('juice');
-    }
-    if (activeCategory === 'smoothies') {
-      return (product.category || '').toUpperCase().includes('SMOOTHIE') || product.name.toLowerCase().includes('smoothie');
-    }
-    if (activeCategory === 'detox') {
-      const cat = (product.category || '').toUpperCase();
-      const name = product.name.toLowerCase();
-      const badge = (product.badge || '').toLowerCase();
-      return (
-        cat.includes('DETOX') || 
-        cat.includes('ELIXIR') || 
-        name.includes('detox') || 
-        name.includes('cleanse') || 
-        name.includes('flush') || 
-        badge.includes('detox') || 
-        badge.includes('purifying') || 
-        badge.includes('liver')
-      );
-    }
-    if (activeCategory === 'tonics') {
-      return (product.category || '').toUpperCase().includes('TONIC') || product.name.toLowerCase().includes('tonic');
-    }
-    if (activeCategory === 'sparkling') {
-      const cat = (product.category || '').toUpperCase();
-      const name = product.name.toLowerCase();
-      return (
-        cat.includes('SPARKLING') || 
-        cat.includes('SPRITZ') || 
-        cat.includes('SODA') || 
-        name.includes('sparkler') || 
-        name.includes('soda') || 
-        name.includes('spritz')
-      );
-    }
-    if (activeCategory === 'spirits') {
-      const cat = (product.category || '').toUpperCase();
-      return cat.includes('SPIRIT') || cat.includes('APERITIF');
+    // Category Filter Bar logic (matching product category field)
+    if (activeCategory !== 'all') {
+      if ((product.category || '').trim().toLowerCase() !== activeCategory.trim().toLowerCase()) {
+        return false;
+      }
     }
 
-    // Filter Drawer selected tags logic
+    // Packaging & Vessel Filter logic (matching product volume / size field)
     if (selectedTags.length > 0) {
-      const matchTags = selectedTags.every(tag => {
-        const tLower = tag.toLowerCase();
-        if (tLower === 'organic') return product.badge?.toLowerCase().includes('organic') || product.description?.toLowerCase().includes('organic');
-        if (tLower === 'zero sugar') return product.description?.toLowerCase().includes('zero refined') || product.notes?.toLowerCase().includes('zero sugar') || product.description?.toLowerCase().includes('zero sugar');
-        if (tLower === 'adaptogenic') return product.badgeType === 'adaptogenic' || product.category.toLowerCase().includes('adaptogen');
-        if (tLower.includes('zero-proof') || tLower.includes('0.0%')) return product.badgeType === 'zero-proof' || product.category.toLowerCase().includes('zero-proof') || product.badge?.includes('0.0%');
-        if (tLower === 'wild foraged') return product.badge?.toLowerCase().includes('wild') || product.description?.toLowerCase().includes('wild') || product.name.toLowerCase().includes('wild');
-        if (tLower.includes('can')) return product.size?.toLowerCase().includes('can');
-        if (tLower.includes('glass')) return product.size?.toLowerCase().includes('glass');
-        if (tLower.includes('bottle')) return product.size?.toLowerCase().includes('bottle');
-        if (tLower.includes('flight') || tLower.includes('pack')) return product.size?.toLowerCase().includes('flight') || product.size?.toLowerCase().includes('pack');
-        if (tLower.includes('lapland')) return product.description?.toLowerCase().includes('lapland') || product.notes?.toLowerCase().includes('lapland') || product.harvestLocation?.toLowerCase().includes('lapland');
-        if (tLower.includes('oulu')) return product.description?.toLowerCase().includes('oulu') || product.harvestLocation?.toLowerCase().includes('oulu');
-        if (tLower.includes('kainuu')) return product.description?.toLowerCase().includes('kainuu') || product.harvestLocation?.toLowerCase().includes('kainuu');
-        return true;
+      const matchVessel = selectedTags.some(tag => {
+        return (product.size || '').trim().toLowerCase() === tag.trim().toLowerCase();
       });
-      if (!matchTags) return false;
+      if (!matchVessel) return false;
     }
 
     return true;
@@ -624,6 +553,7 @@ export const ShopScreen: React.FC = () => {
         setSelectedTags={setSelectedTags}
         activeCategory={activeCategory}
         setActiveCategory={setActiveCategory}
+        products={products}
       />
     </div>
   );
