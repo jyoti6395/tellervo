@@ -1,6 +1,6 @@
-import type { SupabaseClient, User } from '@supabase/supabase-js';
+﻿import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { supabase as defaultSupabase } from '../client';
-import type { AuthUser, AuthSession, AuthResult, ProfileRecord } from '../types/auth';
+import type { AuthUser, AuthSession, AuthResult, ProfileRecord, CustomerSignupData } from '../types/auth';
 import { profileService, ProfileService } from './profileService';
 
 export class AuthService {
@@ -249,6 +249,25 @@ export class AuthService {
       return { success: false, error: err instanceof Error ? err.message : 'Network error' };
     }
   }
+
+  /**
+   * Fetches customer sign-up data directly from auth.users (Admins only)
+   * Excludes all administrator accounts.
+   */
+  public async fetchCustomerSignups(): Promise<CustomerSignupData[]> {
+    const { data, error } = await this.client.rpc('get_customer_signups');
+
+    if (error) {
+      throw new Error(error.message || 'Failed to fetch customer sign-up records.');
+    }
+
+    return (data as CustomerSignupData[]) || [];
+  }
 }
 
 export const authService = new AuthService();
+
+export const fetchCustomerSignups = async (): Promise<CustomerSignupData[]> => {
+  return authService.fetchCustomerSignups();
+};
+

@@ -798,15 +798,16 @@ export function ProductManagement() {
                     setCurrentPage(1)
                   }}
                 >
-                  <SelectTrigger className="h-10 text-xs font-medium bg-card border border-border rounded-full text-foreground px-4 shadow-2xs min-w-[155px]">
+                  <SelectTrigger className="h-10 text-xs font-medium bg-card border border-border rounded-full text-foreground px-4 shadow-2xs min-w-[130px]">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                      <SelectValue placeholder="12 Sept - 20 Sept" />
+                      <SelectValue placeholder="All Dates" />
                     </div>
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border rounded-xl">
                     <SelectItem value="all">All Dates</SelectItem>
-                    <SelectItem value="12-20-sept">12 Sept - 20 Sept</SelectItem>
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="this-week">This Week</SelectItem>
                     <SelectItem value="this-month">This Month</SelectItem>
                     <SelectItem value="last-30">Last 30 Days</SelectItem>
                   </SelectContent>
