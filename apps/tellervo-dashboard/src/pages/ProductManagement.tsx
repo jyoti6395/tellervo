@@ -95,164 +95,7 @@ export interface ProductItem {
   updated_by?: string | null
 }
 
-const INITIAL_PRODUCTS: ProductItem[] = [
-  {
-    id: "prod-1",
-    name: "Pine Forest Tonic",
-    description: "Pine Needle • Ashwagandha • Lemon Peel",
-    category: "Adaptogenic Tonics",
-    price: 14.5,
-    stock: 24,
-    status: "Active",
-    image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-PFT-001",
-    volume: "330 ml",
-    addedDate: "12 Sept 2025",
-  },
-  {
-    id: "prod-2",
-    name: "Wild Berry Spritz",
-    description: "Nordic Lingonberry • Hibiscus • Spearmint",
-    category: "Wild Berry Spritz",
-    price: 15.8,
-    stock: 18,
-    status: "Active",
-    image: "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-WBS-002",
-    volume: "250 ml",
-    addedDate: "14 Sept 2025",
-  },
-  {
-    id: "prod-3",
-    name: "Lemon Grass Cooler",
-    description: "Lemongrass • Wild Ginger • Persian Lime",
-    category: "Zero-Proof Spirits",
-    price: 12.5,
-    stock: 32,
-    status: "Active",
-    image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-LGC-003",
-    volume: "500 ml",
-    addedDate: "14 Sept 2025",
-  },
-  {
-    id: "prod-4",
-    name: "Citrus Blossom Tonic",
-    description: "Bergamot • Elderflower • Alpine Botanicals",
-    category: "Adaptogenic Tonics",
-    price: 13.9,
-    stock: 6,
-    status: "Low Stock",
-    image: "https://images.unsplash.com/photo-1536935338788-846bb9981813?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-CBT-004",
-    volume: "330 ml",
-    addedDate: "15 Sept 2025",
-  },
-  {
-    id: "prod-5",
-    name: "Forest Berry Elixir",
-    description: "Mixed Wild Berries • Acerola • Vitamin C",
-    category: "Wild Berry Spritz",
-    price: 16.2,
-    stock: 0,
-    status: "Out of Stock",
-    image: "https://images.unsplash.com/photo-1556881286-fc6915169721?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-FBE-005",
-    volume: "330 ml",
-    addedDate: "15 Sept 2025",
-  },
-  {
-    id: "prod-6",
-    name: "Golden Glow Tonic",
-    description: "Fermented Turmeric • Ginger Root • Raw Honey",
-    category: "Adaptogenic Tonics",
-    price: 14.0,
-    stock: 28,
-    status: "Active",
-    image: "https://images.unsplash.com/photo-1621263764928-df1444c5e859?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-GGT-006",
-    volume: "330 ml",
-    addedDate: "16 Sept 2025",
-  },
-  {
-    id: "prod-7",
-    name: "Coconut Dream Botanical",
-    description: "Young Coconut • Tahitian Vanilla • Lion's Mane",
-    category: "Zero-Proof Spirits",
-    price: 11.9,
-    stock: 15,
-    status: "Active",
-    image: "https://images.unsplash.com/photo-1587888637140-849b25d80ef9?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-CDB-007",
-    volume: "500 ml",
-    addedDate: "17 Sept 2025",
-  },
-  {
-    id: "prod-8",
-    name: "Berry Bloom Spritz",
-    description: "Raspberry • Hibiscus Infusion • Sparkling Spring Water",
-    category: "Wild Berry Spritz",
-    price: 15.5,
-    stock: 8,
-    status: "Low Stock",
-    image: "https://images.unsplash.com/photo-1560512823-829485b8bf24?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-BBS-008",
-    volume: "250 ml",
-    addedDate: "18 Sept 2025",
-  },
-  {
-    id: "prod-9",
-    name: "Nordic Birch Elixir",
-    description: "Birch Sap • Juniper • Angelica Root",
-    category: "Herbal Elixirs",
-    price: 17.5,
-    stock: 22,
-    status: "Active",
-    image: "https://images.unsplash.com/photo-1510812431401-41d2bd2722f3?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-NBE-009",
-    volume: "330 ml",
-    addedDate: "18 Sept 2025",
-  },
-  {
-    id: "prod-10",
-    name: "Smoked Cedar Aperitif",
-    description: "Oak Smoke • Roasted Cedar • Gentian",
-    category: "Zero-Proof Spirits",
-    price: 18.0,
-    stock: 4,
-    status: "Low Stock",
-    image: "https://images.unsplash.com/photo-1527661591475-527312dd65f5?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-SCA-010",
-    volume: "500 ml",
-    addedDate: "19 Sept 2025",
-  },
-  {
-    id: "prod-11",
-    name: "Elderberry Nightcap",
-    description: "Black Elderberry • Chamomile • Valerian",
-    category: "Herbal Elixirs",
-    price: 16.5,
-    stock: 35,
-    status: "Active",
-    image: "https://images.unsplash.com/photo-1546171753-97d7676e4602?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-EBN-011",
-    volume: "330 ml",
-    addedDate: "20 Sept 2025",
-  },
-  {
-    id: "prod-12",
-    name: "Sparkling Sea Buckthorn",
-    description: "Sea Buckthorn • Blood Orange • Rosemary",
-    category: "Wild Berry Spritz",
-    price: 14.8,
-    stock: 0,
-    status: "Out of Stock",
-    image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
-    sku: "TEL-SSB-012",
-    volume: "250 ml",
-    addedDate: "20 Sept 2025",
-  },
-]
+
 
 type SortField = "name" | "price" | "stock" | "category"
 type SortDirection = "asc" | "desc"
@@ -265,10 +108,12 @@ function generateExportFilename() {
 function mapRecordToProductItem(record: ProductRecord): ProductItem {
   let status: ProductItem["status"] = "Active"
   const rawStatus = (record.status || "").toLowerCase()
-  if (rawStatus === "out of stock" || rawStatus === "out_of_stock" || record.stock === 0) {
+  if (rawStatus === "out of stock" || rawStatus === "out_of_stock") {
     status = "Out of Stock"
-  } else if (rawStatus === "low stock" || rawStatus === "low_stock" || (record.stock > 0 && record.stock <= 9)) {
+  } else if (rawStatus === "low stock" || rawStatus === "low_stock") {
     status = "Low Stock"
+  } else {
+    status = "Active"
   }
 
   return {
@@ -290,7 +135,6 @@ function mapRecordToProductItem(record: ProductRecord): ProductItem {
   }
 }
 
-
 const productFormSchema = z.object({
   name: z.string().trim().min(2, "Product name must be at least 2 characters").max(100, "Product name cannot exceed 100 characters"),
   category: z.enum([
@@ -310,7 +154,7 @@ const productFormSchema = z.object({
 export type ProductFormData = z.infer<typeof productFormSchema>
 
 export function ProductManagement() {
-  const [products, setProducts] = React.useState<ProductItem[]>(INITIAL_PRODUCTS)
+  const [products, setProducts] = React.useState<ProductItem[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
   const { isAdmin } = useAuth()
   const [isSaving, setIsSaving] = React.useState(false)
@@ -372,18 +216,18 @@ export function ProductManagement() {
         setIsLoading(true)
         const { data, error } = await productService.fetchProducts()
         if (error) {
-          console.warn("[ProductManagement] Database fetch error, defaulting to local catalog:", error.message)
-          if (isMounted) setProducts(INITIAL_PRODUCTS)
+          console.warn("[ProductManagement] Product fetch error:", error.message)
+          if (isMounted) setProducts([])
           return
         }
         if (data && data.length > 0) {
           if (isMounted) setProducts(data.map(mapRecordToProductItem))
         } else {
-          if (isMounted) setProducts(INITIAL_PRODUCTS)
+          if (isMounted) setProducts([])
         }
       } catch (err) {
         console.error("[ProductManagement] Failed to fetch products:", err)
-        if (isMounted) setProducts(INITIAL_PRODUCTS)
+        if (isMounted) setProducts([])
       } finally {
         if (isMounted) setIsLoading(false)
       }
@@ -405,7 +249,10 @@ export function ProductManagement() {
       setSelectedImageFile(file)
       const reader = new FileReader()
       reader.onload = () => {
-        setFormImage(reader.result as string)
+        const dataUrl = reader.result as string
+        setFormImage(dataUrl)
+        setValue("image", dataUrl, { shouldValidate: true })
+        clearErrors("image")
         toast.success("Image selected for upload")
       }
       reader.readAsDataURL(file)
@@ -479,9 +326,10 @@ export function ProductManagement() {
 
 
   // Form Save using react-hook-form
+  // Form Save using react-hook-form
   const onSubmitProduct = async (data: ProductFormData) => {
-    const computedStatus: ProductItem["status"] =
-      data.stock === 0 ? "Out of Stock" : data.stock <= 9 ? "Low Stock" : data.status
+    // Preserve the admin's exact chosen status directly
+    const chosenStatus: ProductItem["status"] = data.status
 
     setIsSaving(true)
     try {
@@ -506,36 +354,23 @@ export function ProductManagement() {
             volume: data.volume.trim() || "330 ml",
             price: data.price,
             stock: data.stock,
-            status: computedStatus,
+            status: chosenStatus,
             description: data.description.trim(),
             image_url: finalImageUrl || editingProduct.image,
           }
         )
 
         if (updateErr) {
-          console.warn("[ProductManagement] Update fallback:", updateErr.message)
-          setProducts((prev) =>
-            prev.map((item) =>
-              item.id === editingProduct.id
-                ? {
-                    ...item,
-                    name: data.name.trim(),
-                    category: data.category,
-                    volume: data.volume.trim() || "330 ml",
-                    price: data.price,
-                    stock: data.stock,
-                    status: computedStatus,
-                    description: data.description.trim(),
-                    image: finalImageUrl || item.image,
-                  }
-                : item
-            )
-          )
-        } else if (updatedRecord) {
+          console.error("[ProductManagement] Update failed:", updateErr.message)
+          toast.error(`Update failed: ${updateErr.message}`)
+          return
+        }
+
+        if (updatedRecord) {
           const mapped = mapRecordToProductItem(updatedRecord)
           setProducts((prev) => prev.map((item) => (item.id === mapped.id ? mapped : item)))
+          toast.success(`Updated "${data.name}" successfully`)
         }
-        toast.success(`Updated "${data.name}" successfully`)
       } else {
         const skuGenerated = `TEL-${data.category.slice(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`
         const { data: newRecord, error: createErr } = await productService.createProduct({
@@ -544,40 +379,32 @@ export function ProductManagement() {
           volume: data.volume.trim() || "330 ml",
           price: data.price,
           stock: data.stock,
-          status: computedStatus,
+          status: chosenStatus,
           description: data.description.trim(),
           image_url: finalImageUrl || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
           sku: skuGenerated,
         })
 
         if (createErr) {
-          console.warn("[ProductManagement] Create fallback:", createErr.message)
-          const fallbackProduct: ProductItem = {
-            id: `prod-${Date.now()}`,
-            name: data.name.trim(),
-            category: data.category,
-            volume: data.volume.trim() || "330 ml",
-            price: data.price,
-            stock: data.stock,
-            status: computedStatus,
-            description: data.description.trim(),
-            image: finalImageUrl || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
-            sku: skuGenerated,
-            addedDate: new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" }),
-          }
-          setProducts((prev) => [fallbackProduct, ...prev])
-        } else if (newRecord) {
+          console.error("[ProductManagement] Create failed:", createErr.message)
+          toast.error(`Create failed: ${createErr.message}`)
+          return
+        }
+
+        if (newRecord) {
           const mapped = mapRecordToProductItem(newRecord)
           setProducts((prev) => [mapped, ...prev])
+          toast.success(`Created "${data.name}" successfully`)
         }
-        toast.success(`Created new drink "${data.name}"`)
       }
 
       setIsPanelOpen(false)
+      setEditingProduct(null)
       setSelectedImageFile(null)
-    } catch (err) {
-      console.error("[ProductManagement] Save error:", err)
-      toast.error("Failed to save product.")
+      setFormImage("")
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : "An error occurred while saving"
+      toast.error(errorMsg)
     } finally {
       setIsSaving(false)
     }
@@ -1154,14 +981,14 @@ export function ProductManagement() {
                     Code
                   </TableHead>
 
-                  {/* Category / Subcategory Column */}
+                  {/* Category / Category Column */}
                   <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
                     <button
                       type="button"
                       onClick={() => handleHeaderSort("category")}
                       className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-medium text-xs text-muted-foreground"
                     >
-                      <span>Subcategory</span>
+                      <span>Category</span>
                       {sortField === "category" ? (
                         sortDirection === "asc" ? (
                           <ArrowUp className="w-3.5 h-3.5 text-foreground" />
@@ -1237,7 +1064,7 @@ export function ProductManagement() {
                     <TableCell colSpan={10} className="h-56 text-center">
                       <div className="flex flex-col items-center justify-center p-6 space-y-3">
                         <Loader2 className="w-8 h-8 text-primary animate-spin text-[#183626] dark:text-[#dca038]" />
-                        <p className="font-medium text-xs text-muted-foreground">Loading products from database...</p>
+                        <p className="font-medium text-xs text-muted-foreground">Loading products...</p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -1368,7 +1195,7 @@ export function ProductManagement() {
                           </span>
                         </TableCell>
 
-                        {/* Action Menu (Image 1 ••• horizontal dots) */}
+                        {/* Action Menu (Image 1 ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ horizontal dots) */}
                         <TableCell className="py-4 px-4 text-center">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -1721,7 +1548,7 @@ export function ProductManagement() {
                   <label className="block text-xs font-semibold text-foreground font-sans">
                     Product Image <span className="text-rose-500">*</span>
                   </label>
-                  <span className="text-[11px] text-muted-foreground">PNG, JPG, WebP (max 5MB)</span>
+                  <span className="text-[11px] text-muted-foreground">PNG, JPG, WebP, GIF (max 5MB)</span>
                 </div>
 
                 <input
@@ -1939,3 +1766,4 @@ export function ProductManagement() {
     </div>
   )
 }
+
