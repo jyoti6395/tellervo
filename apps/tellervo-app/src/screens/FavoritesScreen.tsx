@@ -65,25 +65,10 @@ export const FavoritesScreen: React.FC = () => {
 
   return (
     <div className="pb-28 px-4 pt-3 max-w-md mx-auto space-y-4 animate-in fade-in duration-200">
-      {/* Title & Vault Status */}
+      {/* Title */}
       <div>
-        <div className="flex items-center justify-between text-[11px] font-semibold tracking-wider uppercase mb-1">
-          <span className="text-[#847350]">{t.favorites?.personalCellar || 'PERSONAL CELLAR'}</span>
-          <span className="px-2.5 py-0.5 rounded-full bg-[#EAF3ED] border border-[#CFE2D4] text-[#245233] text-[10px] font-bold flex items-center gap-1.5 normal-case">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#277E46] animate-pulse" />
-            <span>{isLoading ? 'Syncing...' : (t.favorites?.vaultSynced || 'Vault Synced')}</span>
-          </span>
-        </div>
-
         <h1 className="font-editorial text-[32px] leading-tight font-medium text-[#14261B]">
-          {t.favorites?.myVault || 'My Vault'}{' '}
-          <span className="text-xl font-normal text-[#6F8273]">
-            {isLoading ? (
-              <span className="inline-block w-16 h-5 bg-[#E8E2D5] rounded-full animate-pulse align-middle ml-1" />
-            ) : (
-              `(${savedItems.length} ${t.favorites?.savedCount || 'Items'})`
-            )}
-          </span>
+          {t.favorites?.myVault || 'My Vault'}
         </h1>
 
         <p className="text-xs text-[#5D6F61] mt-1">
