@@ -12,7 +12,8 @@ import {
   Sparkles,
   RotateCcw,
   Database,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { FilterDrawer } from '../components/FilterDrawer';
 
@@ -207,19 +208,18 @@ export const ShopScreen: React.FC = () => {
       {/* Active Filter Chips */}
       {selectedTags.length > 0 && (
         <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-          <span className="text-[10px] font-bold text-[#7E8F82] uppercase tracking-wider">Filters:</span>
           {selectedTags.map(tag => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#EAE5D9] text-[#183324] text-[11px] font-medium border border-[#DCD5C6]"
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAE5D9] text-[#183324] text-xs font-medium border border-[#DCD5C6]"
             >
               <span>{tag}</span>
               <button
                 onClick={() => setSelectedTags(prev => prev.filter(t => t !== tag))}
                 aria-label={`Remove ${tag}`}
-                className="hover:text-red-700 font-bold ml-0.5 text-xs leading-none"
+                className="hover:text-red-700 transition-colors p-0.5"
               >
-                ×
+                <X className="w-3.5 h-3.5" />
               </button>
             </span>
           ))}
@@ -264,29 +264,19 @@ export const ShopScreen: React.FC = () => {
         </div>
       </div>
 
-      {/* Category Micro-Banner for Context */}
+      {/* Selected Category Filter Chip */}
       {activeCategory !== 'all' && (
-        <div className="bg-[#FAF7EF] rounded-2xl p-3 border border-[#E9E1CE] flex items-center justify-between text-xs animate-in fade-in duration-200">
-          <div className="flex items-center gap-2.5 min-w-0 pr-2">
-            <div className="w-8 h-8 rounded-xl bg-[#183324] text-[#E5A953] flex items-center justify-center shrink-0 shadow-xs">
-              <Sparkles className="w-4 h-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="font-bold text-[#183122] flex items-center gap-1.5 truncate">
-                <span>{categories.find(c => c.id === activeCategory)?.label}</span>
-                <span className="text-[10px] font-semibold text-[#869689] uppercase">• {sortedProducts.length} {sortedProducts.length === 1 ? 'Blend' : 'Blends'}</span>
-              </div>
-              <p className="text-[11px] text-[#637568] truncate">
-                {t.shop.categoryDescriptions?.[activeCategory as keyof typeof t.shop.categoryDescriptions] || 'Artisanal Nordic craft beverages from database'}
-              </p>
-            </div>
-          </div>
-          <button
-            onClick={() => setActiveCategory('all')}
-            className="text-[10px] font-bold text-[#8C7443] hover:underline uppercase shrink-0 px-2 py-1 rounded-lg bg-white border border-[#E8DFC8] active:scale-95 transition-all shadow-2xs"
-          >
-            Clear
-          </button>
+        <div className="flex items-center gap-2 pt-0.5 animate-in fade-in duration-150">
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#EAE5D9] text-[#183324] text-xs font-medium border border-[#DCD5C6]">
+            <span>{categories.find(c => c.id === activeCategory)?.label || activeCategory}</span>
+            <button
+              onClick={() => setActiveCategory('all')}
+              aria-label="Remove category filter"
+              className="hover:text-red-700 transition-colors p-0.5"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </span>
         </div>
       )}
 
