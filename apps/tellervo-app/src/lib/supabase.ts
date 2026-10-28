@@ -8,6 +8,9 @@ export {
   createCustomSupabaseClient,
   productService,
   ProductService,
+  favouriteService,
+  FavouriteService,
   type ProductRecord,
   type ProductFilters,
+  type FavouriteRecord,
 } from '@tellervo/supabase';

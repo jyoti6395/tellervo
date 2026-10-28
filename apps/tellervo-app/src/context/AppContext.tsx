@@ -3,7 +3,7 @@ import { TabType, Product, CartItem, UserProfile, RewardItem, OrderItem, Languag
 import { PRODUCTS, INITIAL_USER, RECENT_ORDERS } from '../data/mockData';
 import { translations, Translations } from '../i18n/translations';
 import confetti from 'canvas-confetti';
-import { authService, profileService, AuthUser, AuthResult, supabase, productService } from '@tellervo/supabase';
+import { authService, profileService, AuthUser, AuthResult, supabase, productService, favouriteService } from '@tellervo/supabase';
 import { mapRecordToProduct } from '../lib/productMapper';
 import { ALL_ROUTES } from '../routes/routes.config';
 import { navigateTo } from '../routes/hooks/useNavigation';
@@ -243,14 +243,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // ignore
     }
   }, [cart]);
-  const [favorites, setFavorites] = useState<string[]>([
-    'spruce-needle-lime',
-    'taiga-botanical-reserve',
-    'cloudberry-golden-sparkler',
-    'arctic-juniper-tonic',
-    'wild-rowanberry-aperitif',
-    'bilberry-forest-nectar',
-  ]);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('tellervo_favorites');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tellervo_favorites', JSON.stringify(favorites));
+    } catch {
+      // ignore
+    }
+  }, [favorites]);
+
+
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [orders, setOrders] = useState<OrderItem[]>(() => {
     try {
@@ -358,6 +369,88 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, []);
 
+  // Load and sync user favorites from Supabase favourite table
+  useEffect(() => {
+    if (!authUser?.id) return;
+    let isCancelled = false;
+
+    const loadDbFavorites = async () => {
+      try {
+        const { data, error } = await favouriteService.getFavoriteIds(authUser.id);
+        if (!isCancelled && !error && data) {
+          setFavorites(prev => {
+            const merged = Array.from(new Set([...prev, ...data]));
+            if (merged.length !== data.length) {
+              favouriteService.setFavoriteIds(authUser.id, merged);
+            }
+            return merged;
+          });
+        }
+      } catch (err) {
+        console.error('[AppContext] Error loading user favorites:', err);
+      }
+    };
+
+    loadDbFavorites();
+
+    const channel = supabase
+      .channel(`user-favourites-${authUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'favourite',
+          filter: `user_id=eq.${authUser.id}`,
+        },
+        (payload: any) => {
+          const newRow = payload?.new as { order_ids?: string[] } | undefined;
+          if (newRow && Array.isArray(newRow.order_ids)) {
+            setFavorites(newRow.order_ids);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isCancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [authUser?.id]);
+
+  // Ensure all favorited items are populated in the products list
+  useEffect(() => {
+    if (!favorites.length) return;
+    const missingIds = favorites.filter(id => !products.some(p => p.id === id));
+    if (!missingIds.length) return;
+
+    let isMounted = true;
+    const fetchMissing = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .in('id', missingIds);
+
+        if (!error && data && data.length && isMounted) {
+          const mapped = data.map(mapRecordToProduct);
+          setProducts(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const newProds = mapped.filter(m => !existingIds.has(m.id));
+            return [...prev, ...newProds];
+          });
+        }
+      } catch {
+        // ignore
+      }
+    };
+
+    fetchMissing();
+    return () => {
+      isMounted = false;
+    };
+  }, [favorites, products]);
+
   const login = async (email: string, password: string, rememberMe = false): Promise<AuthResult> => {
     const result = await authService.signIn(email, password, rememberMe);
     if (result.success && result.user) {
@@ -408,6 +501,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setAuthUser(null);
     setIsAuthenticated(false);
     setUser(INITIAL_USER);
+    setFavorites([]);
+    try {
+      localStorage.removeItem('tellervo_favorites');
+    } catch {
+      // ignore
+    }
     setActiveTab('home');
   };
 
@@ -503,12 +602,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const toggleFavorite = (productId: string) => {
-    setFavorites(prev => {
-      const exists = prev.includes(productId);
-      const next = exists ? prev.filter(id => id !== productId) : [...prev, productId];
-      showToast(exists ? 'Removed from Forest Vault' : 'Saved to Forest Vault');
-      return next;
-    });
+    const exists = favorites.includes(productId);
+    const updated = exists
+      ? favorites.filter(id => id !== productId)
+      : [...favorites, productId];
+
+    setFavorites(updated);
+    showToast(exists ? 'Removed from Forest Vault' : 'Saved to Forest Vault');
+
+    if (authUser?.id) {
+      favouriteService.setFavoriteIds(authUser.id, updated).catch(err => {
+        console.warn('[AppContext] Could not persist favorite to Supabase:', err);
+      });
+    }
   };
 
   const addSeeds = (amount: number, title: string) => {

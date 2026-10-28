@@ -1,5 +1,6 @@
-﻿import type { ProfileRecord } from './auth';
+import type { ProfileRecord } from './auth';
 import type { ProductRecord, CreateProductInput, UpdateProductInput } from './product';
+import type { FavouriteRecord, UpsertFavouriteInput } from './favourite';
 
 export interface Database {
   public: {
@@ -13,6 +14,11 @@ export interface Database {
         Row: ProductRecord;
         Insert: CreateProductInput;
         Update: UpdateProductInput;
+      };
+      favourite: {
+        Row: FavouriteRecord;
+        Insert: UpsertFavouriteInput;
+        Update: Partial<UpsertFavouriteInput>;
       };
     };
   };
