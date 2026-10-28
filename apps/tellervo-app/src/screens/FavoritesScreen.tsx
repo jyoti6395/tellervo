@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
 import { 
-  Truck, 
-  Zap, 
   RotateCcw, 
   ShoppingBag, 
   Heart, 
   Bell, 
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  Search,
+  X
 } from 'lucide-react';
 
 export const FavoritesScreen: React.FC = () => {
@@ -26,12 +26,51 @@ export const FavoritesScreen: React.FC = () => {
     setActiveTab
   } = useApp();
 
-  const [activeTabFilter, setActiveTabFilter] = useState<'all' | 'refills' | 'stock'>('all');
   const [stockNotifyOn, setStockNotifyOn] = useState(true);
   const [autoRefillInterval, setAutoRefillInterval] = useState('Every 3 weeks');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Filter saved items matching populated products
   const savedItems = products.filter(p => favorites.includes(p.id));
+
+  // Extract unique categories dynamically from actual favorite items
+  const availableCategories = useMemo(() => {
+    const cats = Array.from(
+      new Set(
+        savedItems
+          .map(p => (p.category || '').trim())
+          .filter(Boolean)
+      )
+    );
+    return [
+      { id: 'all', label: 'All Saved', count: savedItems.length },
+      ...cats.map(cat => ({
+        id: cat,
+        label: cat,
+        count: savedItems.filter(p => (p.category || '').trim().toLowerCase() === cat.toLowerCase()).length,
+      })),
+    ];
+  }, [savedItems]);
+
+  // Filter items based on selected category and search query
+  const displayedItems = useMemo(() => {
+    return savedItems.filter(p => {
+      const matchesCategory =
+        selectedCategory === 'all' ||
+        (p.category || '').trim().toLowerCase() === selectedCategory.toLowerCase();
+
+      const query = searchQuery.trim().toLowerCase();
+      const matchesSearch =
+        !query ||
+        p.name.toLowerCase().includes(query) ||
+        (p.description || '').toLowerCase().includes(query) ||
+        (p.size || '').toLowerCase().includes(query) ||
+        (p.category || '').toLowerCase().includes(query);
+
+      return matchesCategory && matchesSearch;
+    });
+  }, [savedItems, selectedCategory, searchQuery]);
 
   // Determine if data is still loading:
   // 1. Initial product catalog loading
@@ -42,26 +81,6 @@ export const FavoritesScreen: React.FC = () => {
     isLoadingFavorites ||
     (favorites.length > 0 && savedItems.length < favorites.length)
   );
-
-  const refillsCount = savedItems.filter(p => !!p.autoRefillOptions).length;
-  const stockCount = savedItems.filter(p => p.stockStatus === 'just-restocked' || p.stockStatus === 'low-stock').length;
-
-  const filteredSavedItems = savedItems.filter(p => {
-    if (activeTabFilter === 'refills') return !!p.autoRefillOptions;
-    if (activeTabFilter === 'stock') return p.stockStatus === 'just-restocked' || p.stockStatus === 'low-stock';
-    return true;
-  });
-
-  const vaultTotal = savedItems.reduce((sum, item) => sum + item.price, 0);
-
-  const handleReorderAllFavorites = () => {
-    if (savedItems.length === 0) return;
-    savedItems.forEach(item => {
-      addToCart(item);
-    });
-    triggerConfetti();
-    showToast(`Added ${savedItems.length} vault favorites to Forest Box!`);
-  };
 
   return (
     <div className="pb-28 px-4 pt-3 w-full space-y-5 animate-in fade-in duration-200">
@@ -76,59 +95,61 @@ export const FavoritesScreen: React.FC = () => {
         </p>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setActiveTabFilter('all')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-            activeTabFilter === 'all'
-              ? 'bg-white text-[#183122] shadow-soft-sm border border-[#DDD6C8] font-bold'
-              : 'bg-[#EDE7DB]/70 text-[#6B7D70] hover:bg-[#E5DFD1]'
-          }`}
-        >
-          {t.favorites?.allSaved || 'All Saved'} {isLoading ? '' : `(${savedItems.length})`}
-        </button>
+      {/* Dynamic Filters for Available Favorite Orders Data */}
+      {!isLoading && savedItems.length > 0 && (
+        <div className="space-y-2.5">
+          {/* Quick Search inside Favorites (if multiple items or searching) */}
+          {savedItems.length > 2 && (
+            <div className="relative w-full">
+              <Search className="w-4 h-4 text-[#8C9C8F] absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search favorite orders..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-9 py-2 bg-white border border-[#E5DFD0] rounded-2xl text-xs text-[#1C3122] placeholder-[#8C9C8F] shadow-soft-sm focus:outline-none focus:ring-1 focus:ring-[#183324]"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8C9C8F] hover:text-[#183324]"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
 
-        <button
-          onClick={() => setActiveTabFilter('refills')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-            activeTabFilter === 'refills'
-              ? 'bg-white text-[#183122] shadow-soft-sm border border-[#DDD6C8] font-bold'
-              : 'bg-[#EDE7DB]/70 text-[#6B7D70] hover:bg-[#E5DFD1]'
-          }`}
-        >
-          {t.favorites?.autoRefills || 'Auto-Refills'} {isLoading ? '' : `(${refillsCount})`}
-        </button>
-
-        <button
-          onClick={() => setActiveTabFilter('stock')}
-          className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-            activeTabFilter === 'stock'
-              ? 'bg-white text-[#183122] shadow-soft-sm border border-[#DDD6C8] font-bold'
-              : 'bg-[#EDE7DB]/70 text-[#6B7D70] hover:bg-[#E5DFD1]'
-          }`}
-        >
-          {t.favorites?.backInStock || 'Stock Alert'} {isLoading ? '' : `(${stockCount})`}
-        </button>
-      </div>
+          {/* Dynamic Filter Pills extracted from actual favorite orders */}
+          {availableCategories.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 whitespace-nowrap">
+              {availableCategories.map(cat => {
+                const isActive = selectedCategory.toLowerCase() === cat.id.toLowerCase();
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setSelectedCategory(cat.id)}
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
+                      isActive
+                        ? 'bg-white text-[#183122] shadow-soft-sm border border-[#DDD6C8] font-bold'
+                        : 'bg-[#EDE7DB]/70 text-[#6B7D70] hover:bg-[#E5DFD1]'
+                    }`}
+                  >
+                    <span>{cat.label}</span>
+                    <span className={isActive ? 'text-[#183122] font-bold' : 'text-[#7D8F82]'}>
+                      ({cat.count})
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Skeleton Loading State */}
       {isLoading ? (
         <div className="space-y-4 animate-pulse">
-          {/* Nordic Ritual Bundle Hero Restock Card Skeleton */}
-          <div className="bg-[#183324] text-white rounded-3xl p-5 shadow-soft border border-[#264833] space-y-3.5">
-            <div className="flex items-start justify-between">
-              <div className="space-y-2">
-                <div className="h-2.5 w-24 bg-white/20 rounded" />
-                <div className="h-6 w-44 bg-white/20 rounded-md" />
-              </div>
-              <div className="h-7 w-20 bg-white/20 rounded-md" />
-            </div>
-
-            <div className="h-8 w-full bg-white/10 rounded-xl" />
-            <div className="h-11 w-full bg-[#E5A953]/60 rounded-2xl" />
-          </div>
-
           {/* Section Header Skeleton */}
           <div className="flex items-center justify-between text-xs pt-1">
             <div className="h-3 w-36 bg-[#E8E2D5] rounded" />
@@ -168,54 +189,22 @@ export const FavoritesScreen: React.FC = () => {
         </div>
       ) : savedItems.length > 0 ? (
         <>
-          {/* Nordic Ritual Bundle Hero Restock Card */}
-          <div className="bg-[#183324] text-white rounded-3xl p-5 shadow-soft border border-[#264833] relative overflow-hidden space-y-3.5">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[10px] font-bold tracking-widest text-[#E5A953] uppercase block mb-0.5">
-                  VAULT RESTOCK
-                </span>
-                <h3 className="font-editorial text-2xl font-medium text-white leading-tight">
-                  1-Tap Restock All Vault
-                </h3>
-              </div>
-              <div className="text-right">
-                <span className="font-editorial text-2xl font-bold text-white">€{vaultTotal.toFixed(2)}</span>
-                <span className="text-xs text-[#95B69F] line-through ml-1.5">€{(vaultTotal * 1.15).toFixed(2)}</span>
-              </div>
-            </div>
-
-            {/* Chilled delivery badge */}
-            <div className="px-3 py-1.5 rounded-xl bg-white/10 backdrop-blur-sm border border-white/10 flex items-center justify-between text-xs text-[#D1E8D9]">
-              <span className="flex items-center gap-1.5">
-                <Truck className="w-3.5 h-3.5 text-[#E5A953]" />
-                <span>Qualifies for Free Subarctic Chilled Delivery</span>
-              </span>
-              <span className="text-[10px] font-bold text-[#E5A953] tracking-wider">ACTIVE</span>
-            </div>
-
-            {/* 1-Tap CTA button */}
-            <button
-              onClick={handleReorderAllFavorites}
-              className="w-full py-3.5 bg-[#E5A953] text-[#12281C] rounded-2xl font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#F3B966] active:scale-[0.98] transition-all shadow-md"
-            >
-              <Zap className="w-4 h-4 fill-[#12281C]" />
-              <span>1-Tap Reorder All Favorites ({savedItems.length})</span>
-            </button>
-          </div>
-
           {/* Saved Forest Provisions Header */}
           <div className="flex items-center justify-between text-xs pt-1">
             <span className="text-[11px] font-bold tracking-wider text-[#816C46] uppercase">
               SAVED FOREST PROVISIONS
             </span>
-            <span className="text-[11px] text-[#78887C]">{filteredSavedItems.length} shown</span>
+            <span className="text-[11px] text-[#78887C]">
+              {displayedItems.length === savedItems.length
+                ? `${savedItems.length} shown`
+                : `${displayedItems.length} of ${savedItems.length} shown`}
+            </span>
           </div>
 
           {/* Saved Items List */}
-          {filteredSavedItems.length > 0 ? (
+          {displayedItems.length > 0 ? (
             <div className="space-y-3">
-              {filteredSavedItems.map(item => (
+              {displayedItems.map(item => (
                 <div
                   key={item.id}
                   className="bg-white rounded-3xl p-3.5 border border-[#E9E3D6] shadow-soft-sm space-y-3 group"
@@ -354,10 +343,13 @@ export const FavoritesScreen: React.FC = () => {
             <div className="bg-white rounded-3xl p-6 border border-[#E9E3D6] text-center space-y-2">
               <p className="text-xs text-[#6F8073]">No provisions matching this filter in your vault.</p>
               <button
-                onClick={() => setActiveTabFilter('all')}
+                onClick={() => {
+                  setSelectedCategory('all');
+                  setSearchQuery('');
+                }}
                 className="text-xs font-semibold text-[#183122] underline"
               >
-                View all saved items ({savedItems.length})
+                Clear filter & show all ({savedItems.length})
               </button>
             </div>
           )}
