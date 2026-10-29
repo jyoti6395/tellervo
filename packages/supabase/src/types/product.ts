@@ -62,6 +62,8 @@ export interface ProductFilters {
   category?: string;
   status?: ProductStatus | 'all';
   search?: string;
+  volume?: string | string[];
+  priceRange?: 'all' | 'under-100' | '100-500' | 'under-500' | 'above-500';
   limit?: number;
   offset?: number;
 }

@@ -35,10 +35,30 @@ export class ProductService {
         query = query.eq('status', filters.status);
       }
 
+      if (filters?.volume) {
+        if (Array.isArray(filters.volume) && filters.volume.length > 0) {
+          query = query.in('volume', filters.volume);
+        } else if (typeof filters.volume === 'string' && filters.volume !== 'all') {
+          query = query.eq('volume', filters.volume);
+        }
+      }
+
+      if (filters?.priceRange && filters.priceRange !== 'all') {
+        if (filters.priceRange === 'under-100') {
+          query = query.or('discount_price.lt.100,original_price.lt.100');
+        } else if (filters.priceRange === '100-500') {
+          query = query.or('and(discount_price.gte.100,discount_price.lte.500),and(original_price.gte.100,original_price.lte.500)');
+        } else if (filters.priceRange === 'under-500') {
+          query = query.or('discount_price.lt.500,original_price.lt.500');
+        } else if (filters.priceRange === 'above-500') {
+          query = query.or('discount_price.gt.500,original_price.gt.500');
+        }
+      }
+
       if (filters?.search) {
         const searchVal = `%${filters.search.trim()}%`;
         query = query.or(
-          `name.ilike.${searchVal},description.ilike.${searchVal},sku.ilike.${searchVal}`
+          `name.ilike.${searchVal},description.ilike.${searchVal},sku.ilike.${searchVal},category.ilike.${searchVal}`
         );
       }
 
@@ -335,6 +355,40 @@ export class ProductService {
       const errorMsg = err instanceof Error ? err.message : 'Image upload failed';
       console.error('[ProductService] Exception uploading product image:', err);
       return { url: null, error: new Error(errorMsg) };
+    }
+  }
+  /**
+   * Fetches all unique categories and packaging vessels (volumes) from products in database
+   */
+  public async fetchDistinctFilterOptions(): Promise<{
+    categories: string[];
+    volumes: string[];
+    error: Error | null;
+  }> {
+    try {
+      const { data, error } = await this.client
+        .from('products')
+        .select('category, volume');
+
+      if (error) {
+        console.error('[ProductService] Error fetching distinct filter options:', error);
+        return { categories: [], volumes: [], error: new Error(error.message) };
+      }
+
+      const raw = data || [];
+      const categories = Array.from(
+        new Set(raw.map((p: any) => (p.category || '').trim()).filter(Boolean))
+      ).sort((a: string, b: string) => a.localeCompare(b));
+
+      const volumes = Array.from(
+        new Set(raw.map((p: any) => (p.volume || '').trim()).filter(Boolean))
+      ).sort((a: string, b: string) => a.localeCompare(b));
+
+      return { categories, volumes, error: null };
+    } catch (err: unknown) {
+      const errorMsg =
+        err instanceof Error ? err.message : 'Unknown error fetching filter options';
+      return { categories: [], volumes: [], error: new Error(errorMsg) };
     }
   }
 }

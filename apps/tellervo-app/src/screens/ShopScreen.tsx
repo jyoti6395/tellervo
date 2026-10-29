@@ -1,6 +1,8 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
-import { RotateCcw, AlertCircle } from 'lucide-react';
+import { RotateCcw, AlertCircle, Loader2 } from 'lucide-react';
+import { productService, ProductFilters } from '@tellervo/supabase';
+import { mapRecordToProduct } from '../lib/productMapper';
 import { FilterDrawer } from '../components/FilterDrawer';
 import { useNavigation } from '../routes/hooks/useNavigation';
 import { Product } from '../types';
@@ -33,6 +35,7 @@ export const ShopScreen: React.FC = () => {
 
   // Filter & Search State
   const [activeCategory, setActiveCategory] = useState<string>('all');
+  const [priceFilter, setPriceFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -40,20 +43,164 @@ export const ShopScreen: React.FC = () => {
   const [sortBy, setSortBy] = useState<SortOption>('popular');
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
 
-  // Dynamic Categories from database products
+  // Database search state
+  const [dbSearchResults, setDbSearchResults] = useState<Product[]>([]);
+  const [isSearchingDb, setIsSearchingDb] = useState(false);
+  const [hasMoreDbResults, setHasMoreDbResults] = useState(false);
+  const [isFetchingMoreDb, setIsFetchingMoreDb] = useState(false);
+  const [dbAllCategories, setDbAllCategories] = useState<string[]>([]);
+
+  // Fetch all distinct categories directly from database on mount
+  useEffect(() => {
+    productService.fetchDistinctFilterOptions().then(({ categories: cats }: { categories: string[]; volumes: string[] }) => {
+      if (cats && cats.length > 0) {
+        setDbAllCategories(cats);
+      }
+    });
+  }, []);
+
+  // Dynamic Categories merging database categories with current product list
   const categories = useMemo(() => {
-    const uniqueCats = Array.from(
-      new Set(
-        products
-          .map((p) => (p.category || '').trim())
-          .filter(Boolean)
-      )
-    );
+    const set = new Set<string>();
+    dbAllCategories.forEach((c) => set.add(c.trim()));
+    products.forEach((p) => {
+      if (p.category) set.add(p.category.trim());
+    });
+    const uniqueCats = Array.from(set).filter(Boolean).sort((a, b) => a.localeCompare(b));
     return [
       { id: 'all', label: t.shop?.allDrinks || 'All Drinks' },
       ...uniqueCats.map((cat) => ({ id: cat, label: cat })),
     ];
-  }, [products, t.shop]);
+  }, [dbAllCategories, products, t.shop]);
+
+  const isFilterActive =
+    searchQuery.trim().length > 0 ||
+    activeCategory !== 'all' ||
+    selectedTags.length > 0 ||
+    priceFilter !== 'all';
+
+  // Matcher for any product against active filters
+  const matchesFilter = useCallback((product: Product): boolean => {
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const match =
+        product.name.toLowerCase().includes(q) ||
+        product.category.toLowerCase().includes(q) ||
+        (product.notes && product.notes.toLowerCase().includes(q)) ||
+        (product.description && product.description.toLowerCase().includes(q)) ||
+        (product.size && product.size.toLowerCase().includes(q));
+      if (!match) return false;
+    }
+
+    if (activeCategory !== 'all') {
+      if (
+        (product.category || '').trim().toLowerCase() !==
+        activeCategory.trim().toLowerCase()
+      ) {
+        return false;
+      }
+    }
+
+    if (selectedTags.length > 0) {
+      const matchVessel = selectedTags.some(
+        (tag) => (product.size || '').trim().toLowerCase() === tag.trim().toLowerCase()
+      );
+      if (!matchVessel) return false;
+    }
+
+    if (priceFilter !== 'all') {
+      const effectivePrice = product.price || 0;
+      if (priceFilter === 'under-100' && !(effectivePrice < 100)) return false;
+      if (priceFilter === '100-500' && !(effectivePrice >= 100 && effectivePrice <= 500)) return false;
+      if (priceFilter === 'under-500' && !(effectivePrice < 500)) return false;
+      if (priceFilter === 'above-500' && !(effectivePrice > 500)) return false;
+    }
+
+    return true;
+  }, [searchQuery, activeCategory, selectedTags, priceFilter]);
+
+  // Query database whenever any filter changes
+  useEffect(() => {
+    if (!isFilterActive) {
+      setDbSearchResults([]);
+      setIsSearchingDb(false);
+      setHasMoreDbResults(false);
+      return;
+    }
+
+    let isCancelled = false;
+    setIsSearchingDb(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const filters: ProductFilters = {
+          category: activeCategory !== 'all' ? activeCategory : undefined,
+          volume: selectedTags.length > 0 ? selectedTags : undefined,
+          search: searchQuery.trim() || undefined,
+          priceRange: priceFilter as any,
+          limit: 20,
+          offset: 0,
+        };
+
+        const { data, error } = await productService.fetchProducts(filters);
+        if (isCancelled) return;
+
+        if (!error && data) {
+          const mapped = data.map(mapRecordToProduct).filter(matchesFilter);
+          setDbSearchResults(mapped);
+          setHasMoreDbResults(data.length === 20);
+        } else {
+          setDbSearchResults([]);
+          setHasMoreDbResults(false);
+        }
+      } catch (err) {
+        if (!isCancelled) {
+          console.error('[ShopScreen] DB filter search error:', err);
+          setDbSearchResults([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsSearchingDb(false);
+        }
+      }
+    }, searchQuery.trim() ? 250 : 0);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
+  }, [isFilterActive, searchQuery, activeCategory, selectedTags, priceFilter, matchesFilter]);
+
+  // Load next 20 items from database for active filter
+  const fetchMoreFilteredProducts = async () => {
+    if (isFetchingMoreDb || !hasMoreDbResults) return;
+    setIsFetchingMoreDb(true);
+    try {
+      const filters: ProductFilters = {
+        category: activeCategory !== 'all' ? activeCategory : undefined,
+        volume: selectedTags.length > 0 ? selectedTags : undefined,
+        search: searchQuery.trim() || undefined,
+        priceRange: priceFilter as any,
+        limit: 20,
+        offset: dbSearchResults.length,
+      };
+
+      const { data, error } = await productService.fetchProducts(filters);
+      if (!error && data && data.length > 0) {
+        const mapped = data.map(mapRecordToProduct).filter(matchesFilter);
+        setDbSearchResults((prev) => [...prev, ...mapped]);
+        setHasMoreDbResults(data.length === 20);
+      } else {
+        setHasMoreDbResults(false);
+      }
+    } catch (err) {
+      console.error('[ShopScreen] Error fetching more filtered items:', err);
+      setHasMoreDbResults(false);
+    } finally {
+      setIsFetchingMoreDb(false);
+    }
+  };
+
 
   // Infinite Scroll Sentinel Observer
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -67,7 +214,11 @@ export const ShopScreen: React.FC = () => {
       (entries) => {
         const first = entries[0];
         if (first && first.isIntersecting) {
-          fetchMoreProducts();
+          if (isFilterActive) {
+            fetchMoreFilteredProducts();
+          } else {
+            fetchMoreProducts();
+          }
         }
       },
       {
@@ -79,7 +230,7 @@ export const ShopScreen: React.FC = () => {
 
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [hasMoreProducts, isFetchingMore, isLoadingProducts, fetchMoreProducts]);
+  }, [hasMoreProducts, isFetchingMore, isLoadingProducts, fetchMoreProducts, isFilterActive, hasMoreDbResults, isFetchingMoreDb, dbSearchResults.length]);
 
   const handleVoiceSearch = () => {
     setIsListening(true);
@@ -98,44 +249,32 @@ export const ShopScreen: React.FC = () => {
 
   const handleResetFilters = () => {
     setActiveCategory('all');
+    setPriceFilter('all');
     setSelectedTags([]);
     setSearchQuery('');
   };
 
-  // Filter products by search text, category, and packaging tags
+  // Combine products: Shown matching products FIRST, then searched data from DB
   const filteredProducts = useMemo(() => {
-    return products.filter((product) => {
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const match =
-          product.name.toLowerCase().includes(q) ||
-          product.category.toLowerCase().includes(q) ||
-          (product.notes && product.notes.toLowerCase().includes(q)) ||
-          (product.description && product.description.toLowerCase().includes(q));
-        if (!match) return false;
-      }
+    if (!isFilterActive) {
+      return products;
+    }
 
-      if (activeCategory !== 'all') {
-        if (
-          (product.category || '').trim().toLowerCase() !==
-          activeCategory.trim().toLowerCase()
-        ) {
-          return false;
-        }
-      }
+    // 1. Immediately show currently loaded products that match the filter
+    const shownMatching = products.filter(matchesFilter);
+    const combined: Product[] = [...shownMatching];
+    const seenIds = new Set(shownMatching.map((p) => p.id));
 
-      if (selectedTags.length > 0) {
-        const matchVessel = selectedTags.some((tag) => {
-          return (
-            (product.size || '').trim().toLowerCase() === tag.trim().toLowerCase()
-          );
-        });
-        if (!matchVessel) return false;
+    // 2. Append searched data from the database
+    for (const item of dbSearchResults) {
+      if (!seenIds.has(item.id)) {
+        seenIds.add(item.id);
+        combined.push(item);
       }
+    }
 
-      return true;
-    });
-  }, [products, searchQuery, activeCategory, selectedTags]);
+    return combined;
+  }, [isFilterActive, products, dbSearchResults, matchesFilter]);
 
   // Sort filtered products
   const sortedProducts = useMemo(() => {
@@ -148,7 +287,9 @@ export const ShopScreen: React.FC = () => {
   }, [filteredProducts, sortBy]);
 
   const activeFilterCount =
-    (activeCategory !== 'all' ? 1 : 0) + selectedTags.length;
+    (activeCategory !== 'all' ? 1 : 0) +
+    (priceFilter !== 'all' ? 1 : 0) +
+    selectedTags.length;
 
   return (
     <div className="pb-32 px-4 pt-3 w-full space-y-4 animate-in fade-in duration-200 relative">
@@ -189,6 +330,8 @@ export const ShopScreen: React.FC = () => {
         onRemoveTag={(tag) =>
           setSelectedTags((prev) => prev.filter((t) => t !== tag))
         }
+        priceFilter={priceFilter}
+        onClearPrice={() => setPriceFilter('all')}
         onOpenFilter={() => setIsFilterOpen(true)}
         onClearAll={handleResetFilters}
       />
@@ -219,8 +362,16 @@ export const ShopScreen: React.FC = () => {
         </div>
       )}
 
+      {/* Database Searching Indicator */}
+      {isSearchingDb && (
+        <div className="flex items-center justify-center gap-2 py-3 px-4 bg-emerald-50/70 border border-emerald-100/80 rounded-2xl text-xs font-medium text-[#183324] animate-in fade-in duration-150">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2E7D32]" />
+          <span>Searching database for matching botanical infusions...</span>
+        </div>
+      )}
+
       {/* 6. Empty State */}
-      {sortedProducts.length === 0 && !isLoadingProducts && (
+      {sortedProducts.length === 0 && !isLoadingProducts && !isSearchingDb && (
         <ShopEmptyState onReset={handleResetFilters} />
       )}
 
@@ -257,6 +408,8 @@ export const ShopScreen: React.FC = () => {
         setSelectedTags={setSelectedTags}
         activeCategory={activeCategory}
         setActiveCategory={setActiveCategory}
+        priceFilter={priceFilter}
+        setPriceFilter={setPriceFilter}
         products={products}
       />
     </div>

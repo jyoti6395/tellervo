@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { productService } from '@tellervo/supabase';
 import { createPortal } from 'react-dom';
 import { X, Check, RotateCcw } from 'lucide-react';
 import { Product } from '../types';
@@ -10,6 +11,8 @@ interface FilterDrawerProps {
   setSelectedTags: React.Dispatch<React.SetStateAction<string[]>>;
   activeCategory?: string;
   setActiveCategory?: (category: string) => void;
+  priceFilter?: string;
+  setPriceFilter?: (price: string) => void;
   products?: Product[];
 }
 
@@ -20,35 +23,52 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
   setSelectedTags,
   activeCategory = 'all',
   setActiveCategory,
+  priceFilter = 'all',
+  setPriceFilter,
   products = [],
 }) => {
   if (!isOpen) return null;
 
-  // 1. Dynamic drink categories extracted from the product table category field
+  const [dbCategories, setDbCategories] = useState<string[]>([]);
+  const [dbVessels, setDbVessels] = useState<string[]>([]);
+
+  // Fetch all distinct categories and packaging vessels from the database
+  useEffect(() => {
+    let isMounted = true;
+    productService.fetchDistinctFilterOptions().then(({ categories, volumes }: { categories: string[]; volumes: string[] }) => {
+      if (isMounted) {
+        if (categories && categories.length > 0) setDbCategories(categories);
+        if (volumes && volumes.length > 0) setDbVessels(volumes);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen]);
+
+  // 1. Drink categories: merges all categories from database with any currently loaded in products
   const dynamicCategories = useMemo(() => {
-    const uniqueCats = Array.from(
-      new Set(
-        products
-          .map(p => (p.category || '').trim())
-          .filter(Boolean)
-      )
-    );
+    const set = new Set<string>();
+    dbCategories.forEach(c => set.add(c.trim()));
+    products.forEach(p => {
+      if (p.category) set.add(p.category.trim());
+    });
+    const uniqueCats = Array.from(set).filter(Boolean).sort((a, b) => a.localeCompare(b));
     return [
       { id: 'all', label: 'All Drinks' },
       ...uniqueCats.map(cat => ({ id: cat, label: cat })),
     ];
-  }, [products]);
+  }, [dbCategories, products]);
 
-  // 2. Dynamic packaging & vessels extracted from the product table volume field
+  // 2. Packaging & vessels: merges all volumes from database with any currently loaded in products
   const dynamicVessels = useMemo(() => {
-    return Array.from(
-      new Set(
-        products
-          .map(p => (p.size || '').trim())
-          .filter(Boolean)
-      )
-    );
-  }, [products]);
+    const set = new Set<string>();
+    dbVessels.forEach(v => set.add(v.trim()));
+    products.forEach(p => {
+      if (p.size) set.add(p.size.trim());
+    });
+    return Array.from(set).filter(Boolean).sort((a, b) => a.localeCompare(b));
+  }, [dbVessels, products]);
 
   const toggleOption = (opt: string) => {
     setSelectedTags(prev =>
@@ -61,9 +81,15 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
     if (setActiveCategory) {
       setActiveCategory('all');
     }
+    if (setPriceFilter) {
+      setPriceFilter('all');
+    }
   };
 
-  const activeCount = (activeCategory !== 'all' ? 1 : 0) + selectedTags.length;
+  const activeCount =
+    (activeCategory !== 'all' ? 1 : 0) +
+    (priceFilter !== 'all' ? 1 : 0) +
+    selectedTags.length;
 
   const drawerContent = (
     <div className="fixed inset-0 top-0 bottom-0 left-0 right-0 z-50 flex justify-end">
@@ -106,6 +132,40 @@ export const FilterDrawer: React.FC<FilterDrawerProps> = ({
                     >
                       {isActive && <Check className="w-3 h-3 text-[#E5A953]" />}
                       <span>{cat.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
+          {/* Price Range Filter */}
+          {setPriceFilter && (
+            <div>
+              <h4 className="text-xs font-bold text-[#14261B] uppercase tracking-wider mb-2.5">
+                Price Range
+              </h4>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { id: 'all', label: 'All Prices' },
+                  { id: 'under-100', label: 'Under €100' },
+                  { id: '100-500', label: '€100 - €500' },
+                  { id: 'under-500', label: 'Under €500' },
+                  { id: 'above-500', label: 'Above €500' },
+                ].map((option) => {
+                  const isActive = (priceFilter || 'all') === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => setPriceFilter(option.id)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all flex items-center gap-1.5 ${
+                        isActive
+                          ? 'bg-[#183324] text-white border-[#183324] shadow-sm'
+                          : 'bg-white text-[#293F31] border-[#E2DBD0] hover:border-[#C4B7A4]'
+                      }`}
+                    >
+                      {isActive && <Check className="w-3 h-3 text-[#E5A953]" />}
+                      <span>{option.label}</span>
                     </button>
                   );
                 })}

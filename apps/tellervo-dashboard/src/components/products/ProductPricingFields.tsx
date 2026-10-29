@@ -48,11 +48,11 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
         {/* Original Price */}
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-foreground font-sans">
-            Original Price ($) <span className="text-rose-500">*</span>
+            Original Price (€) <span className="text-rose-500">*</span>
           </label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
-              $
+              €
             </span>
             <Input
               type="number"
@@ -76,11 +76,11 @@ export const ProductPricingFields: React.FC<ProductPricingFieldsProps> = ({
         {/* Discount Price */}
         <div className="space-y-1.5">
           <label className="block text-xs font-semibold text-foreground font-sans">
-            Discount Price ($) <span className="text-[10px] font-normal text-muted-foreground">(Optional sale)</span>
+            Discount Price (€) <span className="text-[10px] font-normal text-muted-foreground">(Optional sale)</span>
           </label>
           <div className="relative">
             <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
-              $
+              €
             </span>
             <Input
               type="number"

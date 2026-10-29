@@ -187,6 +187,7 @@ export function ProductManagement() {
   const [categoryFilter, setCategoryFilter] = React.useState("all")
   const [statusFilter, setStatusFilter] = React.useState("all")
   const [stockFilter, setStockFilter] = React.useState("all")
+  const [priceFilter, setPriceFilter] = React.useState("all")
   const [dateFilter, setDateFilter] = React.useState("all")
   const [sortField, setSortField] = React.useState<SortField>("name")
   const [sortDirection, setSortDirection] = React.useState<SortDirection>("asc")
@@ -583,7 +584,16 @@ export function ProductManagement() {
         (stockFilter === "lt-20" && p.stock < 20) ||
         (stockFilter === "lt-100" && p.stock < 100) ||
         (stockFilter === "gt-100" && p.stock > 100)
-      return matchesSearch && matchesCategory && matchesStatus && matchesStock
+
+      const currentPrice = Number(p.discount_price ?? p.original_price ?? p.price) || 0
+      const matchesPrice =
+        priceFilter === "all" ||
+        (priceFilter === "under-100" && currentPrice < 100) ||
+        (priceFilter === "100-500" && currentPrice >= 100 && currentPrice <= 500) ||
+        (priceFilter === "under-500" && currentPrice < 500) ||
+        (priceFilter === "above-500" && currentPrice > 500)
+
+      return matchesSearch && matchesCategory && matchesStatus && matchesStock && matchesPrice
     })
 
     list.sort((a, b) => {
@@ -601,7 +611,7 @@ export function ProductManagement() {
     })
 
     return list
-  }, [products, searchTerm, categoryFilter, statusFilter, stockFilter, sortField, sortDirection])
+  }, [products, searchTerm, categoryFilter, statusFilter, stockFilter, priceFilter, sortField, sortDirection])
 
   // Category Management State
   const [customCategories, setCustomCategories] = React.useState<string[]>([])
@@ -771,6 +781,7 @@ export function ProductManagement() {
     setCategoryFilter("all")
     setStatusFilter("all")
     setStockFilter("all")
+    setPriceFilter("all")
     setDateFilter("all")
     setCurrentPage(1)
   }
@@ -1011,6 +1022,26 @@ export function ProductManagement() {
                     <SelectItem value="lt-20">Less than 20</SelectItem>
                     <SelectItem value="lt-100">Less than 100</SelectItem>
                     <SelectItem value="gt-100">More than 100</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                {/* Price Filter */}
+                <Select
+                  value={priceFilter}
+                  onValueChange={(val) => {
+                    setPriceFilter(val)
+                    setCurrentPage(1)
+                  }}
+                >
+                  <SelectTrigger className="h-10 text-xs font-medium bg-card border border-border rounded-full text-foreground px-4 shadow-2xs min-w-[125px]">
+                    <SelectValue placeholder="Price" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border rounded-xl">
+                    <SelectItem value="all">Price: All</SelectItem>
+                    <SelectItem value="under-100">Under €100</SelectItem>
+                    <SelectItem value="100-500">€100 - €500</SelectItem>
+                    <SelectItem value="under-500">Under €500</SelectItem>
+                    <SelectItem value="above-500">Above €500</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -1324,13 +1355,13 @@ export function ProductManagement() {
                           <div className="flex items-baseline gap-1.5 flex-wrap">
                             {hasDiscount ? (
                               <>
-                                <span>${product.discount_price!.toFixed(2)}</span>
+                                <span>€{product.discount_price!.toFixed(2)}</span>
                                 <span className="text-[10px] text-muted-foreground line-through font-normal">
-                                  ${product.original_price.toFixed(2)}
+                                  €{product.original_price.toFixed(2)}
                                 </span>
                               </>
                             ) : (
-                              <span>${product.original_price.toFixed(2)}</span>
+                              <span>€{product.original_price.toFixed(2)}</span>
                             )}
                           </div>
                         </TableCell>

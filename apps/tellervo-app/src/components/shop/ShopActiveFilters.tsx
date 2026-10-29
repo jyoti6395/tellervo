@@ -7,6 +7,8 @@ interface ShopActiveFiltersProps {
   onClearCategory: () => void;
   selectedTags: string[];
   onRemoveTag: (tag: string) => void;
+  priceFilter?: string;
+  onClearPrice?: () => void;
   onOpenFilter: () => void;
   onClearAll: () => void;
 }
@@ -17,10 +19,12 @@ export const ShopActiveFilters: React.FC<ShopActiveFiltersProps> = ({
   onClearCategory,
   selectedTags,
   onRemoveTag,
+  priceFilter = 'all',
+  onClearPrice,
   onOpenFilter,
   onClearAll,
 }) => {
-  const hasActiveFilters = selectedTags.length > 0 || activeCategory !== 'all';
+  const hasActiveFilters = selectedTags.length > 0 || activeCategory !== 'all' || (Boolean(priceFilter) && priceFilter !== 'all');
   if (!hasActiveFilters) return null;
 
   return (
@@ -38,6 +42,27 @@ export const ShopActiveFilters: React.FC<ShopActiveFiltersProps> = ({
             >
               <X className="h-2.5 w-2.5" />
             </button>
+          </span>
+        )}
+
+        {priceFilter && priceFilter !== 'all' && (
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50/80 py-0.5 pl-2.5 pr-1 text-[11px] text-gray-800 transition-colors hover:border-emerald-300">
+            <span className="font-semibold">
+              {priceFilter === 'under-100' && 'Under €100'}
+              {priceFilter === '100-500' && '€100 - €500'}
+              {priceFilter === 'under-500' && 'Under €500'}
+              {priceFilter === 'above-500' && 'Above €500'}
+            </span>
+            {onClearPrice && (
+              <button
+                type="button"
+                onClick={onClearPrice}
+                aria-label="Remove price filter"
+                className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-emerald-200 hover:text-gray-900"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
           </span>
         )}
 
