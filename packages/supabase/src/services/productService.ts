@@ -1,4 +1,4 @@
-﻿import type { SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { supabase as defaultSupabase } from '../client';
 import { FavouriteService } from './favouriteService';
 import type {
@@ -112,11 +112,19 @@ export class ProductService {
         name: input.name.trim(),
         category: input.category,
         volume: input.volume?.trim() || '330 ml',
-        price: Number(input.price),
+        original_price: Number(input.original_price ?? input.price ?? 0),
+        discount_price: input.discount_price != null ? Number(input.discount_price) : null,
+
         stock: Number(input.stock) || 0,
         status: input.status || 'Active',
         description: input.description?.trim() || '',
-        image_url: input.image_url?.trim() || '',
+        images: Array.isArray(input.images) ? input.images.map((img) => img.trim()).filter(Boolean) : (input.image_url?.trim() ? [input.image_url.trim()] : []),
+
+        badge: input.badge ?? null,
+        badge_type: input.badge_type ?? null,
+        is_featured: Boolean(input.is_featured),
+        is_most_selling: Boolean(input.is_most_selling ?? input.most_selling),
+        flavor_profile: input.flavor_profile ?? null,
         sku: input.sku?.trim() || `TEL-${Date.now().toString().slice(-6)}`,
         created_by: userData.user.id,
         updated_by: userData.user.id,
@@ -155,6 +163,21 @@ export class ProductService {
       const payload: Record<string, unknown> = {
         ...updates,
       };
+
+      if (updates.is_most_selling !== undefined || updates.most_selling !== undefined) {
+        payload.is_most_selling = Boolean(updates.is_most_selling ?? updates.most_selling);
+      }
+
+      // Convert legacy price and image_url to modern columns and remove them from payload
+      if (updates.price !== undefined && updates.original_price === undefined) {
+        payload.original_price = updates.price;
+      }
+      delete (payload as Record<string, unknown>).price;
+
+      if (updates.image_url !== undefined && !updates.images) {
+        payload.images = [updates.image_url];
+      }
+      delete (payload as Record<string, unknown>).image_url;
 
       if (userData?.user?.id) {
         payload.updated_by = userData.user.id;

@@ -1,4 +1,12 @@
-﻿export type ProductStatus = 'Active' | 'Low Stock' | 'Out of Stock' | 'Draft' | 'Archived';
+export type ProductStatus = 'Active' | 'Low Stock' | 'Out of Stock' | 'Draft' | 'Archived';
+
+export interface FlavorProfileRecord {
+  bitterness?: number;
+  sweetness?: number;
+  aromatics?: number;
+  effervescence?: number;
+  [key: string]: number | undefined;
+}
 
 export interface ProductRecord {
   id: string;
@@ -7,12 +15,21 @@ export interface ProductRecord {
   name: string;
   category: string;
   volume?: string | null;
-  price: number;
+  original_price: number;
+  discount_price?: number | null;
+  price?: number; // backwards compatibility alias
   stock: number;
   status: ProductStatus;
   description?: string | null;
-  image_url?: string | null;
+  images: string[];
+  image_url?: string | null; // backwards compatibility alias
   sku?: string | null;
+  badge?: string | null;
+  badge_type?: string | null;
+  is_featured: boolean;
+  is_most_selling: boolean;
+  most_selling?: boolean;
+  flavor_profile?: FlavorProfileRecord | null;
   created_at: string;
   updated_at: string;
 }
@@ -21,12 +38,21 @@ export interface CreateProductInput {
   name: string;
   category: string;
   volume?: string;
-  price: number;
+  original_price?: number;
+  discount_price?: number | null;
+  price?: number; // backwards compatibility fallback
   stock: number;
   status?: ProductStatus;
   description?: string;
-  image_url?: string;
+  images?: string[];
+  image_url?: string; // backwards compatibility fallback
   sku?: string;
+  badge?: string | null;
+  badge_type?: string | null;
+  is_featured?: boolean;
+  is_most_selling?: boolean;
+  most_selling?: boolean;
+  flavor_profile?: FlavorProfileRecord | null;
   created_by?: string;
 }
 

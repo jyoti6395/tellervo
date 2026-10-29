@@ -9,6 +9,10 @@ export interface Product {
   badgeType?: 'bestseller' | 'seasonal' | 'organic' | 'adaptogenic' | 'new-harvest' | 'zero-proof' | 'exclusive' | 'database';
   price: number;
   originalPrice?: number;
+  discountPrice?: number;
+  images?: string[];
+  isFeatured?: boolean;
+  isMostSelling?: boolean;
   size: string;
   rating?: number;
   reviewsCount?: number;
@@ -17,6 +21,7 @@ export interface Product {
   imageUrl: string;
   gallery?: string[];
   isSaved?: boolean;
+  status?: 'Active' | 'Low Stock' | 'Out of Stock' | 'Draft' | 'Archived' | string;
   stockStatus?: 'in-stock' | 'low-stock' | 'just-restocked' | 'out-of-stock';
   stockCount?: number;
   lastOrderedText?: string;
@@ -87,8 +92,21 @@ export interface OrderItem {
   statusType: 'in-transit' | 'delivered';
   courier: string;
   summary: string;
-  items: { name: string; qty: number; price: number }[];
+  items: {
+    name: string;
+    qty: number;
+    price: number;
+    status?: string;
+    imageUrl?: string;
+    category?: string;
+    size?: string;
+  }[];
   trackingId?: string;
+  recipientName?: string;
+  address?: string;
+  paymentMethod?: string;
+  instructions?: string;
+  dispatchOrigin?: string;
 }
 
 export interface UserProfile {
@@ -123,4 +141,12 @@ export interface UserProfile {
     restockAlerts: boolean;
     orderUpdates: boolean;
   };
+}
+
+export interface FilterState {
+  category: string;
+  priceRange: [number, number];
+  tags: string[];
+  inStockOnly: boolean;
+  sortBy: 'featured' | 'price-asc' | 'price-desc' | 'rating';
 }

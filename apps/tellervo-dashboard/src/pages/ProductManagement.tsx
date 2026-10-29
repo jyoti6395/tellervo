@@ -10,8 +10,6 @@ import {
   Eye,
   MoreHorizontal,
   X,
-  TrendingUp,
-  TrendingDown,
   Package,
   CheckCircle2,
   AlertTriangle,
@@ -24,16 +22,22 @@ import {
   Download,
   Trash2,
   Check,
-  RotateCcw,
-  SlidersHorizontal,
   Sprout,
-  Image as ImageIcon,
   Calendar,
   UploadCloud,
   Loader2,
+  Flame,
+  Star,
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
+import {
+  ProductPricingFields,
+  ProductImagesFields,
+  ProductBadgesFields,
+  ProductFlavorProfileFields,
+} from "@/components/products"
+import type { FlavorProfileRecord } from "@tellervo/supabase"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
@@ -77,20 +81,28 @@ import {
 } from "@/components/ui/alert-dialog"
 import { toast } from "sonner"
 import { useAuth } from "@/context/AuthContext"
-import { productService, type ProductRecord } from "@/lib/supabase"
+import { productService, supabase, type ProductRecord } from "@/lib/supabase"
 
 export interface ProductItem {
   id: string
   name: string
-  category: "Adaptogenic Tonics" | "Wild Berry Spritz" | "Zero-Proof Spirits" | "Herbal Elixirs"
+  category: string
   price: number
+  original_price: number
+  discount_price?: number | null
   stock: number
   status: "Active" | "Low Stock" | "Out of Stock"
   image: string
+  images: string[]
   description: string
   sku?: string
   volume?: string
   addedDate?: string
+  is_featured?: boolean
+  is_most_selling?: boolean
+  badge?: string | null
+  badge_type?: string | null
+  flavor_profile?: FlavorProfileRecord | null
   created_by?: string | null
   updated_by?: string | null
 }
@@ -121,12 +133,20 @@ function mapRecordToProductItem(record: ProductRecord): ProductItem {
     name: record.name,
     description: record.description || "",
     category: (record.category as ProductItem["category"]) || "Adaptogenic Tonics",
-    price: Number(record.price) || 0,
+    price: Number(record.discount_price ?? record.original_price ?? record.price) || 0,
+    original_price: Number(record.original_price ?? record.price) || 0,
+    discount_price: record.discount_price != null && Number(record.discount_price) > 0 ? Number(record.discount_price) : null,
     stock: Number(record.stock) || 0,
     status,
-    image: record.image_url || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
+    image: (Array.isArray(record.images) && record.images[0]) || record.image_url || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
+    images: Array.isArray(record.images) && record.images.length > 0 ? record.images : (record.image_url ? [record.image_url] : []),
     sku: record.sku || "",
     volume: record.volume || "330 ml",
+    is_featured: Boolean(record.is_featured),
+    is_most_selling: Boolean(record.is_most_selling ?? record.most_selling),
+    badge: record.badge || null,
+    badge_type: record.badge_type || null,
+    flavor_profile: record.flavor_profile || null,
     addedDate: record.created_at
       ? new Date(record.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
       : "Today",
@@ -137,18 +157,21 @@ function mapRecordToProductItem(record: ProductRecord): ProductItem {
 
 const productFormSchema = z.object({
   name: z.string().trim().min(2, "Product name must be at least 2 characters").max(100, "Product name cannot exceed 100 characters"),
-  category: z.enum([
-    "Adaptogenic Tonics",
-    "Wild Berry Spritz",
-    "Zero-Proof Spirits",
-    "Herbal Elixirs",
-  ]),
+  category: z.string().trim().min(1, "Category is required"),
   volume: z.string().trim().min(1, "Volume is required (e.g. 330 ml)"),
-  price: z.number({ message: "Price must be a valid number" }).positive("Price must be greater than $0.00"),
+  original_price: z.number({ message: "Original price must be a valid number" }).min(0, "Price cannot be negative"),
+  discount_price: z.number().nullable().optional(),
   stock: z.number({ message: "Inventory units must be a valid number" }).int("Inventory units must be a whole number").min(0, "Inventory units cannot be negative"),
   status: z.enum(["Active", "Low Stock", "Out of Stock"]),
   description: z.string().trim().min(5, "Description must be at least 5 characters"),
-  image: z.string().min(1, "Product image is required"),
+  badge: z.string().optional(),
+  badge_type: z.string().optional(),
+  is_featured: z.boolean(),
+  is_most_selling: z.boolean(),
+  bitterness: z.number().min(1).max(5),
+  sweetness: z.number().min(1).max(5),
+  aromatics: z.number().min(1).max(5),
+  effervescence: z.number().min(1).max(5),
 })
 
 export type ProductFormData = z.infer<typeof productFormSchema>
@@ -159,12 +182,11 @@ export function ProductManagement() {
   const { isAdmin } = useAuth()
   const [isSaving, setIsSaving] = React.useState(false)
   const [isDeleting, setIsDeleting] = React.useState(false)
-  const [isDragging, setIsDragging] = React.useState(false)
-  const [selectedImageFile, setSelectedImageFile] = React.useState<File | null>(null)
   const [selectedIds, setSelectedIds] = React.useState<string[]>([])
   const [searchTerm, setSearchTerm] = React.useState("")
   const [categoryFilter, setCategoryFilter] = React.useState("all")
   const [statusFilter, setStatusFilter] = React.useState("all")
+  const [stockFilter, setStockFilter] = React.useState("all")
   const [dateFilter, setDateFilter] = React.useState("all")
   const [sortField, setSortField] = React.useState<SortField>("name")
   const [sortDirection, setSortDirection] = React.useState<SortDirection>("asc")
@@ -183,8 +205,8 @@ export function ProductManagement() {
   const [isBulkDeleteOpen, setIsBulkDeleteOpen] = React.useState(false)
 
   // Form State with react-hook-form
-  const [formImage, setFormImage] = React.useState("")
-  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [formImages, setFormImages] = React.useState<string[]>([])
+  const [isUploadingImage, setIsUploadingImage] = React.useState(false)
 
   const {
     register,
@@ -193,6 +215,7 @@ export function ProductManagement() {
     setValue,
     reset,
     clearErrors,
+    watch,
     formState: { errors },
   } = useForm<ProductFormData>({
     resolver: zodResolver(productFormSchema),
@@ -200,11 +223,19 @@ export function ProductManagement() {
       name: "",
       category: "Adaptogenic Tonics",
       volume: "330 ml",
-      price: 0,
+      original_price: 21,
+      discount_price: null,
       stock: 20,
       status: "Active",
       description: "",
-      image: "",
+      badge: "",
+      badge_type: "",
+      is_featured: false,
+      is_most_selling: false,
+      bitterness: 2,
+      sweetness: 3,
+      aromatics: 4,
+      effervescence: 4,
     },
     mode: "onTouched",
   })
@@ -239,41 +270,28 @@ export function ProductManagement() {
   }, [])
 
 
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        toast.error("File size exceeds 5MB limit")
-        return
-      }
-      setSelectedImageFile(file)
-      const reader = new FileReader()
-      reader.onload = () => {
-        const dataUrl = reader.result as string
-        setFormImage(dataUrl)
-        setValue("image", dataUrl, { shouldValidate: true })
-        clearErrors("image")
-        toast.success("Image selected for upload")
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
   // Open Panel for creating new product
   const handleOpenCreate = () => {
-    setSelectedImageFile(null)
     setEditingProduct(null)
     setPanelMode("create")
-    setFormImage("")
+    setFormImages([])
     reset({
       name: "",
       category: "Adaptogenic Tonics",
       volume: "330 ml",
-      price: "" as unknown as number,
+      original_price: "" as unknown as number,
+      discount_price: null,
       stock: 20,
       status: "Active",
       description: "",
-      image: "",
+      badge: "",
+      badge_type: "",
+      is_featured: false,
+      is_most_selling: false,
+      bitterness: 2,
+      sweetness: 3,
+      aromatics: 4,
+      effervescence: 4,
     })
     clearErrors()
     setIsPanelOpen(true)
@@ -281,19 +299,30 @@ export function ProductManagement() {
 
   // Open Panel for editing existing product
   const handleOpenEdit = (product: ProductItem) => {
-    setSelectedImageFile(null)
     setEditingProduct(product)
     setPanelMode("edit")
-    setFormImage(product.image)
+    setFormImages(
+      product.images && product.images.length > 0
+        ? product.images
+        : product.image ? [product.image] : []
+    )
     reset({
       name: product.name,
       category: product.category,
       volume: product.volume || "330 ml",
-      price: product.price,
+      original_price: product.original_price,
+      discount_price: product.discount_price ?? null,
       stock: product.stock,
       status: product.status,
       description: product.description || "",
-      image: product.image || "",
+      badge: product.badge || "",
+      badge_type: product.badge_type || "",
+      is_featured: Boolean(product.is_featured),
+      is_most_selling: Boolean(product.is_most_selling),
+      bitterness: Number(product.flavor_profile?.bitterness ?? 2),
+      sweetness: Number(product.flavor_profile?.sweetness ?? 3),
+      aromatics: Number(product.flavor_profile?.aromatics ?? 4),
+      effervescence: Number(product.flavor_profile?.effervescence ?? 4),
     })
     clearErrors()
     setIsPanelOpen(true)
@@ -301,19 +330,30 @@ export function ProductManagement() {
 
   // Open Panel for viewing details of an existing product in the slide drawer
   const handleOpenView = (product: ProductItem) => {
-    setSelectedImageFile(null)
     setEditingProduct(product)
     setPanelMode("view")
-    setFormImage(product.image)
+    setFormImages(
+      product.images && product.images.length > 0
+        ? product.images
+        : product.image ? [product.image] : []
+    )
     reset({
       name: product.name,
       category: product.category,
       volume: product.volume || "330 ml",
-      price: product.price,
+      original_price: product.original_price,
+      discount_price: product.discount_price ?? null,
       stock: product.stock,
       status: product.status,
       description: product.description || "",
-      image: product.image || "",
+      badge: product.badge || "",
+      badge_type: product.badge_type || "",
+      is_featured: Boolean(product.is_featured),
+      is_most_selling: Boolean(product.is_most_selling),
+      bitterness: Number(product.flavor_profile?.bitterness ?? 2),
+      sweetness: Number(product.flavor_profile?.sweetness ?? 3),
+      aromatics: Number(product.flavor_profile?.aromatics ?? 4),
+      effervescence: Number(product.flavor_profile?.effervescence ?? 4),
     })
     clearErrors()
     setIsPanelOpen(true)
@@ -324,6 +364,31 @@ export function ProductManagement() {
 
 
 
+
+  // Upload gallery image for product
+  const handleUploadGalleryImage = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("File size exceeds 5MB limit")
+      return
+    }
+    setIsUploadingImage(true)
+    toast.loading("Uploading image...", { id: "gallery-upload" })
+    try {
+      const { url, error } = await productService.uploadProductImage(file)
+      toast.dismiss("gallery-upload")
+      if (error) {
+        toast.error(`Upload failed: ${error.message}`)
+      } else if (url) {
+        setFormImages((prev) => [...prev, url])
+        toast.success("Image uploaded to gallery")
+      }
+    } catch {
+      toast.dismiss("gallery-upload")
+      toast.error("Upload failed")
+    } finally {
+      setIsUploadingImage(false)
+    }
+  }
 
   // Form Save using react-hook-form
   // Form Save using react-hook-form
@@ -333,31 +398,40 @@ export function ProductManagement() {
 
     setIsSaving(true)
     try {
-      let finalImageUrl = data.image.trim()
-      if (selectedImageFile) {
-        toast.loading("Uploading product image...", { id: "upload-image" })
-        const { url, error: uploadErr } = await productService.uploadProductImage(selectedImageFile)
-        toast.dismiss("upload-image")
-        if (uploadErr) {
-          console.warn("[ProductManagement] Image upload fallback:", uploadErr.message)
-        } else if (url) {
-          finalImageUrl = url
-        }
+      const finalImagesList =
+        formImages.length > 0
+          ? formImages
+          : ["https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80"]
+
+      const payloadInput = {
+        name: data.name.trim(),
+        category: data.category,
+        volume: data.volume.trim() || "330 ml",
+        original_price: Number(data.original_price),
+        discount_price:
+          data.discount_price && Number(data.discount_price) > 0
+            ? Number(data.discount_price)
+            : null,
+        stock: Number(data.stock),
+        status: chosenStatus,
+        description: data.description.trim(),
+        images: finalImagesList,
+        badge: data.badge?.trim() || null,
+        badge_type: data.badge_type?.trim() || null,
+        is_featured: Boolean(data.is_featured),
+        is_most_selling: Boolean(data.is_most_selling),
+        flavor_profile: {
+          bitterness: Number(data.bitterness),
+          sweetness: Number(data.sweetness),
+          aromatics: Number(data.aromatics),
+          effervescence: Number(data.effervescence),
+        },
       }
 
       if (editingProduct) {
         const { data: updatedRecord, error: updateErr } = await productService.updateProduct(
           editingProduct.id,
-          {
-            name: data.name.trim(),
-            category: data.category,
-            volume: data.volume.trim() || "330 ml",
-            price: data.price,
-            stock: data.stock,
-            status: chosenStatus,
-            description: data.description.trim(),
-            image_url: finalImageUrl || editingProduct.image,
-          }
+          payloadInput
         )
 
         if (updateErr) {
@@ -374,14 +448,7 @@ export function ProductManagement() {
       } else {
         const skuGenerated = `TEL-${data.category.slice(0, 3).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`
         const { data: newRecord, error: createErr } = await productService.createProduct({
-          name: data.name.trim(),
-          category: data.category,
-          volume: data.volume.trim() || "330 ml",
-          price: data.price,
-          stock: data.stock,
-          status: chosenStatus,
-          description: data.description.trim(),
-          image_url: finalImageUrl || "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80",
+          ...payloadInput,
           sku: skuGenerated,
         })
 
@@ -400,8 +467,7 @@ export function ProductManagement() {
 
       setIsPanelOpen(false)
       setEditingProduct(null)
-      setSelectedImageFile(null)
-      setFormImage("")
+        setFormImages([])
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : "An error occurred while saving"
       toast.error(errorMsg)
@@ -512,7 +578,12 @@ export function ProductManagement() {
 
       const matchesCategory = categoryFilter === "all" || p.category === categoryFilter
       const matchesStatus = statusFilter === "all" || p.status === statusFilter
-      return matchesSearch && matchesCategory && matchesStatus
+      const matchesStock =
+        stockFilter === "all" ||
+        (stockFilter === "lt-20" && p.stock < 20) ||
+        (stockFilter === "lt-100" && p.stock < 100) ||
+        (stockFilter === "gt-100" && p.stock > 100)
+      return matchesSearch && matchesCategory && matchesStatus && matchesStock
     })
 
     list.sort((a, b) => {
@@ -530,20 +601,123 @@ export function ProductManagement() {
     })
 
     return list
-  }, [products, searchTerm, categoryFilter, statusFilter, sortField, sortDirection])
+  }, [products, searchTerm, categoryFilter, statusFilter, stockFilter, sortField, sortDirection])
+
+  // Category Management State
+  const [customCategories, setCustomCategories] = React.useState<string[]>([])
+  const [deletedCategories, setDeletedCategories] = React.useState<string[]>([])
+  const [isAddCategoryOpen, setIsAddCategoryOpen] = React.useState(false)
+  const [newCategoryInput, setNewCategoryInput] = React.useState("")
+  const [isEditCategoryOpen, setIsEditCategoryOpen] = React.useState(false)
+  const [editingCategoryName, setEditingCategoryName] = React.useState("")
+  const [isDeleteCategoryOpen, setIsDeleteCategoryOpen] = React.useState(false)
+  const [categoryToDelete, setCategoryToDelete] = React.useState("")
+
+  // Dynamic categories extracted from database products + user additions
+  const availableCategories = React.useMemo(() => {
+    const set = new Set<string>()
+    products.forEach((p) => {
+      const cat = p.category?.trim()
+      if (cat && !deletedCategories.includes(cat)) {
+        set.add(cat)
+      }
+    })
+    customCategories.forEach((c) => {
+      const cat = c?.trim()
+      if (cat && !deletedCategories.includes(cat)) {
+        set.add(cat)
+      }
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [products, customCategories, deletedCategories])
+
+  const handleConfirmAddCategory = () => {
+    const trimmed = newCategoryInput.trim()
+    if (!trimmed) return
+    setDeletedCategories((prev) => prev.filter((c) => c.toLowerCase() !== trimmed.toLowerCase()))
+    setCustomCategories((prev) => Array.from(new Set([...prev, trimmed])))
+    setValue("category", trimmed, { shouldValidate: true })
+    toast.success(`Category "${trimmed}" added`)
+    setNewCategoryInput("")
+    setIsAddCategoryOpen(false)
+  }
+
+  const handleConfirmEditCategory = async () => {
+    const oldName = watch("category")
+    const newName = editingCategoryName.trim()
+    if (!newName || newName === oldName) {
+      setIsEditCategoryOpen(false)
+      return
+    }
+
+    setDeletedCategories((prev) => [...prev.filter((c) => c !== newName), oldName])
+    setCustomCategories((prev) => [
+      ...prev.filter((c) => c !== oldName),
+      newName,
+    ])
+    setProducts((prev) =>
+      prev.map((p) => (p.category === oldName ? { ...p, category: newName } : p))
+    )
+    setValue("category", newName, { shouldValidate: true })
+
+    try {
+      await supabase.from("products").update({ category: newName }).eq("category", oldName)
+    } catch (err) {
+      console.warn("[ProductManagement] Supabase category rename sync:", err)
+    }
+
+    toast.success(`Category renamed to "${newName}"`)
+    setIsEditCategoryOpen(false)
+  }
+
+  const handleConfirmDeleteCategory = () => {
+    const target = categoryToDelete || watch("category")
+    if (!target) return
+
+    setDeletedCategories((prev) => Array.from(new Set([...prev, target])))
+    setCustomCategories((prev) => prev.filter((c) => c !== target))
+
+    const remaining = availableCategories.filter((c) => c !== target)
+    const fallback = remaining[0] || "General"
+    if (watch("category") === target) {
+      setValue("category", fallback, { shouldValidate: true })
+    }
+
+    toast.success(`Category "${target}" deleted`)
+    setIsDeleteCategoryOpen(false)
+    setCategoryToDelete("")
+  }
 
   // CSV Export
   const handleExportCSV = () => {
-    const headers = ["ID", "SKU", "Name", "Category", "Price", "Stock", "Status", "Volume", "Added Date"]
+    const headers = [
+      "ID",
+      "SKU",
+      "Name",
+      "Category",
+      "Original Price",
+      "Discount Price",
+      "Stock",
+      "Status",
+      "Volume",
+      "Badge",
+      "Featured",
+      "Most Selling",
+      "Added Date",
+    ]
     const rows = filteredProducts.map((p) => [
       p.id,
       p.sku || "",
       `"${p.name.replace(/"/g, '""')}"`,
       p.category,
-      p.price.toFixed(2),
+      p.original_price.toFixed(2),
+      p.discount_price ? p.discount_price.toFixed(2) : "",
       p.stock,
       p.status,
       p.volume || "",
+      p.badge || "",
+      p.is_featured ? "Yes" : "No",
+      p.is_most_selling ? "Yes" : "No",
       p.addedDate || "",
     ])
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map((e) => e.join(","))].join("\n")
@@ -596,11 +770,11 @@ export function ProductManagement() {
     setSearchTerm("")
     setCategoryFilter("all")
     setStatusFilter("all")
+    setStockFilter("all")
     setDateFilter("all")
     setCurrentPage(1)
   }
 
-  const isFiltered = searchTerm || categoryFilter !== "all" || statusFilter !== "all" || dateFilter !== "all"
 
   return (
     <div className="min-h-screen bg-background text-foreground w-full">
@@ -641,7 +815,7 @@ export function ProductManagement() {
           </div>
         </div>
 
-        {/* 4 CLEAN KPI CARDS (Matching Reference Mockup Exactly) */}
+        {/* 4 CLEAN KPI CARDS */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
           {/* Card 1: Total Products */}
           <div
@@ -658,16 +832,8 @@ export function ProductManagement() {
               <span className="text-xs font-medium text-muted-foreground">
                 Total Products
               </span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-2xl font-bold font-sans tracking-tight text-foreground">
-                  {totalCount}
-                </span>
-                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600">
-                  <TrendingUp className="w-3.5 h-3.5" /> 5%
-                </span>
-              </div>
-              <span className="text-[11px] text-muted-foreground mt-0.5">
-                vs. last month
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground mt-0.5">
+                {totalCount}
               </span>
             </div>
           </div>
@@ -687,16 +853,8 @@ export function ProductManagement() {
               <span className="text-xs font-medium text-muted-foreground">
                 Active Products
               </span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-2xl font-bold font-sans tracking-tight text-foreground">
-                  {activeCount}
-                </span>
-                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-emerald-600">
-                  <TrendingUp className="w-3.5 h-3.5" /> 8%
-                </span>
-              </div>
-              <span className="text-[11px] text-muted-foreground mt-0.5">
-                {Math.round((activeCount / (totalCount || 1)) * 100)}% of total stock
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground mt-0.5">
+                {activeCount}
               </span>
             </div>
           </div>
@@ -716,16 +874,8 @@ export function ProductManagement() {
               <span className="text-xs font-medium text-muted-foreground">
                 Low Stock Alert
               </span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-2xl font-bold font-sans tracking-tight text-foreground">
-                  {lowStockCount}
-                </span>
-                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-rose-500">
-                  <TrendingDown className="w-3.5 h-3.5" /> 2%
-                </span>
-              </div>
-              <span className="text-[11px] text-muted-foreground mt-0.5">
-                Needs replenishment
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground mt-0.5">
+                {lowStockCount}
               </span>
             </div>
           </div>
@@ -745,16 +895,8 @@ export function ProductManagement() {
               <span className="text-xs font-medium text-muted-foreground">
                 Out of Stock
               </span>
-              <div className="flex items-baseline gap-1.5 mt-0.5">
-                <span className="text-2xl font-bold font-sans tracking-tight text-foreground">
-                  {outOfStockCount}
-                </span>
-                <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-rose-500">
-                  <TrendingDown className="w-3.5 h-3.5" /> 1%
-                </span>
-              </div>
-              <span className="text-[11px] text-muted-foreground mt-0.5">
-                Unavailable online
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground mt-0.5">
+                {outOfStockCount}
               </span>
             </div>
           </div>
@@ -762,10 +904,10 @@ export function ProductManagement() {
 
         {/* UNIFIED CONTAINER: CONTROLS & TABLE COMBINED (Single Borderless Card) */}
         <div className="bg-card rounded-2xl shadow-xs overflow-hidden">
-          {/* Top Controls: Search & Filter Pills */}
+          {/* Top Controls: Search & Filter */}
           <div className="p-5 pb-4 space-y-3">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-              {/* Pill Search Input */}
+              {/* Search Input */}
               <div className="relative w-full sm:w-72 md:w-80">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
@@ -788,9 +930,9 @@ export function ProductManagement() {
                 )}
               </div>
 
-              {/* Pill Filters on Right */}
+              {/* Filters on Right */}
               <div className="flex flex-wrap items-center gap-2.5">
-                {/* Date Filter Pill */}
+                {/* Date Filter */}
                 <Select
                   value={dateFilter}
                   onValueChange={(val) => {
@@ -813,7 +955,7 @@ export function ProductManagement() {
                   </SelectContent>
                 </Select>
 
-                {/* Category Filter Pill */}
+                {/* Category Filter */}
                 <Select
                   value={categoryFilter}
                   onValueChange={(val) => {
@@ -826,14 +968,15 @@ export function ProductManagement() {
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border rounded-xl">
                     <SelectItem value="all">Category: All</SelectItem>
-                    <SelectItem value="Adaptogenic Tonics">Adaptogenic Tonics</SelectItem>
-                    <SelectItem value="Wild Berry Spritz">Wild Berry Spritz</SelectItem>
-                    <SelectItem value="Zero-Proof Spirits">Zero-Proof Spirits</SelectItem>
-                    <SelectItem value="Herbal Elixirs">Herbal Elixirs</SelectItem>
+                    {availableCategories.map((cat) => (
+                      <SelectItem key={cat} value={cat}>
+                        {cat}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
-                {/* Status Filter Pill */}
+                {/* Status Filter */}
                 <Select
                   value={statusFilter}
                   onValueChange={(val) => {
@@ -852,31 +995,24 @@ export function ProductManagement() {
                   </SelectContent>
                 </Select>
 
-                {/* Reset Filter Button if active */}
-                {isFiltered && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={handleResetFilters}
-                    className="h-10 px-3.5 text-xs text-muted-foreground hover:text-foreground rounded-full gap-1.5"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    <span>Reset</span>
-                  </Button>
-                )}
-
-                {/* Side Panel Toggle Button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsPanelOpen(!isPanelOpen)}
-                  className={`h-10 px-4 text-xs font-medium rounded-full border border-border transition-colors gap-2 shadow-2xs ${
-                    isPanelOpen ? "bg-muted text-foreground" : "bg-card text-muted-foreground hover:text-foreground"
-                  }`}
+                {/* Stock Filter */}
+                <Select
+                  value={stockFilter}
+                  onValueChange={(val) => {
+                    setStockFilter(val)
+                    setCurrentPage(1)
+                  }}
                 >
-                  <SlidersHorizontal className="w-3.5 h-3.5" />
-                  <span>{isPanelOpen ? "Hide Panel" : "Side Panel"}</span>
-                </Button>
+                  <SelectTrigger className="h-10 text-xs font-medium bg-card border border-border rounded-full text-foreground px-4 shadow-2xs min-w-[120px]">
+                    <SelectValue placeholder="Stock" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border rounded-xl">
+                    <SelectItem value="all">Stock: All</SelectItem>
+                    <SelectItem value="lt-20">Less than 20</SelectItem>
+                    <SelectItem value="lt-100">Less than 100</SelectItem>
+                    <SelectItem value="gt-100">More than 100</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -938,12 +1074,12 @@ export function ProductManagement() {
             )}
           </div>
 
-          {/* Table Container - seamless without separate outer border */}
+          {/* shadcn Table */}
           <div className="relative w-full overflow-x-auto">
-            <Table className="w-full text-left border-collapse text-xs">
+            <Table className="w-full text-left text-xs">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30 border-none">
-                  {/* Select All Checkbox */}
+                  {/* Select All */}
                   <TableHead className="w-12 py-4 px-4 text-center">
                     <Checkbox
                       checked={isAllSelected}
@@ -952,12 +1088,12 @@ export function ProductManagement() {
                     />
                   </TableHead>
 
-                  {/* Image Column */}
+                  {/* SKU (Before Product Name) */}
                   <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
-                    Image
+                    ID
                   </TableHead>
 
-                  {/* Product Name Column */}
+                  {/* Product Name */}
                   <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
                     <button
                       type="button"
@@ -977,12 +1113,7 @@ export function ProductManagement() {
                     </button>
                   </TableHead>
 
-                  {/* Code (SKU) Column */}
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
-                    Code
-                  </TableHead>
-
-                  {/* Category / Category Column */}
+                  {/* Category */}
                   <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
                     <button
                       type="button"
@@ -1002,27 +1133,12 @@ export function ProductManagement() {
                     </button>
                   </TableHead>
 
-                  {/* Price Column */}
+                  {/* Volume */}
                   <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
-                    <button
-                      type="button"
-                      onClick={() => handleHeaderSort("price")}
-                      className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-medium text-xs text-muted-foreground"
-                    >
-                      <span>Price</span>
-                      {sortField === "price" ? (
-                        sortDirection === "asc" ? (
-                          <ArrowUp className="w-3.5 h-3.5 text-foreground" />
-                        ) : (
-                          <ArrowDown className="w-3.5 h-3.5 text-foreground" />
-                        )
-                      ) : (
-                        <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
-                      )}
-                    </button>
+                    Volume
                   </TableHead>
 
-                  {/* Stock Column */}
+                  {/* Stock */}
                   <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
                     <button
                       type="button"
@@ -1042,17 +1158,42 @@ export function ProductManagement() {
                     </button>
                   </TableHead>
 
-                  {/* Added Date Column (From Image 1) */}
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
-                    Added Date
-                  </TableHead>
-
-                  {/* Status Column */}
+                  {/* Status */}
                   <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
                     Status
                   </TableHead>
 
-                  {/* Action Column */}
+                  {/* Price */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
+                    <button
+                      type="button"
+                      onClick={() => handleHeaderSort("price")}
+                      className="inline-flex items-center gap-1.5 hover:text-foreground transition-colors font-medium text-xs text-muted-foreground"
+                    >
+                      <span>Price</span>
+                      {sortField === "price" ? (
+                        sortDirection === "asc" ? (
+                          <ArrowUp className="w-3.5 h-3.5 text-foreground" />
+                        ) : (
+                          <ArrowDown className="w-3.5 h-3.5 text-foreground" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="w-3.5 h-3.5 opacity-40" />
+                      )}
+                    </button>
+                  </TableHead>
+
+                  {/* Most Selling */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
+                    Most Selling
+                  </TableHead>
+
+                  {/* Featured */}
+                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
+                    Featured
+                  </TableHead>
+
+                  {/* Action */}
                   <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground text-center">
                     Action
                   </TableHead>
@@ -1062,7 +1203,7 @@ export function ProductManagement() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="h-56 text-center">
+                    <TableCell colSpan={11} className="h-56 text-center">
                       <div className="flex flex-col items-center justify-center p-6 space-y-3">
                         <Loader2 className="w-8 h-8 text-primary animate-spin text-[#183626] dark:text-[#dca038]" />
                         <p className="font-medium text-xs text-muted-foreground">Loading products...</p>
@@ -1071,7 +1212,7 @@ export function ProductManagement() {
                   </TableRow>
                 ) : paginatedProducts.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={10} className="h-48 text-center">
+                    <TableCell colSpan={11} className="h-48 text-center">
                       <div className="flex flex-col items-center justify-center p-6 space-y-3">
                         <div className="w-12 h-12 rounded-2xl bg-muted text-muted-foreground flex items-center justify-center">
                           <Package className="w-6 h-6" />
@@ -1096,6 +1237,11 @@ export function ProductManagement() {
                 ) : (
                   paginatedProducts.map((product) => {
                     const isSelected = selectedIds.includes(product.id)
+                    const hasDiscount =
+                      product.discount_price != null &&
+                      product.discount_price > 0 &&
+                      product.discount_price < product.original_price
+
                     return (
                       <TableRow
                         key={product.id}
@@ -1113,53 +1259,35 @@ export function ProductManagement() {
                           />
                         </TableCell>
 
-                        {/* Image Thumbnail (Square with rounded corners, Image 1 style - no border) */}
-                        <TableCell className="py-4 px-4">
-                          <div className="w-12 h-12 rounded-xl overflow-hidden bg-muted/30 shrink-0 flex items-center justify-center">
-                            <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-full h-full object-cover"
-                            />
-                          </div>
+                        {/* SKU Column (Before Product Name) */}
+                        <TableCell className="py-4 px-4 text-xs font-mono text-muted-foreground whitespace-nowrap">
+                          {product.sku ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-muted border border-border text-muted-foreground">
+                              {product.sku}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
                         </TableCell>
 
                         {/* Product Name */}
                         <TableCell className="py-4 px-4">
-                          <div className="flex flex-col min-w-0 max-w-[220px]">
-                            <span
-                              onClick={() => handleOpenView(product)}
-                              className="font-semibold text-xs md:text-sm text-foreground hover:text-primary transition-colors cursor-pointer truncate"
-                            >
-                              {product.name}
-                            </span>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              
-                              {product.volume && (
-                                <span className="text-[10px] text-muted-foreground">
-                                  {product.volume}
-                                </span>
-                              )}
-                              <span className="text-[11px] text-muted-foreground truncate">
-                                {product.description}
-                              </span>
-                            </div>
-                          </div>
+                          <span
+                            onClick={() => handleOpenView(product)}
+                            className="font-semibold text-xs md:text-sm text-foreground hover:text-primary transition-colors cursor-pointer truncate"
+                          >
+                            {product.name}
+                          </span>
                         </TableCell>
 
-                        {/* Code (SKU) */}
-                        <TableCell className="py-4 px-4 text-xs font-mono text-muted-foreground">
-                          {product.sku || "N/A"}
-                        </TableCell>
-
-                        {/* Subcategory */}
+                        {/* Category */}
                         <TableCell className="py-4 px-4 text-xs font-medium text-foreground">
                           {product.category}
                         </TableCell>
 
-                        {/* Price */}
-                        <TableCell className="py-4 px-4 text-xs font-semibold text-foreground">
-                          ${product.price.toFixed(2)}
+                        {/* Volume */}
+                        <TableCell className="py-4 px-4 text-xs text-muted-foreground whitespace-nowrap">
+                          {product.volume || "330 ml"}
                         </TableCell>
 
                         {/* Stock */}
@@ -1167,12 +1295,7 @@ export function ProductManagement() {
                           {product.stock}
                         </TableCell>
 
-                        {/* Added Date */}
-                        <TableCell className="py-4 px-4 text-xs text-muted-foreground whitespace-nowrap">
-                          {product.addedDate || "14 Sept 2025"}
-                        </TableCell>
-
-                        {/* Status (Static Pill Badge - Non-dropdown) */}
+                        {/* Status Badge */}
                         <TableCell className="py-4 px-4">
                           <span
                             className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border select-none ${
@@ -1196,17 +1319,58 @@ export function ProductManagement() {
                           </span>
                         </TableCell>
 
-                        {/* Action Menu (Image 1 ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¢ horizontal dots) */}
+                        {/* Price: Discount & cut original price in same column */}
+                        <TableCell className="py-4 px-4 text-xs font-semibold text-foreground">
+                          <div className="flex items-baseline gap-1.5 flex-wrap">
+                            {hasDiscount ? (
+                              <>
+                                <span>${product.discount_price!.toFixed(2)}</span>
+                                <span className="text-[10px] text-muted-foreground line-through font-normal">
+                                  ${product.original_price.toFixed(2)}
+                                </span>
+                              </>
+                            ) : (
+                              <span>${product.original_price.toFixed(2)}</span>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        {/* Most Selling Column */}
+                        <TableCell className="py-4 px-4 text-xs">
+                          {product.is_most_selling ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-50 text-rose-700 border border-rose-200/80 dark:bg-rose-950/50 dark:text-rose-300 dark:border-rose-800">
+                              <Flame className="w-2.5 h-2.5 text-rose-500 fill-rose-500" />
+                              <span>Most Selling</span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/60 text-xs font-mono">-</span>
+                          )}
+                        </TableCell>
+
+                        {/* Featured Column */}
+                        <TableCell className="py-4 px-4 text-xs">
+                          {product.is_featured ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200/80 dark:bg-amber-950/50 dark:text-amber-300 dark:border-amber-800">
+                              <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
+                              <span>Featured</span>
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/60 text-xs font-mono">-</span>
+                          )}
+                        </TableCell>
+
+                        {/* Action DropdownMenu */}
                         <TableCell className="py-4 px-4 text-center">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <button
-                                type="button"
-                                className="h-8 w-8 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center transition-colors focus:outline-none"
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground"
                               >
                                 <MoreHorizontal className="w-4 h-4" />
                                 <span className="sr-only">Actions</span>
-                              </button>
+                              </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48 rounded-xl bg-card border border-border shadow-md p-1.5">
                               <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
@@ -1226,7 +1390,7 @@ export function ProductManagement() {
                                 <Edit2 className="w-3.5 h-3.5 text-muted-foreground" />
                                 <span>Edit Product</span>
                               </DropdownMenuItem>
-                                                            <DropdownMenuSeparator className="my-1 bg-border" />
+                              <DropdownMenuSeparator className="my-1 bg-border" />
                               <DropdownMenuItem
                                 onClick={() => setDeleteCandidate(product)}
                                 className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-destructive/10 text-destructive focus:text-destructive gap-2"
@@ -1241,11 +1405,10 @@ export function ProductManagement() {
                     )
                   })
                 )}
-              </TableBody>
-            </Table>
+              </TableBody>            </Table>
           </div>
 
-          {/* Table Footer with Pagination (Clean, airy layout) */}
+          {/* Table Footer: Pagination */}
           <div className="p-4 border-t border-muted/30 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground bg-card">
             <div className="flex items-center gap-3">
               <span>
@@ -1254,22 +1417,26 @@ export function ProductManagement() {
                 <strong>{filteredProducts.length}</strong> products
               </span>
 
-              {/* Page Size Selector */}
+              {/* Per Page Selector */}
               <div className="flex items-center gap-1.5 pl-3 border-l border-border">
                 <span className="text-[11px] text-muted-foreground">Per page:</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value))
+                <Select
+                  value={String(pageSize)}
+                  onValueChange={(val) => {
+                    setPageSize(Number(val))
                     setCurrentPage(1)
                   }}
-                  className="h-8 text-xs bg-card border border-border rounded-lg px-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
                 >
-                  <option value={5}>5</option>
-                  <option value={8}>8</option>
-                  <option value={12}>12</option>
-                  <option value={20}>20</option>
-                </select>
+                  <SelectTrigger className="h-8 w-[72px] text-xs bg-card border-border rounded-lg text-foreground px-2">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="bg-card border-border rounded-xl">
+                    <SelectItem value="5">5</SelectItem>
+                    <SelectItem value="8">8</SelectItem>
+                    <SelectItem value="12">12</SelectItem>
+                    <SelectItem value="20">20</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
@@ -1289,13 +1456,13 @@ export function ProductManagement() {
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                 <Button
                   key={page}
-                  variant={safeCurrentPage === page ? "default" : "outline"}
+                  variant={page === safeCurrentPage ? "default" : "ghost"}
                   size="icon"
                   onClick={() => setCurrentPage(page)}
-                  className={`w-8 h-8 rounded-full text-xs font-semibold transition-colors ${
-                    safeCurrentPage === page
-                      ? "bg-primary text-primary-foreground shadow-2xs"
-                      : "border border-border text-foreground hover:bg-muted"
+                  className={`w-8 h-8 rounded-full text-xs font-medium ${
+                    page === safeCurrentPage
+                      ? "bg-primary text-primary-foreground shadow-sm"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   }`}
                 >
                   {page}
@@ -1305,7 +1472,7 @@ export function ProductManagement() {
               <Button
                 variant="outline"
                 size="icon"
-                disabled={safeCurrentPage === totalPages || totalPages === 0}
+                disabled={safeCurrentPage === totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 className="w-8 h-8 rounded-full border border-border text-foreground hover:bg-muted disabled:opacity-40"
               >
@@ -1348,7 +1515,7 @@ export function ProductManagement() {
             </button>
           </div>
 
-          {/* Form matching screenshot layout */}
+                    {/* Form matching clean modular layout */}
           <form onSubmit={handleSubmit(onSubmitProduct)} className="flex-1 flex flex-col min-h-0 overflow-hidden" noValidate>
             <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
               {/* Product Name */}
@@ -1370,44 +1537,104 @@ export function ProductManagement() {
                 )}
               </div>
 
-              {/* Category & Volume */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div className="space-y-1.5">
+              {/* Category & Volume in the Same Row */}
+              <div className="flex flex-col sm:flex-row justify-between gap-3.5">
+                {/* Category with Rectangle Select and 3 Square Action Boxes (kept at ~58%) */}
+                <div className="space-y-1.5 w-full sm:w-[58%]">
                   <label className="block text-xs font-semibold text-foreground font-sans">
                     Category <span className="text-rose-500">*</span>
                   </label>
-                  <Controller
-                    control={control}
-                    name="category"
-                    render={({ field }) => (
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                        disabled={panelMode === "view"}
-                      >
-                        <SelectTrigger
-                          className={cn(
-                            "h-10 text-xs bg-card border-border rounded-xl text-foreground",
-                            errors.category && "border-rose-400"
-                          )}
+                  <div className="flex items-center gap-1.5">
+                    {/* Rectangle box: Category dropdown */}
+                    <div className="flex-1 min-w-0">
+                      <Controller
+                        control={control}
+                        name="category"
+                        render={({ field }) => (
+                          <Select
+                            value={field.value}
+                            onValueChange={field.onChange}
+                            disabled={panelMode === "view"}
+                          >
+                            <SelectTrigger
+                              className={cn(
+                                "h-10 text-xs bg-card border-border rounded-xl text-foreground w-full",
+                                errors.category && "border-rose-400"
+                              )}
+                            >
+                              <SelectValue placeholder="Select category" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-card border-border rounded-xl">
+                              {availableCategories.map((cat) => (
+                                <SelectItem key={cat} value={cat}>
+                                  {cat}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                      />
+                    </div>
+
+                    {panelMode !== "view" && (
+                      <div className="flex items-center gap-1 shrink-0">
+                        {/* 1st square box: + add */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setNewCategoryInput("")
+                            setIsAddCategoryOpen(true)
+                          }}
+                          title="Add new category"
+                          className="h-10 w-9 rounded-xl border border-border bg-card hover:bg-muted text-foreground hover:text-primary transition-colors cursor-pointer shrink-0 shadow-2xs"
                         >
-                          <SelectValue placeholder="Select category" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-card border-border rounded-xl">
-                          <SelectItem value="Adaptogenic Tonics">Adaptogenic Tonics</SelectItem>
-                          <SelectItem value="Wild Berry Spritz">Wild Berry Spritz</SelectItem>
-                          <SelectItem value="Zero-Proof Spirits">Zero-Proof Spirits</SelectItem>
-                          <SelectItem value="Herbal Elixirs">Herbal Elixirs</SelectItem>
-                        </SelectContent>
-                      </Select>
+                          <Plus className="w-4 h-4" />
+                          <span className="sr-only">Add Category</span>
+                        </Button>
+
+                        {/* 2nd square box: pencil edit */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setEditingCategoryName(watch("category"))
+                            setIsEditCategoryOpen(true)
+                          }}
+                          title="Edit selected category"
+                          className="h-10 w-9 rounded-xl border border-border bg-card hover:bg-muted text-foreground transition-colors cursor-pointer shrink-0 shadow-2xs"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" />
+                          <span className="sr-only">Edit Category</span>
+                        </Button>
+
+                        {/* 3rd square box: bin delete */}
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="icon"
+                          onClick={() => {
+                            setCategoryToDelete(watch("category"))
+                            setIsDeleteCategoryOpen(true)
+                          }}
+                          title="Delete selected category"
+                          className="h-10 w-9 rounded-xl border border-border bg-card hover:bg-rose-50 hover:border-rose-300 dark:hover:bg-rose-950/40 text-rose-600 dark:text-rose-400 transition-colors cursor-pointer shrink-0 shadow-2xs"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span className="sr-only">Delete Category</span>
+                        </Button>
+                      </div>
                     )}
-                  />
+                  </div>
                   {errors.category && (
                     <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.category.message}</p>
                   )}
                 </div>
 
-                <div className="space-y-1.5">
+                {/* Volume (shifted to right side) */}
+                <div className="space-y-1.5 w-full sm:w-[32%] sm:ml-auto">
                   <label className="block text-xs font-semibold text-foreground font-sans">
                     Volume <span className="text-rose-500">*</span>
                   </label>
@@ -1426,33 +1653,17 @@ export function ProductManagement() {
                 </div>
               </div>
 
-              {/* Price & Inventory Units */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-semibold text-foreground font-sans">
-                    Price ($) <span className="text-rose-500">*</span>
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-xs font-semibold text-muted-foreground">
-                      $
-                    </span>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      placeholder="0.00"
-                      {...register("price", { valueAsNumber: true })}
-                      disabled={panelMode === "view"}
-                      className={cn(
-                        "pl-8 h-10 text-xs bg-card border-border rounded-xl focus-visible:ring-primary placeholder:text-muted-foreground/60",
-                        errors.price && "border-rose-400 focus-visible:ring-rose-400"
-                      )}
-                    />
-                  </div>
-                  {errors.price && (
-                    <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.price.message}</p>
-                  )}
-                </div>
+              {/* Pricing & Discounts Fields */}
+              <ProductPricingFields
+                register={register}
+                errors={errors}
+                originalPrice={watch("original_price") || 0}
+                discountPrice={watch("discount_price")}
+                disabled={panelMode === "view"}
+              />
 
+              {/* Inventory Units & Publication Status */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold text-foreground font-sans">
                     Inventory Units <span className="text-rose-500">*</span>
@@ -1471,56 +1682,55 @@ export function ProductManagement() {
                     <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.stock.message}</p>
                   )}
                 </div>
-              </div>
 
-              {/* Publication Status */}
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-foreground font-sans">
-                  Publication Status <span className="text-rose-500">*</span>
-                </label>
-                <Controller
-                  control={control}
-                  name="status"
-                  render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={field.onChange}
-                      disabled={panelMode === "view"}
-                    >
-                      <SelectTrigger
-                        className={cn(
-                          "h-10 text-xs bg-card border-border rounded-xl text-foreground",
-                          errors.status && "border-rose-400"
-                        )}
+                <div className="space-y-1.5">
+                  <label className="block text-xs font-semibold text-foreground font-sans">
+                    Publication Status <span className="text-rose-500">*</span>
+                  </label>
+                  <Controller
+                    control={control}
+                    name="status"
+                    render={({ field }) => (
+                      <Select
+                        value={field.value}
+                        onValueChange={field.onChange}
+                        disabled={panelMode === "view"}
                       >
-                        <SelectValue placeholder="Select status" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-card border-border rounded-xl">
-                        <SelectItem value="Active">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span>Active (Live in Store)</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="Low Stock">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-amber-500" />
-                            <span>Low Stock Warning</span>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="Out of Stock">
-                          <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-rose-500" />
-                            <span>Out of Stock (Hidden/Waitlist)</span>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                        <SelectTrigger
+                          className={cn(
+                            "h-10 text-xs bg-card border-border rounded-xl text-foreground",
+                            errors.status && "border-rose-400"
+                          )}
+                        >
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-card border-border rounded-xl">
+                          <SelectItem value="Active">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+                              <span>Active (Live in Store)</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Low Stock">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-amber-500" />
+                              <span>Low Stock Warning</span>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="Out of Stock">
+                            <div className="flex items-center gap-2">
+                              <span className="w-2 h-2 rounded-full bg-rose-500" />
+                              <span>Out of Stock (Hidden/Waitlist)</span>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                  {errors.status && (
+                    <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.status.message}</p>
                   )}
-                />
-                {errors.status && (
-                  <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.status.message}</p>
-                )}
+                </div>
               </div>
 
               {/* Description */}
@@ -1532,7 +1742,7 @@ export function ProductManagement() {
                   placeholder="Enter product details..."
                   {...register("description")}
                   disabled={panelMode === "view"}
-                  rows={4}
+                  rows={3}
                   className={cn(
                     "text-xs bg-card border-border rounded-xl focus-visible:ring-primary resize-none placeholder:text-muted-foreground/60",
                     errors.description && "border-rose-400 focus-visible:ring-rose-400"
@@ -1543,122 +1753,27 @@ export function ProductManagement() {
                 )}
               </div>
 
-              {/* Product Image - Full Width, Mobile-First Responsive & High Clarity */}
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="block text-xs font-semibold text-foreground font-sans">
-                    Product Image <span className="text-rose-500">*</span>
-                  </label>
-                  <span className="text-[11px] text-muted-foreground">PNG, JPG, WebP, GIF (max 5MB)</span>
-                </div>
+              {/* Product Gallery (Multiple Images) Component */}
+              <ProductImagesFields
+                images={formImages}
+                onChange={setFormImages}
+                onUploadFile={handleUploadGalleryImage}
+                isUploading={isUploadingImage}
+                disabled={panelMode === "view"}
+              />
 
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/gif"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
+              {/* Badges & Merchandising Flags (badge, badge_type, is_featured, is_most_selling) */}
+              <ProductBadgesFields
+                register={register}
+                control={control}
+                disabled={panelMode === "view"}
+              />
 
-                {formImage && formImage !== "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=300&auto=format&fit=crop&q=80" ? (
-                  <div className="relative w-full h-52 sm:h-64 rounded-2xl overflow-hidden border border-border bg-muted/15 dark:bg-muted/10 group flex items-center justify-center shadow-xs">
-                    <img
-                      src={formImage}
-                      alt="Product preview"
-                      className="w-full h-full object-contain p-3 sm:p-4 transition-transform duration-300 group-hover:scale-[1.02]"
-                      loading="lazy"
-                    />
-
-                    {/* Desktop Hover / Mobile Touch Action Bar */}
-                    <div className="absolute inset-0 bg-black/45 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3 p-4">
-                      {panelMode !== "view" && (
-                        <>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="text-xs rounded-full h-9 px-4 cursor-pointer shadow-md bg-white text-foreground hover:bg-neutral-100 font-medium"
-                          >
-                            Change Photo
-                          </Button>
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => {
-                              setFormImage("")
-                              setSelectedImageFile(null)
-                              setValue("image", "", { shouldValidate: true })
-                            }}
-                            className="text-xs rounded-full h-9 px-4 cursor-pointer shadow-md font-medium"
-                          >
-                            Remove
-                          </Button>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => {
-                      if (panelMode !== "view") fileInputRef.current?.click()
-                    }}
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      if (panelMode !== "view") setIsDragging(true)
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault()
-                      setIsDragging(false)
-                    }}
-                    onDrop={(e) => {
-                      e.preventDefault()
-                      setIsDragging(false)
-                      if (panelMode === "view") return
-                      const file = e.dataTransfer.files?.[0]
-                      if (file) {
-                        if (file.size > 5 * 1024 * 1024) {
-                          toast.error("File size exceeds 5MB limit")
-                          return
-                        }
-                        setSelectedImageFile(file)
-                        const reader = new FileReader()
-                        reader.onload = () => {
-                          const dataUrl = reader.result as string
-                          setFormImage(dataUrl)
-                          setValue("image", dataUrl, { shouldValidate: true })
-                          toast.success("Image selected for upload")
-                        }
-                        reader.readAsDataURL(file)
-                      }
-                    }}
-                    className={cn(
-                      "w-full border-2 border-dashed rounded-2xl p-6 sm:p-8 flex flex-col items-center justify-center gap-3 cursor-pointer transition-all text-center select-none min-h-[170px] sm:min-h-[200px]",
-                      isDragging
-                        ? "border-[#183626] bg-[#183626]/5 dark:border-emerald-400 dark:bg-emerald-950/20"
-                        : "border-border/80 hover:border-primary/60 bg-muted/10 hover:bg-muted/20",
-                      errors.image && "border-rose-400 bg-rose-50/20 dark:bg-rose-950/20",
-                      panelMode === "view" && "cursor-default hover:border-border/80 hover:bg-muted/10"
-                    )}
-                  >
-                    <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-card border border-border shadow-xs flex items-center justify-center text-muted-foreground transition-transform group-hover:scale-105">
-                      <ImageIcon className="w-6 h-6 sm:w-7 sm:h-7 stroke-[1.5] text-primary" />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs sm:text-sm font-semibold text-foreground">
-                        {panelMode === "view" ? "No product image uploaded" : "Click to upload or drag and drop"}
-                      </p>
-                      <p className="text-[11px] sm:text-xs text-muted-foreground">
-                        High resolution recommended (1:1 or 4:5 ratio)
-                      </p>
-                    </div>
-                  </div>
-                )}
-                {errors.image && (
-                  <p className="text-[11px] font-medium text-rose-500 mt-1">{errors.image.message}</p>
-                )}
-              </div>
+              {/* Sensory & Flavor Profile Radar Component */}
+              <ProductFlavorProfileFields
+                control={control}
+                disabled={panelMode === "view"}
+              />
             </div>
 
             {/* Footer Buttons: Cancel/Close on left, Create/Save Product on right */}
@@ -1683,6 +1798,175 @@ export function ProductManagement() {
               )}
             </div>
           </form>
+
+          {/* IN-SHEET CATEGORY ACTION POPUPS (Centered inside sheet, matching exact screenshot) */}
+          {(isAddCategoryOpen || isEditCategoryOpen || isDeleteCategoryOpen) && (
+            <div className="absolute inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-150">
+              {/* ADD CATEGORY POPUP */}
+              {isAddCategoryOpen && (
+                <div className="w-full max-w-sm bg-card rounded-3xl shadow-2xl border border-border overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col">
+                  <div className="p-6 pb-5 space-y-4 relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddCategoryOpen(false)}
+                      className="absolute top-5 right-5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="sr-only">Close</span>
+                    </button>
+
+                    <div>
+                      <h3 className="text-lg font-bold text-foreground font-serif tracking-tight">
+                        Add New Category
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Enter a title for the new product category.
+                      </p>
+                    </div>
+
+                    <div>
+                      <Input
+                        placeholder="e.g. Sparkling Tonics"
+                        value={newCategoryInput}
+                        onChange={(e) => setNewCategoryInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            handleConfirmAddCategory()
+                          }
+                        }}
+                        className="h-11 rounded-full border-2 border-[#5c7a68] dark:border-[#7a9986] text-xs px-4 bg-background focus-visible:ring-primary text-foreground placeholder:text-muted-foreground/60 shadow-2xs"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-[#f9f7f2] dark:bg-muted/40 p-4 px-6 border-t border-border/60 flex items-center justify-end gap-2.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsAddCategoryOpen(false)}
+                      className="h-9 px-5 rounded-full border border-border bg-card hover:bg-muted text-xs text-foreground font-medium cursor-pointer"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleConfirmAddCategory}
+                      disabled={!newCategoryInput.trim()}
+                      className="h-9 px-5 rounded-full bg-[#738879] hover:bg-[#607466] text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      Add Category
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* EDIT CATEGORY POPUP */}
+              {isEditCategoryOpen && (
+                <div className="w-full max-w-sm bg-card rounded-3xl shadow-2xl border border-border overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col">
+                  <div className="p-6 pb-5 space-y-4 relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditCategoryOpen(false)}
+                      className="absolute top-5 right-5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="sr-only">Close</span>
+                    </button>
+
+                    <div>
+                      <h3 className="text-lg font-bold text-foreground font-serif tracking-tight">
+                        Edit Category
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Rename the selected category "{watch("category")}".
+                      </p>
+                    </div>
+
+                    <div>
+                      <Input
+                        placeholder="New category name"
+                        value={editingCategoryName}
+                        onChange={(e) => setEditingCategoryName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            handleConfirmEditCategory()
+                          }
+                        }}
+                        className="h-11 rounded-full border-2 border-[#5c7a68] dark:border-[#7a9986] text-xs px-4 bg-background focus-visible:ring-primary text-foreground placeholder:text-muted-foreground/60 shadow-2xs"
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <div className="bg-[#f9f7f2] dark:bg-muted/40 p-4 px-6 border-t border-border/60 flex items-center justify-end gap-2.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsEditCategoryOpen(false)}
+                      className="h-9 px-5 rounded-full border border-border bg-card hover:bg-muted text-xs text-foreground font-medium cursor-pointer"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      onClick={handleConfirmEditCategory}
+                      disabled={!editingCategoryName.trim() || editingCategoryName.trim() === watch("category")}
+                      className="h-9 px-5 rounded-full bg-[#738879] hover:bg-[#607466] text-white text-xs font-semibold shadow-xs transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      Save Changes
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* DELETE CATEGORY POPUP */}
+              {isDeleteCategoryOpen && (
+                <div className="w-full max-w-sm bg-card rounded-3xl shadow-2xl border border-border overflow-hidden animate-in zoom-in-95 duration-150 flex flex-col">
+                  <div className="p-6 pb-5 space-y-3 relative">
+                    <button
+                      type="button"
+                      onClick={() => setIsDeleteCategoryOpen(false)}
+                      className="absolute top-5 right-5 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="sr-only">Close</span>
+                    </button>
+
+                    <div>
+                      <h3 className="text-lg font-bold text-foreground font-serif tracking-tight">
+                        Delete Category?
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-2 leading-relaxed">
+                        Are you sure you want to delete category <strong className="text-foreground">"{categoryToDelete || watch("category")}"</strong>?
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bg-[#f9f7f2] dark:bg-muted/40 p-4 px-6 border-t border-border/60 flex items-center justify-end gap-2.5">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setIsDeleteCategoryOpen(false)}
+                      className="h-9 px-5 rounded-full border border-border bg-card hover:bg-muted text-xs text-foreground font-medium cursor-pointer"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      onClick={handleConfirmDeleteCategory}
+                      className="h-9 px-5 rounded-full text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                    >
+                      Delete Category
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </SheetContent>
       </Sheet>
 

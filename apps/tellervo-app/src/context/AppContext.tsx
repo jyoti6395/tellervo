@@ -5,7 +5,7 @@ import { translations, Translations } from '../i18n/translations';
 import confetti from 'canvas-confetti';
 import { authService, profileService, AuthUser, AuthResult, supabase, productService, favouriteService } from '@tellervo/supabase';
 import { mapRecordToProduct } from '../lib/productMapper';
-import { ALL_ROUTES, APP_ROUTES } from '../routes/routes.config';
+import { ALL_ROUTES, APP_ROUTES, findRouteByPath } from '../routes/routes.config';
 import { navigateTo } from '../routes/hooks/useNavigation';
 
 interface Toast {
@@ -70,6 +70,9 @@ interface AppContextType {
   signup: (email: string, password: string, fullName: string, phone?: string) => Promise<AuthResult>;
   logout: () => Promise<void>;
   updateUserProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  restockNotifications: string[];
+  isRestockNotified: (productId: string) => boolean;
+  toggleRestockNotification: (productId: string, productName?: string) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -104,7 +107,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [activeTab, setActiveTabState] = useState<TabType>(() => {
     if (typeof window === 'undefined') return 'home';
     const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
-    const matched = ALL_ROUTES.find((r) => r.path === path);
+    const matched = findRouteByPath(path);
     return matched?.tabEquivalent || 'home';
   });
 
@@ -122,7 +125,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const handlePopState = () => {
       const path = window.location.pathname.toLowerCase().replace(/\/$/, '') || '/';
-      const matched = ALL_ROUTES.find((r) => r.path === path);
+      const matched = findRouteByPath(path);
       if (matched?.tabEquivalent) {
         setActiveTabState(matched.tabEquivalent);
       }
@@ -289,11 +292,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       // ignore
     }
   }, [favorites]);
+
+  const [restockNotifications, setRestockNotifications] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('tellervo_restock_notifications');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('tellervo_restock_notifications', JSON.stringify(restockNotifications));
+    } catch {
+      // ignore
+    }
+  }, [restockNotifications]);
+
+  const isRestockNotified = (productId: string) => {
+    const cleanId = (productId || '').trim().toLowerCase();
+    return restockNotifications.some(id => (id || '').trim().toLowerCase() === cleanId);
+  };
+
+  const toggleRestockNotification = (productId: string, productName?: string) => {
+    const cleanId = (productId || '').trim();
+    if (!cleanId) return;
+    const displayName = productName || 'this provision';
+    setRestockNotifications(prev => {
+      const exists = prev.some(id => id.trim().toLowerCase() === cleanId.toLowerCase());
+      if (exists) {
+        showToast(`🔕 Restock notification turned off for ${displayName}`, 'info');
+        return prev.filter(id => id.trim().toLowerCase() !== cleanId.toLowerCase());
+      } else {
+        showToast(`🔔 We'll notify you as soon as ${displayName} is active again!`, 'success');
+        return [...prev, cleanId];
+      }
+    });
+  };
   const [user, setUser] = useState<UserProfile>(INITIAL_USER);
   const [orders, setOrders] = useState<OrderItem[]>(() => {
     try {
       const saved = localStorage.getItem('tellervo_orders');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          return parsed.filter((o: any) => o && o.id !== 'ord-1' && o.id !== 'ord-2');
+        }
+      }
     } catch {
       // ignore
     }
@@ -640,6 +687,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   const addToCart = (product: Product, quantity = 1) => {
+    const rawStatus = (product.status || '').toLowerCase();
+    const isOutOfStock =
+      rawStatus === 'out of stock' ||
+      rawStatus === 'out_of_stock' ||
+      product.stockStatus === 'out-of-stock' ||
+      (product.stockCount !== undefined && product.stockCount <= 0);
+
+    if (isOutOfStock) {
+      showToast(`${product.name} is currently out of stock`, 'info');
+      return;
+    }
+
     setCart(prev => {
       const existing = prev.find(item => item.product.id === product.id);
       if (existing) {
@@ -782,6 +841,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         signup,
         logout,
         updateUserProfile,
+        restockNotifications,
+        isRestockNotified,
+        toggleRestockNotification,
       }}
     >
       {children}

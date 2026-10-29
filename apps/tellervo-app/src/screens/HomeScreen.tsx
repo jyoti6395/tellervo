@@ -355,10 +355,28 @@ export const HomeScreen: React.FC = () => {
         <div className="grid grid-cols-2 gap-3">
           {discoverProducts.map(product => {
             const isFav = favorites.includes(product.id);
+            const rawStatus = (product.status || '').toLowerCase();
+            const isOutOfStock =
+              rawStatus === 'out of stock' ||
+              rawStatus === 'out_of_stock' ||
+              product.stockStatus === 'out-of-stock' ||
+              (product.stockCount !== undefined && product.stockCount <= 0);
+
+            const isLowStock =
+              !isOutOfStock &&
+              (rawStatus === 'low stock' ||
+                rawStatus === 'low_stock' ||
+                product.stockStatus === 'low-stock' ||
+                (product.stockCount !== undefined &&
+                  product.stockCount > 0 &&
+                  product.stockCount <= 5));
+
             return (
               <div
                 key={product.id}
-                className="bg-white rounded-3xl p-3 border border-[#EAE4D7] shadow-soft-sm flex flex-col justify-between group hover:border-[#D6CEBF] transition-all"
+                className={`bg-white rounded-3xl p-3 border border-[#EAE4D7] shadow-soft-sm flex flex-col justify-between group hover:border-[#D6CEBF] transition-all ${
+                  isOutOfStock ? 'opacity-90' : ''
+                }`}
               >
                 {/* Product Image & Top Badges */}
                 <div 
@@ -371,10 +389,27 @@ export const HomeScreen: React.FC = () => {
                     onError={(e) => {
                       e.currentTarget.src = "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80";
                     }}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
+                      isOutOfStock ? 'grayscale-[30%]' : ''
+                    }`}
                   />
 
-                  
+                  {/* Badges on Card */}
+                  <div className="absolute top-2 left-2 z-10 pointer-events-none flex flex-col gap-1">
+                    {isOutOfStock ? (
+                      <span className="px-2 py-0.5 bg-[#8B2525]/95 backdrop-blur-sm text-white text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs">
+                        Out of Stock
+                      </span>
+                    ) : isLowStock ? (
+                      <span className="px-2 py-0.5 bg-[#C97B1A]/95 backdrop-blur-sm text-white text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs">
+                        Limited Stock
+                      </span>
+                    ) : (product.badge || product.isMostSelling) ? (
+                      <span className="px-2 py-0.5 bg-[#183324]/90 backdrop-blur-sm text-[#FAF8F3] text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs">
+                        {product.badge || 'BESTSELLER'}
+                      </span>
+                    ) : null}
+                  </div>
 
                   <button
                     onClick={(e) => {
@@ -424,21 +459,28 @@ export const HomeScreen: React.FC = () => {
                   )}
                 </div>
 
-                {/* Price and Add (+) button */}
+                {/* Price and Add / Out of Stock button */}
                 <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-[#F0EBE0]">
-                  <div>
+                  <div className="flex items-baseline gap-1.5">
                     <span className="font-editorial text-sm font-bold text-[#14261B]">
                       €{product.price.toFixed(2)}
                     </span>
-                    <span className="text-[10px] text-[#869689] block">{product.size}</span>
+                    {product.originalPrice && (
+                      <span className="text-[10px] text-[#9EAFA2] line-through">
+                        €{product.originalPrice.toFixed(2)}
+                      </span>
+                    )}
                   </div>
-                  <button
-                    onClick={() => addToCart(product)}
-                    aria-label={`Add ${product.name} to cart`}
-                    className="w-8 h-8 rounded-full bg-[#183324] text-[#FAF8F3] flex items-center justify-center hover:bg-[#284B36] active:scale-95 transition-all shadow-sm"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+                  {!isOutOfStock && (
+                    <button
+                      type="button"
+                      onClick={() => addToCart(product)}
+                      aria-label={`Add ${product.name} to cart`}
+                      className="w-8 h-8 rounded-full bg-[#183324] text-[#FAF8F3] flex items-center justify-center hover:bg-[#284B36] active:scale-95 transition-all shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             );

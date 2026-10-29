@@ -1,4 +1,4 @@
-﻿-- ====================================================================
+-- ====================================================================
 -- Tellervo: Products Table, Admin Tracking, RLS and Storage Bucket
 -- Migration: 20261028000000_create_products.sql
 -- ====================================================================
@@ -29,20 +29,28 @@ CREATE TABLE IF NOT EXISTS public.products (
   name TEXT NOT NULL,
   category TEXT NOT NULL,
   volume TEXT DEFAULT '330 ml',
+  original_price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+  discount_price NUMERIC(10,2) DEFAULT NULL,
   price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
   stock INTEGER NOT NULL DEFAULT 0,
   status TEXT NOT NULL DEFAULT 'Active' CHECK (
     status IN ('Active', 'Low Stock', 'Out of Stock', 'Draft', 'Archived', 'active', 'low_stock', 'out_of_stock', 'draft', 'archived')
   ),
   description TEXT DEFAULT '',
+  images TEXT[] DEFAULT '{}',
   image_url TEXT DEFAULT '',
+  badge TEXT DEFAULT NULL,
+  badge_type TEXT DEFAULT NULL,
+  is_featured BOOLEAN NOT NULL DEFAULT false,
+  is_most_selling BOOLEAN NOT NULL DEFAULT false,
+  flavor_profile JSONB DEFAULT NULL,
   sku TEXT UNIQUE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now()),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT timezone('utc'::text, now())
 );
 
 -- Safely remove is_featured, ingredients, and tags if they were previously created
-ALTER TABLE public.products DROP COLUMN IF EXISTS is_featured;
+
 ALTER TABLE public.products DROP COLUMN IF EXISTS ingredients;
 ALTER TABLE public.products DROP COLUMN IF EXISTS tags;
 
@@ -51,6 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_products_category ON public.products (category);
 CREATE INDEX IF NOT EXISTS idx_products_status ON public.products (status);
 CREATE INDEX IF NOT EXISTS idx_products_created_by ON public.products (created_by);
 CREATE INDEX IF NOT EXISTS idx_products_created_at ON public.products (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_products_is_most_selling ON public.products (is_most_selling);
 
 -- 3. Automatic updated_at and updated_by trigger
 CREATE OR REPLACE FUNCTION public.handle_product_update()

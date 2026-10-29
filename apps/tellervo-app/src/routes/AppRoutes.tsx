@@ -18,7 +18,11 @@ import { ProfileScreen } from '../screens/ProfileScreen';
 import { CheckoutScreen } from '../screens/CheckoutScreen';
 import { LoginPage } from '../screens/auth/LoginPage';
 import { SignupPage } from '../screens/auth/SignupPage';
-import { APP_ROUTES, ALL_ROUTES, findRouteByPath } from './routes.config';
+import { OrderDetailScreen } from '../screens/OrderDetailScreen';
+import { APP_ROUTES, ALL_ROUTES, findRouteByPath, getShopProductId, getOrderIdFromPath } from './routes.config';
+import { productService } from '@tellervo/supabase';
+import { mapRecordToProduct } from '../lib/productMapper';
+import { PRODUCTS } from '../data/mockData';
 import { useNavigation } from './hooks/useNavigation';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { GuestRoute } from './components/GuestRoute';
@@ -28,8 +32,61 @@ import { GuestRoute } from './components/GuestRoute';
  * Seamlessly resolves layouts, guards, tabs, and navigation state.
  */
 export const AppRoutes: React.FC = () => {
-  const { currentPath } = useNavigation();
-  const { activeTab, setIsChatbotOpen } = useApp();
+  const { currentPath, navigate } = useNavigation();
+  const {
+    activeTab,
+    setIsChatbotOpen,
+    selectedProduct,
+    setSelectedProduct,
+    products,
+    showToast,
+  } = useApp();
+
+  // Synchronize dynamic /shop/:id URL with selectedProduct
+  useEffect(() => {
+    const productId = getShopProductId(currentPath);
+
+    if (productId) {
+      if (selectedProduct?.id === productId) {
+        return;
+      }
+
+      // 1. Try finding product in loaded state
+      const inMemory = products.find((p) => p.id === productId);
+      if (inMemory) {
+        setSelectedProduct(inMemory);
+        return;
+      }
+
+      // 2. Try finding product in fallback mock products
+      const inMock = PRODUCTS.find((p) => p.id === productId);
+      if (inMock) {
+        setSelectedProduct(inMock);
+        return;
+      }
+
+      // 3. Fetch from Supabase database
+      let isCancelled = false;
+      productService.fetchProductById(productId).then(({ data, error }) => {
+        if (isCancelled) return;
+        if (data && !error) {
+          setSelectedProduct(mapRecordToProduct(data));
+        } else {
+          showToast('Botanical product not found', 'info');
+          navigate('/shop');
+        }
+      });
+
+      return () => {
+        isCancelled = true;
+      };
+    } else {
+      // If we returned to a path without an ID and selectedProduct is still open, close it
+      if (selectedProduct) {
+        setSelectedProduct(null);
+      }
+    }
+  }, [currentPath, products, navigate, showToast]);
 
   const currentRoute = findRouteByPath(currentPath);
 
@@ -61,6 +118,11 @@ export const AppRoutes: React.FC = () => {
           <CheckoutScreen />
         </ProtectedRoute>
       );
+    }
+
+    if (currentRoute.path.startsWith('/orders/')) {
+      const orderId = getOrderIdFromPath(currentPath);
+      return <OrderDetailScreen orderId={orderId} />;
     }
 
     switch (effectiveTab) {

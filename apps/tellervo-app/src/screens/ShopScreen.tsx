@@ -1,31 +1,23 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
-import {
-  Search,
-  Mic,
-  SlidersHorizontal,
-  Heart,
-  Plus,
-  ShoppingBag,
-  ArrowRight,
-  ChevronDown,
-  Sparkles,
-  RotateCcw,
-  Database,
-  AlertCircle,
-  X
-} from 'lucide-react';
+import { RotateCcw, AlertCircle } from 'lucide-react';
 import { FilterDrawer } from '../components/FilterDrawer';
+import { useNavigation } from '../routes/hooks/useNavigation';
+import { Product } from '../types';
+import { ShopSearchBar } from '../components/shop/ShopSearchBar';
+import { ShopActiveFilters } from '../components/shop/ShopActiveFilters';
+import { ShopSortHeader, SortOption } from '../components/shop/ShopSortHeader';
+import { ProductCard } from '../components/shop/ProductCard';
+import { ShopCartBar } from '../components/shop/ShopCartBar';
+import { ShopEmptyState } from '../components/shop/ShopEmptyState';
 
+/**
+ * Botanical Shop & Cellar Drops Screen
+ * Composed of clean, single-responsibility subcomponents for readability and maintenance.
+ */
 export const ShopScreen: React.FC = () => {
   const {
     products,
-    addToCart,
-    favorites,
-    toggleFavorite,
-    cartCount,
-    cartTotal,
-    setIsCartOpen,
     setSelectedProduct,
     showToast,
     t,
@@ -34,44 +26,34 @@ export const ShopScreen: React.FC = () => {
     hasMoreProducts,
     refetchProducts,
     fetchMoreProducts,
-    productsError
+    productsError,
   } = useApp();
 
+  const { navigate } = useNavigation();
+
+  // Filter & Search State
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isListening, setIsListening] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<'popular' | 'price-asc' | 'price-desc' | 'rating'>('popular');
+  const [sortBy, setSortBy] = useState<SortOption>('popular');
   const [isSortDropdownOpen, setIsSortDropdownOpen] = useState(false);
 
+  // Dynamic Categories from database products
   const categories = useMemo(() => {
     const uniqueCats = Array.from(
       new Set(
         products
-          .map(p => (p.category || '').trim())
+          .map((p) => (p.category || '').trim())
           .filter(Boolean)
       )
     );
     return [
       { id: 'all', label: t.shop?.allDrinks || 'All Drinks' },
-      ...uniqueCats.map(cat => ({ id: cat, label: cat }))
+      ...uniqueCats.map((cat) => ({ id: cat, label: cat })),
     ];
   }, [products, t.shop]);
-
-  // Dynamic counts for each category computed strictly from database products
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = {
-      all: products.length,
-    };
-    products.forEach(p => {
-      const cat = (p.category || '').trim();
-      if (cat) {
-        counts[cat] = (counts[cat] || 0) + 1;
-      }
-    });
-    return counts;
-  }, [products]);
 
   // Infinite Scroll Sentinel Observer
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -82,7 +64,7 @@ export const ShopScreen: React.FC = () => {
     if (!hasMoreProducts || isFetchingMore || isLoadingProducts) return;
 
     const observer = new IntersectionObserver(
-      entries => {
+      (entries) => {
         const first = entries[0];
         if (first && first.isIntersecting) {
           fetchMoreProducts();
@@ -96,10 +78,7 @@ export const ShopScreen: React.FC = () => {
     );
 
     observer.observe(sentinel);
-
-    return () => {
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, [hasMoreProducts, isFetchingMore, isLoadingProducts, fetchMoreProducts]);
 
   const handleVoiceSearch = () => {
@@ -112,52 +91,75 @@ export const ShopScreen: React.FC = () => {
     }, 1500);
   };
 
-  // Filter products strictly from database data
-  const filteredProducts = products.filter(product => {
-    // Search query
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const match = product.name.toLowerCase().includes(q) ||
-        product.category.toLowerCase().includes(q) ||
-        (product.notes && product.notes.toLowerCase().includes(q)) ||
-        (product.description && product.description.toLowerCase().includes(q));
-      if (!match) return false;
-    }
+  const handleProductClick = (product: Product) => {
+    setSelectedProduct(product);
+    navigate(`/shop/${product.id}`);
+  };
 
-    // Category Filter Bar logic (matching product category field)
-    if (activeCategory !== 'all') {
-      if ((product.category || '').trim().toLowerCase() !== activeCategory.trim().toLowerCase()) {
-        return false;
+  const handleResetFilters = () => {
+    setActiveCategory('all');
+    setSelectedTags([]);
+    setSearchQuery('');
+  };
+
+  // Filter products by search text, category, and packaging tags
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const match =
+          product.name.toLowerCase().includes(q) ||
+          product.category.toLowerCase().includes(q) ||
+          (product.notes && product.notes.toLowerCase().includes(q)) ||
+          (product.description && product.description.toLowerCase().includes(q));
+        if (!match) return false;
       }
-    }
 
-    // Packaging & Vessel Filter logic (matching product volume / size field)
-    if (selectedTags.length > 0) {
-      const matchVessel = selectedTags.some(tag => {
-        return (product.size || '').trim().toLowerCase() === tag.trim().toLowerCase();
-      });
-      if (!matchVessel) return false;
-    }
+      if (activeCategory !== 'all') {
+        if (
+          (product.category || '').trim().toLowerCase() !==
+          activeCategory.trim().toLowerCase()
+        ) {
+          return false;
+        }
+      }
 
-    return true;
-  });
+      if (selectedTags.length > 0) {
+        const matchVessel = selectedTags.some((tag) => {
+          return (
+            (product.size || '').trim().toLowerCase() === tag.trim().toLowerCase()
+          );
+        });
+        if (!matchVessel) return false;
+      }
 
-  // Sort products
-  const sortedProducts = [...filteredProducts].sort((a, b) => {
-    if (sortBy === 'price-asc') return a.price - b.price;
-    if (sortBy === 'price-desc') return b.price - a.price;
-    if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
-    return 0; // default popular
-  });
+      return true;
+    });
+  }, [products, searchQuery, activeCategory, selectedTags]);
+
+  // Sort filtered products
+  const sortedProducts = useMemo(() => {
+    return [...filteredProducts].sort((a, b) => {
+      if (sortBy === 'price-asc') return a.price - b.price;
+      if (sortBy === 'price-desc') return b.price - a.price;
+      if (sortBy === 'rating') return (b.rating || 0) - (a.rating || 0);
+      return 0;
+    });
+  }, [filteredProducts, sortBy]);
+
+  const activeFilterCount =
+    (activeCategory !== 'all' ? 1 : 0) + selectedTags.length;
 
   return (
     <div className="pb-32 px-4 pt-3 w-full space-y-4 animate-in fade-in duration-200 relative">
-      {/* Error Notice if fetch failed */}
+      {/* 1. Error Banner */}
       {productsError && (
         <div className="bg-[#FFF4E5] rounded-2xl p-2.5 px-3 border border-[#FFE0B2] flex items-center justify-between text-xs text-[#7A4100]">
           <div className="flex items-center gap-2 min-w-0">
             <AlertCircle className="w-4 h-4 text-[#E65100] shrink-0" />
-            <span className="truncate">Could not sync products from database: {productsError}</span>
+            <span className="truncate">
+              Could not sync products from database: {productsError}
+            </span>
           </div>
           <button
             onClick={() => refetchProducts()}
@@ -168,174 +170,46 @@ export const ShopScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Search & Filter Bar */}
-      <div className="flex items-center gap-2">
-        <div className="relative flex-1">
-          <Search className="w-4 h-4 text-[#8C9C8F] absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder={t.shop.searchPlaceholder}
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-9 py-2.5 bg-white border border-[#E5DFD0] rounded-2xl text-xs text-[#1C3122] placeholder-[#8C9C8F] shadow-soft-sm focus:outline-none focus:ring-1 focus:ring-[#183324]"
-          />
-          <button
-            onClick={handleVoiceSearch}
-            aria-label="Voice search"
-            className={`absolute right-3 top-1/2 -translate-y-1/2 text-[#8C9C8F] hover:text-[#183324] transition-colors ${isListening ? 'text-[#D49B4E] animate-pulse' : ''
-              }`}
-          >
-            <Mic className="w-4 h-4" />
-          </button>
-        </div>
+      {/* 2. Search & Filter Bar */}
+      <ShopSearchBar
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        isListening={isListening}
+        onVoiceSearch={handleVoiceSearch}
+        onOpenFilter={() => setIsFilterOpen(true)}
+        activeFilterCount={activeFilterCount}
+      />
 
-        {/* Filters Button with count badge */}
-        <button
-          onClick={() => setIsFilterOpen(true)}
-          className="px-3.5 py-2.5 rounded-2xl bg-[#183324] text-[#FAF8F3] text-xs font-semibold flex items-center gap-1.5 shadow-sm hover:bg-[#234330] active:scale-95 transition-all"
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5" />
-          <span>{t.shop.filters}</span>
-          {((activeCategory !== 'all' ? 1 : 0) + selectedTags.length) > 0 && (
-            <span className="w-4 h-4 rounded-full bg-[#E5A953] text-[#12281C] text-[10px] font-bold flex items-center justify-center">
-              {(activeCategory !== 'all' ? 1 : 0) + selectedTags.length}
-            </span>
-          )}
-        </button>
-      </div>
+      {/* 3. Active Filter Chips with Quick Dismiss */}
+      <ShopActiveFilters
+        activeCategory={activeCategory}
+        categoryLabel={categories.find((c) => c.id === activeCategory)?.label}
+        onClearCategory={() => setActiveCategory('all')}
+        selectedTags={selectedTags}
+        onRemoveTag={(tag) =>
+          setSelectedTags((prev) => prev.filter((t) => t !== tag))
+        }
+        onOpenFilter={() => setIsFilterOpen(true)}
+        onClearAll={handleResetFilters}
+      />
 
-      {/* Active Filter Chips with Section Name (Compact Horizontal Mobile View) */}
+      {/* 4. Products Count & Sort Selector */}
+      <ShopSortHeader
+        totalCount={sortedProducts.length}
+        sortBy={sortBy}
+        setSortBy={setSortBy}
+        isOpen={isSortDropdownOpen}
+        setIsOpen={setIsSortDropdownOpen}
+      />
 
-      {/* Active Filter Chips */}
-      {(selectedTags.length > 0 || activeCategory !== "all") && (
-        <div className="flex items-center justify-between gap-2 pt-0.5 pb-1 animate-in fade-in duration-150">
-          {/* Left-aligned selected filters with horizontal scroll */}
-          <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar whitespace-nowrap py-0.5">
-            {activeCategory !== "all" && (
-              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/80 py-0.5 pl-2.5 pr-1 text-[11px] text-gray-800 transition-colors hover:border-amber-300">
-                <span className="font-semibold">
-                  {categories.find((c) => c.id === activeCategory)?.label || activeCategory}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory("all")}
-                  aria-label="Remove category filter"
-                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-amber-200 hover:text-gray-900"
-                >
-                  <X className="h-2.5 w-2.5" />
-                </button>
-              </span>
-            )}
-
-            {selectedTags.map((tag) => (
-              <span
-                key={tag}
-                className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 py-0.5 pl-2.5 pr-1 text-[11px] text-gray-800 transition-colors hover:border-gray-300 hover:bg-gray-100"
-              >
-                <span className="font-semibold">{tag}</span>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setSelectedTags((prev) =>
-                      prev.filter((t) => t !== tag)
-                    )
-                  }
-                  aria-label={`Remove ${tag} filter`}
-                  className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-900"
-                >
-                  <X className="h-2.5 w-2.5" />
-                </button>
-              </span>
-            ))}
-          </div>
-
-          {/* Right-aligned filter actions */}
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-            {/* All filters button */}
-            <button
-              type="button"
-              onClick={() => setIsFilterOpen(true)}
-              className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[11px] font-medium text-gray-700 transition-colors hover:border-gray-500 hover:bg-gray-50"
-            >
-              <SlidersHorizontal className="h-3 w-3" />
-              All filters
-            </button>
-
-            {/* Clear all button */}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedTags([]);
-                setActiveCategory("all");
-              }}
-              className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[11px] font-medium text-gray-700 transition-colors hover:border-gray-500 hover:bg-gray-50"
-            >
-              <RotateCcw className="h-3 w-3" />
-              Clear all
-            </button>
-          </div>
-        </div>
-      )}
-
-
-      {/* Product count and Sort Dropdown */}
-      <div className="flex items-center justify-between text-xs text-[#6C7E71] pt-1">
-        <div>
-          <span className="font-semibold text-[#183122]">{sortedProducts.length} {t.shop.blendsCount}</span>
-          <span className="mx-1.5">•</span>
-          <span>{t.shop.handcraftedIn}</span>
-        </div>
-
-        <div className="relative">
-          <button
-            onClick={() => setIsSortDropdownOpen(!isSortDropdownOpen)}
-            className="px-3 py-1 bg-white border border-[#E5DFD2] rounded-xl text-xs font-medium text-[#203628] flex items-center gap-1 hover:bg-[#F9F7F1]"
-          >
-            <span>
-              {sortBy === 'popular' && t.shop.popular}
-              {sortBy === 'rating' && t.shop.topRated}
-              {sortBy === 'price-asc' && t.shop.priceLowHigh}
-              {sortBy === 'price-desc' && t.shop.priceHighLow}
-            </span>
-            <ChevronDown className="w-3 h-3 text-[#7B8B7E]" />
-          </button>
-
-          {isSortDropdownOpen && (
-            <div className="absolute right-0 top-8 w-36 bg-white border border-[#E5DFD2] rounded-xl shadow-lg z-30 py-1 text-xs">
-              <button
-                onClick={() => { setSortBy('popular'); setIsSortDropdownOpen(false); }}
-                className="w-full text-left px-3 py-1.5 hover:bg-[#F7F4EB] text-[#1B3123]"
-              >
-                {t.shop.popular}
-              </button>
-              <button
-                onClick={() => { setSortBy('rating'); setIsSortDropdownOpen(false); }}
-                className="w-full text-left px-3 py-1.5 hover:bg-[#F7F4EB] text-[#1B3123]"
-              >
-                {t.shop.topRated}
-              </button>
-              <button
-                onClick={() => { setSortBy('price-asc'); setIsSortDropdownOpen(false); }}
-                className="w-full text-left px-3 py-1.5 hover:bg-[#F7F4EB] text-[#1B3123]"
-              >
-                {t.shop.priceLowHigh}
-              </button>
-              <button
-                onClick={() => { setSortBy('price-desc'); setIsSortDropdownOpen(false); }}
-                className="w-full text-left px-3 py-1.5 hover:bg-[#F7F4EB] text-[#1B3123]"
-              >
-                {t.shop.priceHighLow}
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Shimmer loading skeleton when products are fetching initial page */}
+      {/* 5. Shimmer Loading Skeleton */}
       {isLoadingProducts && products.length === 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 animate-pulse">
-          {[1, 2, 3, 4].map(n => (
-            <div key={n} className="bg-white rounded-3xl p-3 border border-[#EAE4D7] space-y-2.5">
+          {[1, 2, 3, 4].map((n) => (
+            <div
+              key={n}
+              className="bg-white rounded-3xl p-3 border border-[#EAE4D7] space-y-2.5"
+            >
               <div className="aspect-square bg-[#EFEAE0] rounded-2xl" />
               <div className="h-3 bg-[#EFEAE0] rounded-md w-3/4" />
               <div className="h-2.5 bg-[#EFEAE0] rounded-md w-1/2" />
@@ -345,120 +219,26 @@ export const ShopScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Empty State when no products match filters or database is empty */}
+      {/* 6. Empty State */}
       {sortedProducts.length === 0 && !isLoadingProducts && (
-        <div className="bg-white rounded-3xl p-8 border border-[#EAE4D7] text-center space-y-3 my-4 shadow-soft-sm">
-          <div className="w-12 h-12 rounded-2xl bg-[#F6F3EB] border border-[#EAE4D7] flex items-center justify-center text-2xl mx-auto shadow-2xs">
-            🍃
-          </div>
-          <h3 className="font-editorial text-lg font-semibold text-[#183122]">
-            No data available
-          </h3>
-          <p className="text-xs text-[#718274] max-w-xs mx-auto leading-relaxed">
-            We couldn't find any botanical provisions right now. Tap reload to refresh the catalog and check for updates.
-          </p>
-          <button
-            onClick={() => {
-              setActiveCategory('all');
-              setSearchQuery('');
-              setSelectedTags([]);
-              refetchProducts();
-            }}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#183324] text-white rounded-xl text-xs font-semibold hover:bg-[#234330] active:scale-95 transition-all shadow-xs"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reload</span>
-          </button>
-        </div>
+        <ShopEmptyState onReset={handleResetFilters} />
       )}
 
-      {/* 2-Column Product Grid */}
+      {/* 7. Product Grid */}
       <div className="grid grid-cols-2 gap-3">
-        {sortedProducts.map(product => {
-          const isFav = favorites.includes(product.id);
-          return (
-            <div
-              key={product.id}
-              className="bg-white rounded-3xl p-3 sm:p-4 border border-[#EAE4D7] shadow-soft-sm flex flex-col justify-between group hover:border-[#D6CEBF] transition-all hover:shadow-md"
-            >
-              {/* Image & Badges */}
-              <div
-                onClick={() => setSelectedProduct(product)}
-                className="relative rounded-2xl overflow-hidden aspect-square mb-2.5 bg-[#F6F3EB] cursor-pointer"
-              >
-                <img
-                  src={product.imageUrl}
-                  alt={product.name}
-                  onError={(e) => {
-                    e.currentTarget.src = "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80";
-                  }}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                />
-
-
-
-                {/* Favorite Heart Button */}
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleFavorite(product.id);
-                  }}
-                  aria-label="Save to favorites"
-                  className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-[#21382A] hover:bg-white shadow-sm transition-transform active:scale-90"
-                >
-                  <Heart
-                    className={`w-3.5 h-3.5 ${isFav ? 'fill-[#C53D43] text-[#C53D43]' : 'text-[#21382A]'
-                      }`}
-                  />
-                </button>
-              </div>
-
-              {/* Subtitle / Category Notes */}
-              <div
-                onClick={() => setSelectedProduct(product)}
-                className="flex-1 cursor-pointer"
-              >
-                <div className="text-[9px] font-bold tracking-wider text-[#988151] uppercase mb-0.5 truncate">
-                  {product.notes || product.category}
-                </div>
-
-                <h3 className="font-editorial text-sm font-semibold text-[#14261B] leading-tight line-clamp-2 hover:text-[#285737] transition-colors">
-                  {product.name}
-                </h3>
-
-                <p className="text-[11px] text-[#7C8D80] mt-0.5">{product.size}</p>
-              </div>
-
-              {/* Price & Add Button */}
-              <div className="flex items-center justify-between pt-2 mt-1 border-t border-[#F0EBE0]">
-                <div className="flex items-baseline gap-1.5">
-                  <span className="font-editorial text-sm font-bold text-[#14261B]">
-                    €{product.price.toFixed(2)}
-                  </span>
-                  {product.originalPrice && (
-                    <span className="text-[10px] text-[#9EAFA2] line-through">
-                      €{product.originalPrice.toFixed(2)}
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => addToCart(product)}
-                  aria-label={`Add ${product.name} to cart`}
-                  className="w-8 h-8 rounded-full bg-[#183324] text-[#FAF8F3] flex items-center justify-center hover:bg-[#284B36] active:scale-95 transition-all shadow-sm"
-                >
-                  <Plus className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          );
-        })}
+        {sortedProducts.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            onProductClick={handleProductClick}
+          />
+        ))}
       </div>
 
-      {/* Infinite Scroll Sentinel element */}
+      {/* 8. Infinite Scroll Sentinel */}
       <div ref={sentinelRef} className="h-4 w-full pointer-events-none" />
 
-      {/* Infinite Scroll Loading Spinner */}
+      {/* 9. Infinite Scroll Loading Spinner */}
       {isFetchingMore && (
         <div className="flex items-center justify-center gap-2 py-4 text-xs font-semibold text-[#183324] animate-in fade-in duration-200">
           <RotateCcw className="w-4 h-4 animate-spin text-[#2E7D32]" />
@@ -466,41 +246,10 @@ export const ShopScreen: React.FC = () => {
         </div>
       )}
 
-      {/* Floating Forest Box Bar (Fixed right above bottom nav - only show when user has items selected) */}
-      {cartCount > 0 && (
-        <div className="fixed bottom-16 left-0 right-0 w-full z-30 px-4 pointer-events-none">
-          <div className="w-full pointer-events-auto">
-            <div className="bg-[#183324] text-white rounded-2xl p-2.5 px-3.5 shadow-float border border-[#284B36] flex items-center justify-between animate-in slide-in-from-bottom-3 duration-200">
-              {/* Left bag & count */}
-              <div className="flex items-center gap-2.5">
-                <div className="relative w-8 h-8 rounded-xl bg-white/10 flex items-center justify-center text-[#E5A953]">
-                  <ShoppingBag className="w-4 h-4" />
-                  <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-[#E5A953] text-[#12281C] text-[9px] font-bold flex items-center justify-center">
-                    {cartCount}
-                  </span>
-                </div>
-                <div>
-                  <div className="text-xs font-bold leading-tight">{t.cart.title}</div>
-                  <div className="text-[11px] text-[#A6C4B0]">
-                    {cartCount} {cartCount === 1 ? 'ITEM' : 'ITEMS'} • €{cartTotal.toFixed(2)}
-                  </div>
-                </div>
-              </div>
+      {/* 10. Floating Bag Bar */}
+      <ShopCartBar />
 
-              {/* Right button */}
-              <button
-                onClick={() => setIsCartOpen(true)}
-                className="px-3.5 py-1.5 bg-[#E5A953] text-[#12281C] rounded-full text-xs font-bold flex items-center gap-1 hover:bg-[#F3BA68] active:scale-95 transition-all shadow-sm"
-              >
-                <span>{t.shop.viewBox}</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Filter Drawer */}
+      {/* 11. Portaled Slide-over Filter Drawer */}
       <FilterDrawer
         isOpen={isFilterOpen}
         onClose={() => setIsFilterOpen(false)}

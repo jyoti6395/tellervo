@@ -15,10 +15,12 @@ import {
   AlertCircle,
   Home,
   Building2,
-  Package
+  Package,
+  Bell,
+  AlertTriangle
 } from 'lucide-react';
 import { navigateTo, AUTH_ROUTES } from '../routes/authRoutes';
-import { addressService } from '@tellervo/supabase';
+import { addressService, stockService } from '@tellervo/supabase';
 import { SavedAddress, AddressFormData } from '../types/address';
 import { AddressFormModal } from '../components/profile/addresses/AddressFormModal';
 
@@ -57,8 +59,12 @@ export const CheckoutScreen: React.FC = () => {
     updateUserProfile,
     clearCart,
     showToast,
-    triggerConfetti
+    triggerConfetti,
+    addOrder,
+    toggleRestockNotification,
+    isRestockNotified
   } = useApp();
+  const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
 
   const currentUserId = authUser?.id || user.handle || 'patron';
 
@@ -124,6 +130,14 @@ export const CheckoutScreen: React.FC = () => {
   const [selectedPaymentType, setSelectedPaymentType] = useState<'apple-pay' | 'card' | 'bank'>('apple-pay');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isOrderPlaced, setIsOrderPlaced] = useState(false);
+  const [processingStatusText, setProcessingStatusText] = useState('Verifying with Boreal Lab...');
+  const [stockHaltError, setStockHaltError] = useState<{
+    productId: string;
+    productName: string;
+    availableStock: number;
+    requestedQuantity: number;
+    message: string;
+  } | null>(null);
 
   const freeShippingThreshold = 35.0;
   const isFreeShipping = cartTotal >= freeShippingThreshold;
@@ -200,7 +214,15 @@ export const CheckoutScreen: React.FC = () => {
     }
   };
 
-  const handleProceedPayment = () => {
+  /**
+   * Order Purchase Flow:
+   * 1. User clicks Pay / Buy Now
+   * 2. Backend checks user account status and real-time database stock
+   * 3. Reserve stock atomically ("Ek bottle sirf ek order ko mil sakti hai")
+   * 4. Stock available -> Proceed to payment & order confirmation
+   *    Stock unavailable -> Halt payment and show "Notify Me"
+   */
+  const handleProceedPayment = async () => {
     if (authUser?.status === 'deactive') {
       showToast('Your account has been deactivated. Please contact Help & Support for assistance.', 'info');
       navigateTo(AUTH_ROUTES.LOGIN);
@@ -218,14 +240,107 @@ export const CheckoutScreen: React.FC = () => {
       return;
     }
 
+    setStockHaltError(null);
     setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
+    setProcessingStatusText('Checking real-time database stock...');
+
+    try {
+      // Step 2: Backend checks available stock from real-time database
+      const cartItemsPayload = cart.map(c => ({
+        productId: c.product.id,
+        quantity: c.quantity,
+        name: c.product.name,
+      }));
+
+      const stockCheck = await stockService.checkCartStock(cartItemsPayload);
+
+      if (!stockCheck.allAvailable) {
+        // Step 4 Branch B: Stock unavailable -> Payment roko; Notify Me dikhao.
+        setIsProcessing(false);
+        const failed = stockCheck.unavailableItems[0];
+        setStockHaltError({
+          productId: failed.productId,
+          productName: failed.name,
+          availableStock: failed.availableStock,
+          requestedQuantity: failed.requestedQuantity,
+          message: failed.message,
+        });
+        showToast(`Stock unavailable for ${failed.name}. Payment halted.`, 'info');
+        return;
+      }
+
+      // Step 3: Reserve stock atomically ("Ek bottle sirf ek order ko mil sakti hai")
+      setProcessingStatusText('Atomically reserving stock in cellar...');
+      const reservation = await stockService.reserveCartStock(cartItemsPayload);
+
+      if (!reservation.success) {
+        // Step 4 Branch B: Stock unavailable -> Payment roko; Notify Me dikhao.
+        setIsProcessing(false);
+        const failed = reservation.failedItem || {
+          productId: cart[0]?.product.id || '',
+          productName: cart[0]?.product.name || 'Provision',
+          availableStock: 0,
+          requestedQuantity: 1,
+          message: 'Insufficient stock available to complete this order.',
+        };
+        setStockHaltError(failed);
+        showToast(`Payment halted! ${failed.message}`, 'info');
+        return;
+      }
+
+      // Step 4 Branch A: Stock available -> Payment process karo.
+      setProcessingStatusText('Processing secure payment authorization...');
+      await new Promise(resolve => setTimeout(resolve, 800));
+
+      const destinationAddress = selectedAddress
+        ? `${selectedAddress.street}, ${selectedAddress.city} ${selectedAddress.postalCode || ''}, ${selectedAddress.countryCode || 'FI'}`
+        : user.address || 'Helsinki, Finland';
+
+      const orderId = `ord-${Date.now()}`;
+      const orderNum = `#TL-${Math.floor(10000 + Math.random() * 90000)}`;
+      const formattedDate = new Date().toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+
+      const newOrder = {
+        id: orderId,
+        orderNumber: orderNum,
+        date: formattedDate,
+        total: finalTotal,
+        status: 'Order Confirmed & In Preparation',
+        statusType: 'in-transit' as const,
+        courier: 'Posti Eco Subarctic Chilled',
+        summary: `${cart.length} provision${cart.length > 1 ? 's' : ''}: ${cart.map(c => `${c.product.name} (${c.quantity})`).join(', ')}`,
+        trackingId: `POSTI-FI-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(100 + Math.random() * 900)}`,
+        recipientName: user.name || 'Patron',
+        address: destinationAddress,
+        paymentMethod: selectedPaymentType.replace('-', ' '),
+        dispatchOrigin: 'Oulu Boreal Lab',
+        items: cart.map(c => ({
+          name: c.product.name,
+          qty: c.quantity,
+          price: c.product.discountPrice ?? c.product.price,
+          status: c.product.status,
+          imageUrl: c.product.imageUrl,
+          category: c.product.category,
+          size: c.product.size,
+        })),
+      };
+
+      addOrder(newOrder);
+      setConfirmedOrderId(orderId);
       setIsOrderPlaced(true);
       triggerConfetti();
-      showToast('Payment placeholder triggered. Ready for your live payment gateway!', 'success');
+      showToast('Order confirmed and queued for cold-chain dispatch!', 'success');
       clearCart();
-    }, 1200);
+    } catch (err) {
+      console.error('[CheckoutScreen] Order flow exception:', err);
+      showToast('Order processing error. Please try again.', 'info');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   if (isOrderPlaced) {
@@ -270,16 +385,30 @@ export const CheckoutScreen: React.FC = () => {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            setIsOrderPlaced(false);
-            navigateTo(AUTH_ROUTES.HOME);
-          }}
-          className="w-full py-3.5 bg-[#183324] text-[#FAF8F3] font-semibold text-xs uppercase tracking-wider rounded-2xl hover:bg-[#234431] transition-colors shadow-sm cursor-pointer"
-        >
-          Return to Store
-        </button>
+        <div className="flex gap-2">
+          {confirmedOrderId && (
+            <button
+              type="button"
+              onClick={() => {
+                setIsOrderPlaced(false);
+                navigateTo(`/orders/${confirmedOrderId}`);
+              }}
+              className="flex-1 py-3.5 bg-[#183324] text-[#FAF8F3] font-semibold text-xs uppercase tracking-wider rounded-2xl hover:bg-[#234431] transition-colors shadow-sm cursor-pointer"
+            >
+              View Order Details
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setIsOrderPlaced(false);
+              navigateTo(AUTH_ROUTES.HOME);
+            }}
+            className={`${confirmedOrderId ? 'px-4' : 'w-full'} py-3.5 bg-white border border-[#E0D9C8] text-[#1B3222] font-semibold text-xs uppercase tracking-wider rounded-2xl hover:bg-[#FAF9F5] transition-colors shadow-xs cursor-pointer`}
+          >
+            Return to Store
+          </button>
+        </div>
       </div>
     );
   }
@@ -615,6 +744,36 @@ export const CheckoutScreen: React.FC = () => {
         </div>
       </div>
 
+      {/* Payment Halted Stock Alert Banner ("Payment roko; Notify Me dikhao") */}
+      {stockHaltError && (
+        <div className="bg-[#FFF5F5] border-2 border-[#E8B4B4] rounded-3xl p-4 shadow-sm animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center gap-2 text-[#8B2525] font-bold text-sm mb-1.5">
+            <AlertCircle className="w-5 h-5 shrink-0 text-[#C53D43]" />
+            <span>Payment Halted — Stock Unavailable</span>
+          </div>
+          <p className="text-xs text-[#6A3232] leading-relaxed mb-3">
+            {stockHaltError.message} To ensure fair cellar allocation, payment has been stopped.
+          </p>
+          <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#F3D5D5]">
+            <span className="text-[11px] text-[#7A4B4B] font-medium truncate">
+              Notify when {stockHaltError.productName} is back:
+            </span>
+            <button
+              type="button"
+              onClick={() => toggleRestockNotification(stockHaltError.productId, stockHaltError.productName)}
+              className={`px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 transition-all shrink-0 cursor-pointer ${
+                isRestockNotified(stockHaltError.productId)
+                  ? 'bg-[#EBF4EE] text-[#1B462C] border border-[#C5DEC9]'
+                  : 'bg-[#8B2525] text-white hover:bg-[#721E1E]'
+              }`}
+            >
+              <Bell className={`w-3.5 h-3.5 ${isRestockNotified(stockHaltError.productId) ? 'fill-[#245D36]' : ''}`} />
+              <span>{isRestockNotified(stockHaltError.productId) ? 'Notification Active' : 'Notify Me'}</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Payment Action Button (Address Gated) */}
       <div className="space-y-1.5">
         <button
@@ -626,7 +785,7 @@ export const CheckoutScreen: React.FC = () => {
           {isProcessing ? (
             <span className="flex items-center gap-2">
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              <span>Securing Payment...</span>
+              <span>{processingStatusText}</span>
             </span>
           ) : (
             <>

@@ -3,4 +3,4 @@ export * from './authService';
 export * from './productService';
 export * from './favouriteService';
 export * from './addressService';
-
+export * from './stockService';

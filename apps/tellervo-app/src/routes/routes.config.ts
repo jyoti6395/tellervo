@@ -65,6 +65,14 @@ export const APP_ROUTES = {
     layout: 'store' as const,
     title: 'Boreal Checkout & Delivery',
   },
+  ORDER_DETAIL: {
+    path: '/orders/:id',
+    name: 'Order Details',
+    access: 'public' as RouteAccessType,
+    tabEquivalent: 'profile' as TabType,
+    layout: 'store' as const,
+    title: 'Forest Order Details | Tellervo',
+  },
   LOGIN: {
     path: '/login',
     name: 'Sign In',
@@ -87,11 +95,46 @@ export type AppRouteKey = keyof typeof APP_ROUTES;
 export type AppRoutePath = (typeof APP_ROUTES)[AppRouteKey]['path'];
 
 /**
+ * Extract product ID from /shop/:id path
+ */
+export function getShopProductId(pathname: string): string | null {
+  const cleanPath = pathname.split('?')[0].split('#')[0].replace(/\/$/, '');
+  const match = cleanPath.match(/^\/shop\/([^/]+)$/i);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
+ * Extract order ID from /orders/:id path
+ */
+export function getOrderIdFromPath(pathname: string): string | null {
+  const cleanPath = pathname.split('?')[0].split('#')[0].replace(/\/$/, '');
+  const match = cleanPath.match(/^\/orders\/([^/]+)$/i);
+  return match ? decodeURIComponent(match[1]) : null;
+}
+
+/**
  * Find route definition by pathname
  */
 export function findRouteByPath(pathname: string): RouteDefinition {
-  const normalized = pathname.toLowerCase().replace(/\/$/, '') || '/';
+  const cleanPath = pathname.split('?')[0].split('#')[0];
+  const normalized = cleanPath.toLowerCase().replace(/\/$/, '') || '/';
   
+  if (normalized.startsWith('/shop/')) {
+    return {
+      ...APP_ROUTES.SHOP,
+      path: normalized,
+      title: 'Botanical Drop Details | Tellervo',
+    };
+  }
+
+  if (normalized.startsWith('/orders/')) {
+    return {
+      ...APP_ROUTES.ORDER_DETAIL,
+      path: normalized,
+      title: 'Forest Order Details | Tellervo',
+    };
+  }
+
   const matched = Object.values(APP_ROUTES).find(
     (route) => route.path === normalized
   );

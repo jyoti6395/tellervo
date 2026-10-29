@@ -1,10 +1,10 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
-import { 
-  RotateCcw, 
-  ShoppingBag, 
-  Heart, 
-  Bell, 
+import {
+  RotateCcw,
+  ShoppingBag,
+  Heart,
+  Bell,
   AlertTriangle,
   ArrowRight,
   Search,
@@ -12,18 +12,20 @@ import {
 } from 'lucide-react';
 
 export const FavoritesScreen: React.FC = () => {
-  const { 
-    products, 
-    favorites, 
+  const {
+    products,
+    favorites,
     isLoadingProducts,
     isLoadingFavorites,
-    toggleFavorite, 
-    addToCart, 
+    toggleFavorite,
+    addToCart,
     setSelectedProduct,
-    showToast, 
+    showToast,
     triggerConfetti,
     t,
-    setActiveTab
+    setActiveTab,
+    toggleRestockNotification,
+    isRestockNotified
   } = useApp();
 
   const [stockNotifyOn, setStockNotifyOn] = useState(true);
@@ -129,11 +131,10 @@ export const FavoritesScreen: React.FC = () => {
                   <button
                     key={cat.id}
                     onClick={() => setSelectedCategory(cat.id)}
-                    className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${
-                      isActive
+                    className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all shrink-0 flex items-center gap-1.5 ${isActive
                         ? 'bg-white text-[#183122] shadow-soft-sm border border-[#DDD6C8] font-bold'
                         : 'bg-[#EDE7DB]/70 text-[#6B7D70] hover:bg-[#E5DFD1]'
-                    }`}
+                      }`}
                   >
                     <span>{cat.label}</span>
                     <span className={isActive ? 'text-[#183122] font-bold' : 'text-[#7D8F82]'}>
@@ -204,16 +205,32 @@ export const FavoritesScreen: React.FC = () => {
           {/* Saved Items List */}
           {displayedItems.length > 0 ? (
             <div className="space-y-3">
-              {displayedItems.map(item => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-3xl p-3.5 border border-[#E9E3D6] shadow-soft-sm space-y-3 group"
-                >
-                  {/* Top row: Image & Title */}
-                  <div className="flex gap-3 items-start">
-                    <div 
+              {displayedItems.map(item => {
+                const rawStatus = (item.status || '').toLowerCase();
+                const isOutOfStock =
+                  rawStatus === 'out of stock' ||
+                  rawStatus === 'out_of_stock' ||
+                  item.stockStatus === 'out-of-stock' ||
+                  (item.stockCount !== undefined && item.stockCount <= 0);
+
+                const isLowStock =
+                  !isOutOfStock &&
+                  (rawStatus === 'low stock' ||
+                    rawStatus === 'low_stock' ||
+                    item.stockStatus === 'low-stock' ||
+                    (item.stockCount !== undefined && item.stockCount > 0 && item.stockCount <= 5));
+
+                const origPrice = item.originalPrice ?? ((item as any).original_price ? Number((item as any).original_price) : undefined);
+
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-3xl p-3 sm:p-4 border border-[#ECE5D8] shadow-soft-sm flex gap-3.5 sm:gap-4 items-center group transition-all hover:border-[#DFD7C7] hover:shadow-md"
+                  >
+                    {/* Left Column: Proportioned Image with volume badge */}
+                    <div
                       onClick={() => setSelectedProduct(item)}
-                      className="relative w-20 h-20 rounded-2xl overflow-hidden shrink-0 bg-[#F6F3EB] cursor-pointer"
+                      className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 bg-[#F6F3EB] border border-[#EFE9DC] cursor-pointer"
                     >
                       <img
                         src={item.imageUrl}
@@ -221,123 +238,101 @@ export const FavoritesScreen: React.FC = () => {
                         onError={(e) => {
                           e.currentTarget.src = "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80";
                         }}
-                        className="w-full h-full object-cover"
+                        className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? 'grayscale-[30%]' : ''}`}
                       />
-                      <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-black/60 backdrop-blur-sm text-white text-[9px] font-bold rounded">
-                        {item.size}
-                      </span>
+                      {item.size && (
+                        <span className="absolute bottom-1.5 left-1.5 px-1.5 py-0.5 bg-[#2B1B12]/85 backdrop-blur-sm text-white text-[9px] font-bold rounded tracking-wider">
+                          {item.size.replace(/\s+/g, '')}
+                        </span>
+                      )}
                     </div>
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between">
-                        <h4 
+                    {/* Right Column: Title + Heart on Top, Badge in Middle, Price on Left + Button on Right */}
+                    <div className="flex-1 min-w-0 flex flex-col justify-between gap-1.5 self-stretch py-0.5">
+                      {/* Row 1: Title and Favorite Heart */}
+                      <div className="flex items-start justify-between gap-2">
+                        <h4
                           onClick={() => setSelectedProduct(item)}
-                          className="font-editorial text-base font-semibold text-[#162E1F] leading-tight truncate cursor-pointer hover:text-[#255435] transition-colors"
+                          className="font-editorial text-base sm:text-lg font-bold text-[#14261B] leading-tight truncate cursor-pointer hover:text-[#285739] transition-colors"
                         >
                           {item.name}
                         </h4>
                         <button
+                          type="button"
                           onClick={() => toggleFavorite(item.id)}
-                          className="text-[#C53D43] p-1 -mr-1 hover:opacity-75"
+                          className="text-[#9E2A2B] p-1 -mr-1 hover:opacity-75 transition-opacity cursor-pointer shrink-0"
                           title="Remove from favorites"
                         >
-                          <Heart className="w-4 h-4 fill-[#C53D43]" />
+                          <Heart className="w-4 h-4 sm:w-5 sm:h-5 fill-[#9E2A2B]" />
                         </button>
                       </div>
 
-                      <p className="text-[11px] text-[#718274] line-clamp-1 mt-0.5">
-                        {item.description}
-                      </p>
-
-                      <div className="flex items-center gap-2 mt-1.5">
-                        <span className="font-editorial text-sm font-bold text-[#14261B]">
-                          €{item.price.toFixed(2)}
-                        </span>
-                        {item.stockStatus === 'in-stock' && (
+                      {/* Row 2: Stock Availability Badge */}
+                      <div className="flex items-center gap-2">
+                        {isOutOfStock ? (
+                          <span className="px-2 py-0.5 bg-[#F5E6E6] text-[#8B2525] font-semibold text-[10px] rounded-md flex items-center gap-1 border border-[#EACDCD]">
+                            <AlertTriangle className="w-3 h-3 text-[#8B2525]" />
+                            <span>Out of Stock</span>
+                          </span>
+                        ) : isLowStock ? (
+                          <span className="px-2.5 py-0.5 bg-[#D3BEAA] text-[#3D2514] font-semibold text-[10px] rounded-md flex items-center gap-1 shadow-2xs">
+                            <AlertTriangle className="w-3 h-3 text-[#3D2514]" />
+                            <span>Limited Stock: Only {item.stockCount || 20} left</span>
+                          </span>
+                        ) : item.stockStatus === 'just-restocked' ? (
+                          <span className="text-[10px] text-[#245D36] font-semibold bg-[#EAF4ED] px-2 py-0.5 rounded-md">
+                            • Just Restocked
+                          </span>
+                        ) : (
                           <span className="text-[10px] text-[#296D3E] font-medium flex items-center gap-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#296D3E]" />
                             In Stock
                           </span>
                         )}
-                        {item.stockStatus === 'low-stock' && (
-                          <span className="text-[10px] text-[#B56722] font-semibold bg-[#FAF0E4] px-2 py-0.5 rounded-md flex items-center gap-1">
-                            <AlertTriangle className="w-3 h-3" />
-                            Low Stock: Only {item.stockCount || 5} left
+                      </div>
+
+                      {/* Row 3: Balanced Bottom Bar (Price on Left, Action Button on Right) */}
+                      <div className="flex items-center justify-between gap-2 pt-0.5">
+                        <div className="flex items-baseline gap-1.5">
+                          <span className="font-editorial text-base sm:text-lg font-bold text-[#14261B]">
+                            €{item.price.toFixed(2)}
                           </span>
-                        )}
-                        {item.stockStatus === 'just-restocked' && (
-                          <span className="text-[10px] text-[#245D36] font-semibold bg-[#EAF4ED] px-2 py-0.5 rounded-md">
-                            • Just Restocked
-                          </span>
+                          {origPrice && origPrice > item.price && (
+                            <span className="text-xs text-[#8C9B8E] line-through font-normal">
+                              €{origPrice.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+
+                        {isOutOfStock ? (
+                          <button
+                            type="button"
+                            onClick={() => toggleRestockNotification(item.id, item.name)}
+                            aria-label={`Notify when ${item.name} is back in stock`}
+                            className={`px-3.5 py-1.5 text-xs font-bold rounded-full flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer ${
+                              isRestockNotified(item.id)
+                                ? 'bg-[#EBF4EE] text-[#1D4E31] border border-[#C5DEC9]'
+                                : 'bg-[#FAF4E8] text-[#9A6218] border border-[#ECD9B7] hover:bg-[#F4ECDA]'
+                            }`}
+                          >
+                            <Bell className={`w-3.5 h-3.5 ${isRestockNotified(item.id) ? 'fill-[#245D36] text-[#245D36]' : 'text-[#C97B1A]'}`} />
+                            <span>{isRestockNotified(item.id) ? 'Notified' : 'Notify Me'}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => addToCart(item)}
+                            className="px-4 sm:px-5 py-1.5 bg-[#143222] hover:bg-[#204933] text-white text-xs font-semibold rounded-full flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer"
+                          >
+                            <ShoppingBag className="w-3.5 h-3.5 text-[#FAF8F3]" />
+                            <span>Add to Cart</span>
+                          </button>
                         )}
                       </div>
                     </div>
                   </div>
-
-                  {/* Bottom Actions Row */}
-                  <div className="flex items-center justify-between pt-1 border-t border-[#F2ECE1]">
-                    {item.autoRefillOptions ? (
-                      <div className="flex items-center justify-between w-full gap-2">
-                        <div className="relative">
-                          <select
-                            value={autoRefillInterval}
-                            onChange={e => setAutoRefillInterval(e.target.value)}
-                            className="text-xs bg-[#F7F4EC] border border-[#E0D7C6] rounded-xl px-2.5 py-1.5 font-medium text-[#293F31] focus:outline-none"
-                          >
-                            {item.autoRefillOptions.map(opt => (
-                              <option key={opt} value={opt}>Auto-Refill: {opt}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <button
-                          onClick={() => addToCart(item)}
-                          className="px-3.5 py-1.5 bg-[#183324] text-white text-xs font-semibold rounded-xl flex items-center gap-1 hover:bg-[#254632]"
-                        >
-                          <RotateCcw className="w-3 h-3" />
-                          <span>Reorder</span>
-                        </button>
-                      </div>
-                    ) : item.stockStatus === 'just-restocked' || item.stockStatus === 'low-stock' ? (
-                      <div className="flex items-center justify-between w-full gap-2">
-                        <button
-                          onClick={() => {
-                            setStockNotifyOn(!stockNotifyOn);
-                            showToast(stockNotifyOn ? 'Stock alert turned off' : 'Stock alert activated!');
-                          }}
-                          className={`px-3 py-1.5 text-xs font-medium rounded-xl border flex items-center gap-1.5 transition-colors ${
-                            stockNotifyOn
-                              ? 'bg-[#EBF3EE] border-[#CFDFD4] text-[#1D4B2D]'
-                              : 'bg-white border-[#DDD6C8] text-[#637568]'
-                          }`}
-                        >
-                          <Bell className="w-3.5 h-3.5" />
-                          <span>{stockNotifyOn ? 'Stock Alert On' : 'Alert When Low'}</span>
-                        </button>
-                        <button
-                          onClick={() => addToCart(item)}
-                          className="px-4 py-1.5 bg-[#183324] text-white text-xs font-semibold rounded-xl flex items-center gap-1 hover:bg-[#254632]"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Add to Cart</span>
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-between w-full gap-2">
-                        <span className="text-[11px] text-[#346B46] font-medium flex items-center gap-1">
-                          🌿 Botanical Reserve
-                        </span>
-                        <button
-                          onClick={() => addToCart(item)}
-                          className="px-4 py-1.5 bg-[#183324] text-white text-xs font-semibold rounded-xl flex items-center gap-1 hover:bg-[#254632]"
-                        >
-                          <ShoppingBag className="w-3.5 h-3.5" />
-                          <span>Add to Cart</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           ) : (
             <div className="bg-white rounded-3xl p-6 border border-[#E9E3D6] text-center space-y-2">

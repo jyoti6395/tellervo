@@ -19,6 +19,7 @@ import {
   Gift
 } from 'lucide-react';
 import { navigateTo, AUTH_ROUTES } from '../routes/authRoutes';
+import { useNavigation } from '../routes/hooks/useNavigation';
 import { QuickAccessGrid } from '../components/profile/QuickAccessGrid';
 import { PersonalInformationModal } from '../components/profile/PersonalInformationModal';
 import { AddressesModal } from '../components/profile/AddressesModal';
@@ -42,6 +43,7 @@ export const ProfileScreen: React.FC = () => {
     logout,
   } = useApp();
 
+  const { navigate } = useNavigation();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleLogout = async () => {
@@ -277,7 +279,7 @@ export const ProfileScreen: React.FC = () => {
         {orders && orders.length > 0 ? (
           <div className="space-y-3">
             {orders.map((order, idx) => (
-              <div key={order.id || idx} className="bg-white rounded-3xl p-4 border border-[#E8E2D5] shadow-soft-sm space-y-3">
+              <div key={order.id || idx} onClick={() => navigate(`/orders/${order.id}`)} className="bg-white rounded-3xl p-4 border border-[#E8E2D5] shadow-soft-sm space-y-3 cursor-pointer hover:border-[#183324]/30 hover:shadow-soft transition-all">
                 <div className="flex items-start justify-between">
                   <div>
                     <span className="text-xs font-bold text-[#183122]">
@@ -305,7 +307,7 @@ export const ProfileScreen: React.FC = () => {
                 <div className="flex gap-2 pt-0.5">
                   <button
                     type="button"
-                    onClick={() => setSelectedOrderForTracking(order)}
+                    onClick={() => navigate(`/orders/${order.id}`)}
                     className="flex-1 py-2 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#254632] transition-colors"
                   >
                     <MapPin className="w-3.5 h-3.5 text-[#E5A953]" />
@@ -313,7 +315,7 @@ export const ProfileScreen: React.FC = () => {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setIsReceiptOpen(true)}
+                    onClick={() => navigate(`/orders/${order.id}`)}
                     className="px-4 py-2 bg-[#F5F2EB] text-[#293E30] text-xs font-semibold rounded-xl hover:bg-[#ECE7DC] transition-colors"
                   >
                     Receipt
