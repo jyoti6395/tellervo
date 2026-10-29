@@ -89,7 +89,7 @@ export class AuthService {
 
       // Account Status Check on session restoration:
       // If customer is deactivated, revoke the persisted session and return null
-      if (profile?.status === 'deactive') {
+      if (profile?.status !== 'active') {
         await this.client.auth.signOut();
         return null;
       }
@@ -140,11 +140,11 @@ export class AuthService {
       const profile = await this.ensureUserProfile(data.user);
 
       // Account Status Check: prevent deactivated customers from establishing active sessions
-      if (profile?.status === 'deactive') {
+      if (profile?.status !== 'active') {
         await this.client.auth.signOut();
         return {
           success: false,
-          error: 'Your account has been deactivated. Please contact Help & Support for assistance.',
+          error: 'Your account is currently inactive. Please contact Help & Support for assistance.',
         };
       }
 
