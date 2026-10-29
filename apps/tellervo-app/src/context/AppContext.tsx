@@ -3,7 +3,7 @@ import { TabType, Product, CartItem, UserProfile, RewardItem, OrderItem, Languag
 import { PRODUCTS, INITIAL_USER, RECENT_ORDERS } from '../data/mockData';
 import { translations, Translations } from '../i18n/translations';
 import confetti from 'canvas-confetti';
-import { authService, profileService, AuthUser, AuthResult, supabase, productService, favouriteService } from '@tellervo/supabase';
+import { authService, profileService, AuthUser, AuthResult, supabase, productService, favouriteService, orderService, UserOrderWithItems } from '@tellervo/supabase';
 import { mapRecordToProduct } from '../lib/productMapper';
 import { ALL_ROUTES, APP_ROUTES, findRouteByPath } from '../routes/routes.config';
 import { navigateTo } from '../routes/hooks/useNavigation';
@@ -12,6 +12,35 @@ interface Toast {
   id: string;
   message: string;
   type: 'success' | 'info' | 'reward';
+}
+
+function mapUserOrderToOrderItem(record: UserOrderWithItems): OrderItem {
+  const isDelivered = record.status === 'Completed';
+  const summary = record.items && record.items.length > 0
+    ? `${record.items.length} provision${record.items.length > 1 ? 's' : ''}: ${record.items.map(i => `${i.product_name} (${i.quantity})`).join(', ')}`
+    : `Order ${record.order_number}`;
+
+  return {
+    id: record.id,
+    orderNumber: record.order_number,
+    date: new Date(record.created_at).toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    }),
+    total: Number(record.grand_total),
+    status: record.status,
+    statusType: isDelivered ? 'delivered' : 'in-transit',
+    courier: 'Posti Eco Subarctic Chilled',
+    summary: summary,
+    trackingId: record.payments && record.payments[0] ? record.payments[0].provider_payment_id : undefined,
+    items: (record.items || []).map(i => ({
+      name: i.product_name,
+      qty: i.quantity,
+      price: Number(i.unit_price),
+      volume: i.volume || undefined,
+    })),
+  };
 }
 
 interface AppContextType {
@@ -45,6 +74,7 @@ interface AppContextType {
   redeemReward: (reward: RewardItem) => boolean;
   orders: OrderItem[];
   addOrder: (order: OrderItem) => void;
+  refreshOrders: () => Promise<void>;
   isCartOpen: boolean;
   setIsCartOpen: (open: boolean) => void;
   isNotificationsOpen: boolean;
@@ -347,9 +377,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return [];
   });
 
+  const refreshOrders = async () => {
+    if (!authUser?.id) return;
+    try {
+      const { data, error } = await orderService.fetchUserOrders(authUser.id);
+      if (!error && data) {
+        const mapped = data.map(mapUserOrderToOrderItem);
+        setOrders(mapped);
+        try {
+          localStorage.setItem('tellervo_orders', JSON.stringify(mapped));
+        } catch {
+          // ignore
+        }
+      }
+    } catch (err) {
+      console.error('[AppContext] Failed to refresh orders from Supabase:', err);
+    }
+  };
+
   const addOrder = (newOrder: OrderItem) => {
     setOrders(prev => {
-      const updated = [newOrder, ...prev];
+      const updated = [newOrder, ...prev.filter(o => o.id !== newOrder.id)];
       try {
         localStorage.setItem('tellervo_orders', JSON.stringify(updated));
       } catch {
@@ -361,6 +409,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // Authentication State
   const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+
+  // Synchronize orders whenever authenticated patron changes
+  useEffect(() => {
+    if (authUser?.id) {
+      refreshOrders();
+    } else {
+      setOrders([]);
+    }
+  }, [authUser?.id]);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoadingSession, setIsLoadingSession] = useState<boolean>(true);
 
@@ -816,6 +873,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         redeemReward,
         orders,
         addOrder,
+        refreshOrders,
         isCartOpen,
         setIsCartOpen,
         isNotificationsOpen,

@@ -16,8 +16,13 @@ import {
   X,
   Globe,
   User,
-  Gift
+  Gift,
+  Clock,
+  AlertCircle,
+  XCircle,
+  EyeOff
 } from 'lucide-react';
+import { orderService } from '@tellervo/supabase';
 import { navigateTo, AUTH_ROUTES } from '../routes/authRoutes';
 import { useNavigation } from '../routes/hooks/useNavigation';
 import { QuickAccessGrid } from '../components/profile/QuickAccessGrid';
@@ -28,10 +33,59 @@ import { SecurityModal } from '../components/profile/SecurityModal';
 import { SupportDrawer } from '../components/profile/SupportDrawer';
 import { LegalPrivacyModal } from '../components/profile/LegalPrivacyModal';
 
+const getOrderStatusBadge = (status: string) => {
+  const norm = (status || '').toLowerCase().trim();
+
+  if (norm === 'in progress' || norm === 'processing') {
+    return {
+      label: 'Processing',
+      description: 'The store is preparing the order',
+      containerClass: 'bg-[#FEF7EC] border-[#F5E4C4] text-[#9A6218]',
+      badgeClass: 'bg-[#FBE9CE] text-[#86510D]',
+      dotClass: 'bg-amber-500 animate-pulse',
+      icon: Clock,
+    };
+  }
+
+  if (norm === 'completed' || norm === 'delivered') {
+    return {
+      label: 'Delivered',
+      description: 'Delivered to your address',
+      containerClass: 'bg-[#EAF3ED] border-[#CFE2D4] text-[#20492E]',
+      badgeClass: 'bg-[#D4E8DC] text-[#163821]',
+      dotClass: 'bg-emerald-600',
+      icon: CheckCircle2,
+    };
+  }
+
+  if (norm === 'cancelled') {
+    return {
+      label: 'Cancelled',
+      description: 'Payment declined or order cancelled',
+      containerClass: 'bg-[#FDF2F2] border-[#F8D7DA] text-[#9B1C1C]',
+      badgeClass: 'bg-[#FBE8E8] text-[#9B1C1C]',
+      dotClass: 'bg-rose-500',
+      icon: XCircle,
+    };
+  }
+
+  // Pending
+  return {
+    label: 'Pending',
+    description: 'Awaiting payment confirmation',
+    containerClass: 'bg-[#F3F4F6] border-[#E5E7EB] text-[#4B5563]',
+    badgeClass: 'bg-[#E5E7EB] text-[#374151]',
+    dotClass: 'bg-gray-400',
+    icon: AlertCircle,
+  };
+};
+
 export const ProfileScreen: React.FC = () => {
   const {
     user,
     orders,
+    authUser,
+    refreshOrders,
     setSelectedOrderForTracking,
     addToCart,
     products,
@@ -294,31 +348,64 @@ export const ProfileScreen: React.FC = () => {
                   </span>
                 </div>
 
-                <div className="bg-[#EAF3ED] border border-[#CFE2D4] rounded-xl px-3 py-2 flex items-center justify-between text-xs text-[#20492E]">
-                  <span className="flex items-center gap-1.5 font-medium">
-                    <Truck className="w-3.5 h-3.5" />
-                    <span>{order.status || 'Out for delivery with Posti Eco'}</span>
-                  </span>
-                  <span className="px-2 py-0.5 rounded-md bg-[#D4E8DC] text-[#163821] font-bold text-[10px]">
-                    Active
-                  </span>
-                </div>
+                {(() => {
+                  const badge = getOrderStatusBadge(order.status);
+                  const BadgeIcon = badge.icon;
+                  return (
+                    <div className={`border rounded-xl px-3 py-2 flex items-center justify-between text-xs ${badge.containerClass}`}>
+                      <span className="flex items-center gap-1.5 font-medium truncate">
+                        <BadgeIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{badge.description}</span>
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 uppercase tracking-wider ${badge.badgeClass}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+                  );
+                })()}
 
-                <div className="flex gap-2 pt-0.5">
+                <div className="flex items-center justify-between pt-0.5">
+                  <div className="flex gap-2 flex-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/orders/${order.id}`);
+                      }}
+                      className="py-2 px-3 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#254632] transition-colors cursor-pointer"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-[#E5A953]" />
+                      <span>Track Order</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/orders/${order.id}`);
+                      }}
+                      className="px-3 py-2 bg-[#F5F2EB] text-[#293E30] text-xs font-semibold rounded-xl hover:bg-[#ECE7DC] transition-colors cursor-pointer"
+                    >
+                      Receipt
+                    </button>
+                  </div>
+
                   <button
                     type="button"
-                    onClick={() => navigate(`/orders/${order.id}`)}
-                    className="flex-1 py-2 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#254632] transition-colors"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (window.confirm('Hide this order from your active history? Your financial receipt and transaction records will remain safely archived.')) {
+                        if (authUser?.id) {
+                          await orderService.hideOrderFromHistory(order.id, authUser.id);
+                          await refreshOrders();
+                          showToast('Order hidden from your active history.', 'info');
+                        }
+                      }
+                    }}
+                    className="flex items-center gap-1 text-[11px] text-[#8C7443] hover:text-[#5B4928] hover:underline px-2 py-1 cursor-pointer ml-2"
+                    title="Hide this order from view"
                   >
-                    <MapPin className="w-3.5 h-3.5 text-[#E5A953]" />
-                    <span>Track Order</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/orders/${order.id}`)}
-                    className="px-4 py-2 bg-[#F5F2EB] text-[#293E30] text-xs font-semibold rounded-xl hover:bg-[#ECE7DC] transition-colors"
-                  >
-                    Receipt
+                    <EyeOff className="w-3 h-3" />
+                    <span>Hide</span>
                   </button>
                 </div>
               </div>

@@ -16,11 +16,11 @@ import {
   Home,
   Building2,
   Package,
-  Bell,
-  AlertTriangle
+  Bell
 } from 'lucide-react';
 import { navigateTo, AUTH_ROUTES } from '../routes/authRoutes';
-import { addressService, stockService } from '@tellervo/supabase';
+import { addressService, stockService, orderService } from '@tellervo/supabase';
+import { DummyPaymentModal } from '../components/checkout/DummyPaymentModal';
 import { SavedAddress, AddressFormData } from '../types/address';
 import { AddressFormModal } from '../components/profile/addresses/AddressFormModal';
 
@@ -64,7 +64,6 @@ export const CheckoutScreen: React.FC = () => {
     toggleRestockNotification,
     isRestockNotified
   } = useApp();
-  const [confirmedOrderId, setConfirmedOrderId] = useState<string | null>(null);
 
   const currentUserId = authUser?.id || user.handle || 'patron';
 
@@ -130,6 +129,14 @@ export const CheckoutScreen: React.FC = () => {
   const [selectedPaymentType, setSelectedPaymentType] = useState<'apple-pay' | 'card' | 'bank'>('apple-pay');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isOrderPlaced, setIsOrderPlaced] = useState(false);
+  const [isDummyPaymentModalOpen, setIsDummyPaymentModalOpen] = useState(false);
+  const [confirmedOrderDetails, setConfirmedOrderDetails] = useState<{
+    orderNumber: string;
+    paymentId: string;
+    totalAmount: number;
+    status: string;
+    destinationAddress: string;
+  } | null>(null);
   const [processingStatusText, setProcessingStatusText] = useState('Verifying with Boreal Lab...');
   const [stockHaltError, setStockHaltError] = useState<{
     productId: string;
@@ -288,56 +295,224 @@ export const CheckoutScreen: React.FC = () => {
         return;
       }
 
-      // Step 4 Branch A: Stock available -> Payment process karo.
-      setProcessingStatusText('Processing secure payment authorization...');
-      await new Promise(resolve => setTimeout(resolve, 800));
+      // Step 4 Branch A: Stock verified -> Open interactive Dummy Payment Simulator
+      setIsProcessing(false);
+      setIsDummyPaymentModalOpen(true);
+    } catch (err) {
+      console.error('[CheckoutScreen] Order flow exception:', err);
+      setIsProcessing(false);
+      setIsDummyPaymentModalOpen(true);
+    }
+  };
+
+  const handleAcceptPayment = async (paymentId: string) => {
+    setIsProcessing(true);
+    setProcessingStatusText('Atomically confirming order with Supabase...');
+
+    try {
+      const destinationSnapshot = selectedAddress
+        ? {
+            recipient_name: selectedAddress.recipientName,
+            phone: selectedAddress.phone || user.phone || null,
+            street: selectedAddress.street,
+            additional_details: selectedAddress.additionalDetails || null,
+            postal_code: selectedAddress.postalCode,
+            city: selectedAddress.city,
+            country_code: selectedAddress.countryCode || 'FI',
+            type: selectedAddress.type || 'home',
+          }
+        : {
+            recipient_name: user.name || 'Tellervo Patron',
+            phone: user.phone || null,
+            street: user.address || 'Mannerheimintie 14 B',
+            additional_details: null,
+            postal_code: '00100',
+            city: 'Helsinki',
+            country_code: 'FI',
+            type: 'home',
+          };
 
       const destinationAddress = selectedAddress
         ? `${selectedAddress.street}, ${selectedAddress.city} ${selectedAddress.postalCode || ''}, ${selectedAddress.countryCode || 'FI'}`
         : user.address || 'Helsinki, Finland';
 
-      const orderId = `ord-${Date.now()}`;
-      const orderNum = `#TL-${Math.floor(10000 + Math.random() * 90000)}`;
-      const formattedDate = new Date().toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      });
+      const orderPayload = {
+        customer_name: user.name || 'Tellervo Patron',
+        customer_email: authUser?.email || '',
+        customer_phone: selectedAddress?.phone || user.phone || null,
+        delivery_address: destinationSnapshot,
+        subtotal: cartTotal,
+        discount_total: 0,
+        shipping_total: shippingFee,
+      };
+
+      const itemsPayload = cart.map(c => ({
+        product_id: c.product.id,
+        product_name: c.product.name,
+        volume: c.product.size || '',
+        sku: c.product.sku || '',
+        unit_price: c.product.discountPrice ?? c.product.price,
+        quantity: c.quantity,
+        product_image_url: c.product.imageUrl || (c.product.images ? c.product.images[0] : ''),
+      }));
+
+      const { data, error } = await orderService.submitOrderWithSimulation(
+        orderPayload,
+        itemsPayload,
+        'accept',
+        paymentId
+      );
+
+      if (error || !data) {
+        showToast(error?.message || 'Failed to submit order to Supabase.', 'info');
+        return;
+      }
+
+      // Verify payment status is confirmed 'paid'
+      if (data.payment_status !== 'paid') {
+        showToast('Payment verification failed. Please try again.', 'info');
+        return;
+      }
 
       const newOrder = {
-        id: orderId,
-        orderNumber: orderNum,
-        date: formattedDate,
-        total: finalTotal,
-        status: 'Order Confirmed & In Preparation',
+        id: data.order_id,
+        orderNumber: data.order_number,
+        date: new Date(data.created_at || Date.now()).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        total: data.grand_total,
+        status: 'Processing',
         statusType: 'in-transit' as const,
         courier: 'Posti Eco Subarctic Chilled',
         summary: `${cart.length} provision${cart.length > 1 ? 's' : ''}: ${cart.map(c => `${c.product.name} (${c.quantity})`).join(', ')}`,
-        trackingId: `POSTI-FI-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(100 + Math.random() * 900)}`,
-        recipientName: user.name || 'Patron',
+        trackingId: data.payment_id,
+        recipientName: user.name || 'Tellervo Patron',
         address: destinationAddress,
-        paymentMethod: selectedPaymentType.replace('-', ' '),
-        dispatchOrigin: 'Oulu Boreal Lab',
+        paymentMethod: 'Dummy Simulator (Accepted)',
         items: cart.map(c => ({
           name: c.product.name,
           qty: c.quantity,
           price: c.product.discountPrice ?? c.product.price,
-          status: c.product.status,
-          imageUrl: c.product.imageUrl,
-          category: c.product.category,
-          size: c.product.size,
         })),
       };
 
       addOrder(newOrder);
-      setConfirmedOrderId(orderId);
+      setConfirmedOrderDetails({
+        orderNumber: data.order_number,
+        paymentId: data.payment_id,
+        totalAmount: data.grand_total,
+        status: 'Processing',
+        destinationAddress: destinationAddress,
+      });
+
+      setIsDummyPaymentModalOpen(false);
       setIsOrderPlaced(true);
       triggerConfetti();
-      showToast('Order confirmed and queued for cold-chain dispatch!', 'success');
+      showToast('Order confirmed! Supabase record created in Processing status.', 'success');
       clearCart();
     } catch (err) {
-      console.error('[CheckoutScreen] Order flow exception:', err);
-      showToast('Order processing error. Please try again.', 'info');
+      console.error('[CheckoutScreen] Order accept error:', err);
+      showToast('Order submission error. Please try again.', 'info');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleDeclinePayment = async (paymentId: string) => {
+    setIsProcessing(true);
+    setProcessingStatusText('Recording declined payment in Supabase...');
+
+    try {
+      const destinationSnapshot = selectedAddress
+        ? {
+            recipient_name: selectedAddress.recipientName,
+            phone: selectedAddress.phone || user.phone || null,
+            street: selectedAddress.street,
+            additional_details: selectedAddress.additionalDetails || null,
+            postal_code: selectedAddress.postalCode,
+            city: selectedAddress.city,
+            country_code: selectedAddress.countryCode || 'FI',
+            type: selectedAddress.type || 'home',
+          }
+        : {
+            recipient_name: user.name || 'Tellervo Patron',
+            phone: user.phone || null,
+            street: user.address || 'Mannerheimintie 14 B',
+            additional_details: null,
+            postal_code: '00100',
+            city: 'Helsinki',
+            country_code: 'FI',
+            type: 'home',
+          };
+
+      const destinationAddress = selectedAddress
+        ? `${selectedAddress.street}, ${selectedAddress.city} ${selectedAddress.postalCode || ''}, ${selectedAddress.countryCode || 'FI'}`
+        : user.address || 'Helsinki, Finland';
+
+      const orderPayload = {
+        customer_name: user.name || 'Tellervo Patron',
+        customer_email: authUser?.email || '',
+        customer_phone: selectedAddress?.phone || user.phone || null,
+        delivery_address: destinationSnapshot,
+        subtotal: cartTotal,
+        discount_total: 0,
+        shipping_total: shippingFee,
+      };
+
+      const itemsPayload = cart.map(c => ({
+        product_id: c.product.id,
+        product_name: c.product.name,
+        volume: c.product.size || '',
+        sku: c.product.sku || '',
+        unit_price: c.product.discountPrice ?? c.product.price,
+        quantity: c.quantity,
+        product_image_url: c.product.imageUrl || (c.product.images ? c.product.images[0] : ''),
+      }));
+
+      const { data, error } = await orderService.submitOrderWithSimulation(
+        orderPayload,
+        itemsPayload,
+        'decline',
+        paymentId
+      );
+
+      if (error || !data) {
+        showToast(error?.message || 'Failed to record declined payment.', 'info');
+        return;
+      }
+
+      const cancelledOrder = {
+        id: data.order_id,
+        orderNumber: data.order_number,
+        date: new Date(data.created_at || Date.now()).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+        }),
+        total: data.grand_total,
+        status: 'Cancelled',
+        statusType: 'in-transit' as const,
+        courier: 'Posti Eco Subarctic Chilled',
+        summary: `${cart.length} provision${cart.length > 1 ? 's' : ''}: ${cart.map(c => `${c.product.name} (${c.quantity})`).join(', ')}`,
+        trackingId: data.payment_id,
+        recipientName: user.name || 'Tellervo Patron',
+        address: destinationAddress,
+        paymentMethod: 'Dummy Simulator (Declined)',
+        items: cart.map(c => ({
+          name: c.product.name,
+          qty: c.quantity,
+          price: c.product.discountPrice ?? c.product.price,
+        })),
+      };
+
+      addOrder(cancelledOrder);
+      setIsDummyPaymentModalOpen(false);
+      showToast(`Payment was declined (${paymentId}). Order ${data.order_number} saved as Cancelled in your history.`, 'info');
+    } catch (err) {
+      console.error('[CheckoutScreen] Order decline error:', err);
+      showToast('Payment decline processing error.', 'info');
     } finally {
       setIsProcessing(false);
     }
@@ -358,58 +533,59 @@ export const CheckoutScreen: React.FC = () => {
 
         <div className="w-full bg-white rounded-3xl p-5 border border-[#E8E2D5] shadow-soft-sm mb-6 text-left space-y-2.5">
           <div className="flex justify-between text-xs text-[#6C7E71]">
-            <span>Dispatch Origin</span>
-            <span className="font-medium text-[#1A2E21]">Oulu Boreal Lab</span>
+            <span>Order Reference</span>
+            <span className="font-mono font-bold text-[#1A2E21]">
+              {confirmedOrderDetails?.orderNumber || '#TL-84102'}
+            </span>
           </div>
           <div className="flex justify-between text-xs text-[#6C7E71]">
-            <span>Delivery Courier</span>
-            <span className="font-medium text-[#1A2E21]">Posti Eco Subarctic Chilled</span>
+            <span>Payment Reference</span>
+            <span className="font-mono text-[11px] font-medium text-[#1A2E21]">
+              {confirmedOrderDetails?.paymentId || 'PAY-FI-SIMULATED'}
+            </span>
+          </div>
+          <div className="flex justify-between items-center text-xs text-[#6C7E71]">
+            <span>Order Status</span>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-[#FEF7EC] text-[#9A6218] border border-[#F5E4C4]">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+              Processing (Store Preparing Order)
+            </span>
           </div>
           <div className="flex justify-between text-xs text-[#6C7E71]">
             <span>Delivery Destination</span>
             <span className="font-medium text-[#1A2E21] text-right truncate max-w-[200px]">
-              {selectedAddress
-                ? `${selectedAddress.street}, ${selectedAddress.city}`
-                : user.address || 'Helsinki, Finland'}
-            </span>
-          </div>
-          <div className="flex justify-between text-xs text-[#6C7E71]">
-            <span>Payment Method</span>
-            <span className="font-medium text-[#1A2E21] capitalize">
-              {selectedPaymentType.replace('-', ' ')}
+              {confirmedOrderDetails?.destinationAddress ||
+                (selectedAddress ? `${selectedAddress.street}, ${selectedAddress.city}` : user.address || 'Helsinki, Finland')}
             </span>
           </div>
           <div className="pt-2 border-t border-[#F0EBE0] flex justify-between text-sm font-bold text-[#14261B]">
             <span>Total Paid</span>
-            <span>€{finalTotal.toFixed(2)}</span>
+            <span>€{(confirmedOrderDetails?.totalAmount ?? finalTotal).toFixed(2)}</span>
           </div>
         </div>
 
         <div className="flex gap-2">
-          {confirmedOrderId && (
-            <button
-              type="button"
-              onClick={() => {
-                setIsOrderPlaced(false);
-                navigateTo(`/orders/${confirmedOrderId}`);
-              }}
-              className="flex-1 py-3.5 bg-[#183324] text-[#FAF8F3] font-semibold text-xs uppercase tracking-wider rounded-2xl hover:bg-[#234431] transition-colors shadow-sm cursor-pointer"
-            >
-              View Order Details
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => {
+              setIsOrderPlaced(false);
+              navigateTo('/profile');
+            }}
+            className="flex-1 py-3.5 bg-[#183324] text-[#FAF8F3] font-semibold text-xs uppercase tracking-wider rounded-2xl hover:bg-[#234431] transition-colors shadow-sm cursor-pointer"
+          >
+            View in Order History
+          </button>
           <button
             type="button"
             onClick={() => {
               setIsOrderPlaced(false);
               navigateTo(AUTH_ROUTES.HOME);
             }}
-            className={`${confirmedOrderId ? 'px-4' : 'w-full'} py-3.5 bg-white border border-[#E0D9C8] text-[#1B3222] font-semibold text-xs uppercase tracking-wider rounded-2xl hover:bg-[#FAF9F5] transition-colors shadow-xs cursor-pointer`}
+            className="px-4 py-3.5 bg-white border border-[#E0D9C8] text-[#1B3222] font-semibold text-xs uppercase tracking-wider rounded-2xl hover:bg-[#FAF9F5] transition-colors shadow-xs cursor-pointer"
           >
             Return to Store
           </button>
-        </div>
-      </div>
+        </div></div>
     );
   }
 
@@ -817,6 +993,18 @@ export const CheckoutScreen: React.FC = () => {
         isFirstAddress={addresses.length === 0}
         onSave={handleSaveAddress}
         onClose={() => setIsAddressModalOpen(false)}
+      />
+
+      {/* Dummy Payment Simulation Modal for QA */}
+      <DummyPaymentModal
+        isOpen={isDummyPaymentModalOpen}
+        onClose={() => setIsDummyPaymentModalOpen(false)}
+        amount={finalTotal}
+        currency="EUR"
+        onAccept={handleAcceptPayment}
+        onDecline={handleDeclinePayment}
+        isProcessing={isProcessing}
+        processingMessage={processingStatusText}
       />
     </div>
   );
