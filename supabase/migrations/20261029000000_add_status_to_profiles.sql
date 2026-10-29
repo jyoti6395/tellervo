@@ -245,16 +245,16 @@ BEGIN
   SELECT 
     u.id,
     COALESCE(
+      NULLIF(TRIM(p.full_name), ''),
       u.raw_user_meta_data->>'full_name',
       u.raw_user_meta_data->>'name',
-      p.full_name,
       'No Name'
     )::TEXT AS name,
     COALESCE(u.email::TEXT, ''::TEXT) AS email,
     COALESCE(
+      NULLIF(TRIM(p.phone), ''),
       u.phone::TEXT,
       u.raw_user_meta_data->>'phone',
-      p.phone,
       'No Phone'
     )::TEXT AS phone,
     COALESCE(p.status, 'active')::TEXT AS status,
