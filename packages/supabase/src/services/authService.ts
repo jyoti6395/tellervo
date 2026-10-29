@@ -1,4 +1,4 @@
-﻿import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { supabase as defaultSupabase } from '../client';
 import type { AuthUser, AuthSession, AuthResult, ProfileRecord, CustomerSignupData } from '../types/auth';
 import { profileService, ProfileService } from './profileService';
@@ -41,6 +41,40 @@ export class AuthService {
   }
 
   /**
+   * Pre-flight availability check for customer registration
+   */
+  public async checkSignupAvailability(
+    email: string,
+    phone?: string
+  ): Promise<{ available: boolean; error?: string }> {
+    try {
+      const { data, error } = await this.client.rpc('check_signup_availability', {
+        p_email: email.trim().toLowerCase(),
+        p_phone: phone ? phone.trim() : null,
+      });
+
+      if (error) {
+        // Fallback to database trigger check if RPC fails
+        return { available: true };
+      }
+
+      if (data && typeof data === 'object' && 'available' in data) {
+        const res = data as { available: boolean; error?: string };
+        if (!res.available) {
+          return {
+            available: false,
+            error: res.error || 'Registration details are not available.',
+          };
+        }
+      }
+
+      return { available: true };
+    } catch {
+      return { available: true };
+    }
+  }
+
+  /**
    * Restores active authentication session from Supabase
    */
   public async getSession(): Promise<AuthSession | null> {
@@ -52,6 +86,14 @@ export class AuthService {
 
       const supabaseUser = data.session.user;
       const profile = await this.fetchUserProfile(supabaseUser.id);
+
+      // Account Status Check on session restoration:
+      // If customer is deactivated, revoke the persisted session and return null
+      if (profile?.status === 'deactive') {
+        await this.client.auth.signOut();
+        return null;
+      }
+
       const authUser = this.mapToAuthUser(supabaseUser, profile);
 
       const expiresAt = data.session.expires_at
@@ -96,6 +138,16 @@ export class AuthService {
 
       // Ensure profile is initialized in profiles table
       const profile = await this.ensureUserProfile(data.user);
+
+      // Account Status Check: prevent deactivated customers from establishing active sessions
+      if (profile?.status === 'deactive') {
+        await this.client.auth.signOut();
+        return {
+          success: false,
+          error: 'Your account has been deactivated. Please contact Help & Support for assistance.',
+        };
+      }
+
       const user = this.mapToAuthUser(data.user, profile);
 
       const session: AuthSession = {
@@ -114,12 +166,21 @@ export class AuthService {
   }
 
   /**
-   * Sign Up / Create Account via Supabase Auth
+   * Sign Up / Create Account via Supabase Auth with Enhanced Registration Security
    */
   public async signUp(email: string, password: string, fullName: string, phone?: string): Promise<AuthResult> {
     const normalizedEmail = email.trim().toLowerCase();
     const cleanName = fullName.trim();
     const cleanPhone = phone ? phone.trim() : undefined;
+
+    // 1. Pre-flight Availability Check
+    const availability = await this.checkSignupAvailability(normalizedEmail, cleanPhone);
+    if (!availability.available) {
+      return {
+        success: false,
+        error: availability.error || 'Registration details are not available.',
+      };
+    }
 
     try {
       const { data, error } = await this.client.auth.signUp({
@@ -146,7 +207,21 @@ export class AuthService {
               'Supabase email rate limit reached (429 Too Many Requests). Supabase default email service is capped at 3 emails/hour. To resolve: in Supabase Dashboard go to Authentication -> Providers -> Email and uncheck "Confirm email" (recommended for development), or configure custom SMTP.',
           };
         }
-        if (error.message?.includes('Database error saving new user')) {
+        if (
+          error.message?.includes('deactivated account') ||
+          error.message?.toLowerCase().includes('deactivated')
+        ) {
+          return {
+            success: false,
+            error: 'This email is associated with a deactivated account. Please contact Help & Support for assistance.',
+          };
+        }
+        if (
+          error.message?.includes('Database error saving new user') ||
+          error.message?.includes('phone number is already registered') ||
+          error.message?.includes('already saved as a default delivery phone') ||
+          error.message?.includes('duplicate key value violates unique constraint')
+        ) {
           return {
             success: false,
             error:
@@ -166,6 +241,14 @@ export class AuthService {
         };
       }
 
+      // Detect existing identity when Supabase suppresses error for duplicate email
+      if (data.user.identities && data.user.identities.length === 0) {
+        return {
+          success: false,
+          error: 'An account with this email already exists. Please sign in instead.',
+        };
+      }
+
       // Handle case where email verification is required (no session returned)
       if (!data.session) {
         const tempUser: AuthUser = {
@@ -174,6 +257,7 @@ export class AuthService {
           phone: cleanPhone,
           name: cleanName,
           role: 'customer',
+          status: 'active',
           tier: 'Taiga Patron',
           seeds: 50,
           treesPlanted: 18,
@@ -271,3 +355,6 @@ export const fetchCustomerSignups = async (): Promise<CustomerSignupData[]> => {
   return authService.fetchCustomerSignups();
 };
 
+export const checkSignupAvailability = async (email: string, phone?: string) => {
+  return authService.checkSignupAvailability(email, phone);
+};

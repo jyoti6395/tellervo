@@ -1,9 +1,12 @@
-﻿export interface AuthUser {
+export type AccountStatus = 'active' | 'deactive';
+
+export interface AuthUser {
   id: string;
   email: string;
   phone?: string;
   name: string;
   role: 'admin' | 'customer' | 'patron' | string;
+  status?: AccountStatus;
   memberSince?: string;
   avatarUrl?: string;
   tier?: string;
@@ -35,6 +38,7 @@ export interface ProfileRecord {
   full_name?: string;
   avatar_url?: string;
   role?: 'admin' | 'customer' | 'patron' | string;
+  status?: AccountStatus;
   tier?: string;
   seeds?: number;
   trees_planted?: number;
@@ -50,5 +54,6 @@ export interface CustomerSignupData {
   name: string;
   email: string;
   phone: string;
+  status?: string;
   joined_date: string;
 }

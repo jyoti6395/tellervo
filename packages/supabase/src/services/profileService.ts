@@ -1,6 +1,6 @@
-﻿import type { SupabaseClient, User } from '@supabase/supabase-js';
+import type { SupabaseClient, User } from '@supabase/supabase-js';
 import { supabase as defaultSupabase } from '../client';
-import type { AuthUser, ProfileRecord } from '../types/auth';
+import type { AuthUser, ProfileRecord, AccountStatus } from '../types/auth';
 
 export class ProfileService {
   private client: SupabaseClient;
@@ -49,6 +49,7 @@ export class ProfileService {
       phone: profile?.phone || (supabaseUser.user_metadata?.phone as string) || undefined,
       name,
       role,
+      status: (profile?.status as AccountStatus) || 'active',
       memberSince,
       avatarUrl:
         profile?.avatar_url ||
@@ -97,6 +98,7 @@ export class ProfileService {
         email: user.email || '',
         phone: userPhone,
         role: 'customer',
+        status: 'active',
         full_name: (user.user_metadata?.full_name as string) || user.email?.split('@')[0] || 'Customer',
         avatar_url:
           'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',

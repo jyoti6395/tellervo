@@ -108,6 +108,7 @@ export interface UserProfile {
   paymentMethod: string;
   dietaryPreferences: string;
   role?: string;
+  status?: 'active' | 'deactive';
   subscription: {
     title: string;
     status: string;

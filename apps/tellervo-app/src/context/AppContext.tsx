@@ -5,7 +5,7 @@ import { translations, Translations } from '../i18n/translations';
 import confetti from 'canvas-confetti';
 import { authService, profileService, AuthUser, AuthResult, supabase, productService, favouriteService } from '@tellervo/supabase';
 import { mapRecordToProduct } from '../lib/productMapper';
-import { ALL_ROUTES } from '../routes/routes.config';
+import { ALL_ROUTES, APP_ROUTES } from '../routes/routes.config';
 import { navigateTo } from '../routes/hooks/useNavigation';
 
 interface Toast {
@@ -346,6 +346,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               paymentMethod: session.user.paymentMethod || prev.paymentMethod,
               dietaryPreferences: session.user.dietaryPreferences || prev.dietaryPreferences,
               role: session.user.role || prev.role || 'customer',
+              status: session.user.status || prev.status || 'active',
             }));
           } else {
             setAuthUser(null);
@@ -391,6 +392,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             paymentMethod: authSession.user.paymentMethod || prev.paymentMethod,
             dietaryPreferences: authSession.user.dietaryPreferences || prev.dietaryPreferences,
             role: authSession.user.role || prev.role || 'customer',
+            status: authSession.user.status || prev.status || 'active',
           }));
         }
       }
@@ -505,6 +507,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         paymentMethod: result.user!.paymentMethod || prev.paymentMethod,
         dietaryPreferences: result.user!.dietaryPreferences || prev.dietaryPreferences,
         role: result.user!.role || prev.role || 'customer',
+        status: result.user!.status || prev.status || 'active',
       }));
     }
     return result;
@@ -582,6 +585,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 3200);
   };
+
+  // Real-time listener for customer account status changes (e.g. administrator deactivation)
+  useEffect(() => {
+    if (!authUser?.id) return;
+    let isCancelled = false;
+
+    const profileChannel = supabase
+      .channel(`user-profile-status-${authUser.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${authUser.id}`,
+        },
+        async (payload: any) => {
+          if (isCancelled) return;
+          const updatedStatus = payload?.new?.status;
+          if (updatedStatus === 'deactive') {
+            await logout();
+            showToast('Your account has been deactivated. Please contact Help & Support for assistance.', 'info');
+            navigateTo(APP_ROUTES.LOGIN.path);
+          } else if (updatedStatus === 'active') {
+            setUser(prev => ({ ...prev, status: 'active' }));
+            setAuthUser(prev => (prev ? { ...prev, status: 'active' } : prev));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      isCancelled = true;
+      supabase.removeChannel(profileChannel);
+    };
+  }, [authUser?.id]);
 
   const dismissToast = (id: string) => {
     setToasts(prev => prev.filter(t => t.id !== id));

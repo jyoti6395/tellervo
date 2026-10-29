@@ -25,7 +25,7 @@ export function useRouteGuard(route: RouteDefinition): GuardStatus {
     }
 
     // 2. Protected Route: requires active authenticated session
-    if (route.access === 'protected' && !isAuthenticated) {
+    if (route.access === 'protected' && (!isAuthenticated || authUser?.status === 'deactive')) {
       const currentPath = typeof window !== 'undefined' ? window.location.pathname : route.path;
       const redirectParam = encodeURIComponent(currentPath);
       return {
@@ -35,7 +35,7 @@ export function useRouteGuard(route: RouteDefinition): GuardStatus {
     }
 
     // 3. Guest-Only Route (Sign In / Sign Up): authenticated users should be redirected
-    if (route.access === 'guest-only' && isAuthenticated) {
+    if (route.access === 'guest-only' && isAuthenticated && authUser?.status !== 'deactive') {
       const redirectQuery = getRedirectQuery();
       return {
         status: 'already-authenticated',

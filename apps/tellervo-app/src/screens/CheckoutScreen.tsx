@@ -201,6 +201,11 @@ export const CheckoutScreen: React.FC = () => {
   };
 
   const handleProceedPayment = () => {
+    if (authUser?.status === 'deactive') {
+      showToast('Your account has been deactivated. Please contact Help & Support for assistance.', 'info');
+      navigateTo(AUTH_ROUTES.LOGIN);
+      return;
+    }
     if (cart.length === 0) {
       showToast('Your cart is empty. Please add botanical blends first.', 'info');
       return;

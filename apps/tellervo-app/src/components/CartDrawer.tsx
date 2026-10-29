@@ -17,6 +17,7 @@ export const CartDrawer: React.FC = () => {
     showToast,
     addOrder,
     isAuthenticated,
+    authUser,
     t
   } = useApp();
 
@@ -36,6 +37,9 @@ export const CartDrawer: React.FC = () => {
     if (!isAuthenticated) {
       showToast('Please sign in to proceed to checkout', 'info');
       navigateTo(`${AUTH_ROUTES.LOGIN}?redirect=${encodeURIComponent(AUTH_ROUTES.CHECKOUT)}`);
+    } else if (authUser?.status === 'deactive') {
+      showToast('Your account has been deactivated. Please contact Help & Support for assistance.', 'info');
+      navigateTo(AUTH_ROUTES.LOGIN);
     } else {
       navigateTo(AUTH_ROUTES.CHECKOUT);
     }
