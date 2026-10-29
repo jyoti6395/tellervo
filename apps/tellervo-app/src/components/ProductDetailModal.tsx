@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useNavigation } from '../routes/hooks/useNavigation';
 import { stockService } from '@tellervo/supabase';
-import { Bell, ChevronLeft, 
+import { Bell, ChevronLeft, ChevronRight, 
   Heart, 
   Share2, 
   ShoppingBag, 
@@ -15,6 +15,8 @@ import { Bell, ChevronLeft,
   Clock, 
   Leaf, 
   Truck,
+  ZoomIn,
+  Package,
   AlertCircle } from 'lucide-react';
 
 export const ProductDetailModal: React.FC = () => {
@@ -40,11 +42,94 @@ export const ProductDetailModal: React.FC = () => {
   const [isStockUnavailable, setIsStockUnavailable] = useState(false);
   const [stockNotice, setStockNotice] = useState<string | null>(null);
 
-  // Reset reservation notice on product switch
+  // Instant 1:1 Desktop Cursor & Mobile Thumb Touch Magnifier
+  const [isZooming, setIsZooming] = useState(false);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const lensRef = useRef<HTMLDivElement | null>(null);
+  const thumbnailScrollRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollThumbnails = (direction: 'left' | 'right') => {
+    if (thumbnailScrollRef.current) {
+      const scrollAmount = thumbnailScrollRef.current.clientWidth * 0.75;
+      thumbnailScrollRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  // Universal coordinate updater for both mouse cursor and mobile touch
+  const updateZoomPosition = (clientX: number, clientY: number, target: HTMLElement) => {
+    const rect = target.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const xPercent = Math.max(0, Math.min(100, (x / rect.width) * 100));
+    const yPercent = Math.max(0, Math.min(100, (y / rect.height) * 100));
+
+    if (imgRef.current) {
+      imgRef.current.style.transformOrigin = `${xPercent}% ${yPercent}%`;
+      imgRef.current.style.transform = 'scale(2.5)';
+    }
+    if (lensRef.current) {
+      lensRef.current.style.transform = `translate3d(${x}px, ${y}px, 0) translate(-50%, -50%)`;
+    }
+  };
+
+  // Mouse handlers (Desktop cursor)
+  const handleImageMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    updateZoomPosition(e.clientX, e.clientY, e.currentTarget);
+  };
+
+  const handleImageMouseEnter = (e: React.MouseEvent<HTMLDivElement>) => {
+    updateZoomPosition(e.clientX, e.clientY, e.currentTarget);
+    setIsZooming(true);
+  };
+
+  const handleImageMouseLeave = () => {
+    if (imgRef.current) {
+      imgRef.current.style.transform = 'scale(1)';
+    }
+    setIsZooming(false);
+  };
+
+  // Touch handlers (Mobile thumb tracking)
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    updateZoomPosition(touch.clientX, touch.clientY, e.currentTarget);
+    setIsZooming(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent<HTMLDivElement>) => {
+    const touch = e.touches[0];
+    if (!touch) return;
+    updateZoomPosition(touch.clientX, touch.clientY, e.currentTarget);
+  };
+
+  const handleTouchEnd = () => {
+    if (imgRef.current) {
+      imgRef.current.style.transform = 'scale(1)';
+    }
+    setIsZooming(false);
+  };
+
+  // Reset reservation notice and zoom on product switch
   useEffect(() => {
     setIsStockUnavailable(false);
     setStockNotice(null);
+    setIsZooming(false);
+    if (imgRef.current) {
+      imgRef.current.style.transform = 'scale(1)';
+    }
   }, [selectedProduct?.id]);
+
+  // Auto-scroll active thumbnail into view in horizontal strip
+  useEffect(() => {
+    const activeThumb = document.getElementById(`gallery-thumb-${activeImageIndex}`);
+    if (activeThumb) {
+      activeThumb.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  }, [activeImageIndex]);
 
   const handleBack = () => {
     setSelectedProduct(null);
@@ -73,10 +158,38 @@ export const ProductDetailModal: React.FC = () => {
   const product = selectedProduct;
   const isFav = favorites.includes(product.id);
 
-  // Pack options (only if defined in product data)
-  const packOptions = product.packOptions && product.packOptions.length > 0 ? product.packOptions : null;
-  const currentOption = packOptions ? (packOptions[selectedPackIndex] || packOptions[0]) : null;
-  const unitPrice = currentOption ? currentOption.price : (product.discountPrice ?? product.price);
+  // Available stock count
+  const availableStock = typeof product.stockCount === 'number' ? product.stockCount : 20;
+
+  // Base unit price (respects discount price if active)
+  const baseUnitPrice = product.discountPrice ?? product.price ?? 0;
+
+  // Dynamic pack options (1 Bottle, 3 Bottles, 5 Bottles based on available stock)
+  const packOptions = product.packOptions && product.packOptions.length > 0
+    ? product.packOptions
+    : [
+        {
+          label: '1 Bottle',
+          count: 1,
+          price: Number(baseUnitPrice.toFixed(2)),
+          savings: undefined,
+        },
+        {
+          label: '3 Bottles',
+          count: 3,
+          price: Number((baseUnitPrice * 3 * 0.95).toFixed(2)),
+          savings: 'Save 5%',
+        },
+        {
+          label: '5 Bottles',
+          count: 5,
+          price: Number((baseUnitPrice * 5 * 0.90).toFixed(2)),
+          savings: 'Save 10%',
+        },
+      ];
+
+  const currentOption = packOptions[selectedPackIndex] || packOptions[0];
+  const unitPrice = currentOption.price;
   const totalPrice = (unitPrice * quantity).toFixed(2);
 
   // Gallery images (strictly from product data without fake placeholder photos)
@@ -111,9 +224,16 @@ export const ProductDetailModal: React.FC = () => {
       return;
     }
 
+    const totalBottles = (currentOption?.count || 1) * quantity;
+    if (availableStock > 0 && totalBottles > availableStock) {
+      showToast(`Only ${availableStock} bottles available in stock`, 'info');
+      return;
+    }
+
     addToCart(
       {
         ...product,
+        name: currentOption && currentOption.count > 1 ? `${product.name} (${currentOption.label})` : product.name,
         price: unitPrice,
         size: currentOption ? currentOption.label : product.size,
       },
@@ -141,9 +261,10 @@ export const ProductDetailModal: React.FC = () => {
       setIsReserving(true);
       setStockNotice(null);
 
+      const totalBottles = (currentOption?.count || 1) * quantity;
       // Step 2: Backend checks available stock from real-time database
       showToast('Checking real-time cellar stock...', 'info');
-      const check = await stockService.checkAvailableStock(product.id, quantity);
+      const check = await stockService.checkAvailableStock(product.id, totalBottles);
 
       if (!check.isAvailable) {
         // Step 4 Branch B: Stock unavailable -> Payment roko; Notify Me dikhao.
@@ -154,7 +275,7 @@ export const ProductDetailModal: React.FC = () => {
       }
 
       // Step 3: Reserve stock atomically ("Ek bottle sirf ek order ko mil sakti hai")
-      const reservation = await stockService.reserveProductStock(product.id, quantity);
+      const reservation = await stockService.reserveProductStock(product.id, totalBottles);
 
       if (!reservation.success) {
         // Step 4 Branch B: Stock unavailable -> Payment roko; Notify Me dikhao.
@@ -268,14 +389,39 @@ export const ProductDetailModal: React.FC = () => {
 
         {/* Scrollable Detail Body */}
         <div className="flex-1 overflow-y-auto pb-28">
-          {/* Hero Image Showcase */}
+          {/* Hero Image Showcase with Instant Cursor & Mobile Thumb Magnifier */}
           <div className="relative px-4 pt-3 pb-2">
-            <div className="relative rounded-3xl overflow-hidden aspect-[4/3] bg-[#F2ECE1] shadow-soft-sm border border-[#E8E2D5]">
-              {gallery[activeImageIndex] ? (
+            <div 
+              onMouseEnter={handleImageMouseEnter}
+              onMouseLeave={handleImageMouseLeave}
+              onMouseMove={handleImageMouseMove}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              onTouchCancel={handleTouchEnd}
+              className="relative rounded-3xl overflow-hidden aspect-square bg-[#F6F3EB] shadow-soft-sm border border-[#E8E2D5] cursor-crosshair group select-none touch-none flex items-center justify-center"
+            >
+              {/* Soft ambient blur backdrop to seamlessly blend any aspect ratio without empty bars */}
+              {gallery[activeImageIndex] && (
                 <img
                   src={gallery[activeImageIndex]}
+                  alt=""
+                  aria-hidden="true"
+                  className="absolute inset-0 w-full h-full object-cover blur-2xl scale-125 opacity-25 pointer-events-none select-none"
+                />
+              )}
+
+              {/* Full Uncropped Main Image */}
+              {gallery[activeImageIndex] ? (
+                <img
+                  ref={imgRef}
+                  src={gallery[activeImageIndex]}
                   alt={product.name}
-                  className="w-full h-full object-cover transition-all duration-300"
+                  className="relative z-10 w-full h-full object-contain pointer-events-none"
+                  style={{
+                    willChange: 'transform, transform-origin',
+                    transition: isZooming ? 'none' : 'transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                  }}
                   onError={(e) => {
                     e.currentTarget.style.display = 'none';
                   }}
@@ -286,8 +432,30 @@ export const ProductDetailModal: React.FC = () => {
                 </div>
               )}
 
+              {/* Instant Magnifier Loupe Reticle (Tracks cursor or thumb with translate3d) */}
+              {gallery[activeImageIndex] && (
+                <div
+                  ref={lensRef}
+                  className={`absolute top-0 left-0 pointer-events-none w-24 h-24 rounded-full border-2 border-white/95 shadow-[0_0_25px_rgba(0,0,0,0.35)] ring-1 ring-black/20 bg-white/10 backdrop-brightness-110 z-20 ${
+                    isZooming ? 'opacity-100' : 'opacity-0'
+                  } transition-opacity duration-150`}
+                  style={{
+                    willChange: 'transform',
+                    transform: 'translate3d(0, 0, 0) translate(-50%, -50%)',
+                  }}
+                />
+              )}
+
+              {/* Zoom Status Hint Pill */}
+              {gallery[activeImageIndex] && (
+                <div className="absolute bottom-3 right-3 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md text-white text-[10px] font-medium flex items-center gap-1.5 pointer-events-none transition-all duration-200 shadow-sm z-20">
+                  <ZoomIn className="w-3 h-3 text-[#E5A953]" />
+                  <span>{isZooming ? 'Inspecting section' : 'Touch & drag to inspect'}</span>
+                </div>
+              )}
+
               {/* Badges on Hero */}
-              <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+              <div className="absolute top-3 left-3 flex flex-col gap-1.5 pointer-events-none z-20">
                 {isOutOfStock ? (
                   <span className="px-2.5 py-1 bg-[#8B2525] text-white text-[10px] font-bold tracking-wider rounded-lg uppercase shadow-sm">
                     Out of Stock
@@ -311,27 +479,66 @@ export const ProductDetailModal: React.FC = () => {
               </div>
             </div>
 
-            {/* Gallery Thumbnails (only shown if there are multiple real images) */}
+            {/* Gallery Thumbnails with Left/Right Arrows and 4 Images per view */}
             {gallery.length > 1 && (
-              <div className="flex items-center justify-center gap-2 mt-3">
-                {gallery.map((img, idx) => (
+              <div className="mt-3 flex items-center gap-1.5 px-0.5">
+                {/* Left Arrow Icon */}
+                {gallery.length > 4 && (
                   <button
-                    key={idx}
                     type="button"
-                    onClick={() => setActiveImageIndex(idx)}
-                    className={`w-14 h-14 rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
-                      activeImageIndex === idx
-                        ? 'border-[#183324] ring-2 ring-[#E5A953]/30 scale-105'
-                        : 'border-[#E5DFD0] opacity-70 hover:opacity-100'
-                    }`}
+                    onClick={() => scrollThumbnails('left')}
+                    aria-label="Previous thumbnails"
+                    className="w-7 h-7 rounded-full bg-white border border-[#E5DFD0] text-[#14261B] shadow-xs flex items-center justify-center shrink-0 hover:bg-[#F6F3EB] active:scale-95 transition-all cursor-pointer"
                   >
-                    <img
-                      src={img}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
+                    <ChevronLeft className="w-4 h-4" />
                   </button>
-                ))}
+                )}
+
+                {/* Thumbnails Scroll Strip (4 images visible, scrollbar hidden) */}
+                <div
+                  ref={thumbnailScrollRef}
+                  className="flex-1 overflow-x-auto no-scrollbar scroll-smooth py-1 flex"
+                >
+                  <div className={`flex items-center gap-2 ${gallery.length <= 4 ? 'mx-auto' : 'w-max'} px-1`}>
+                    {gallery.map((img, idx) => (
+                      <button
+                        key={idx}
+                        id={`gallery-thumb-${idx}`}
+                        type="button"
+                        onClick={() => {
+                          setActiveImageIndex(idx);
+                          if (imgRef.current) {
+                            imgRef.current.style.transform = 'scale(1)';
+                          }
+                          setIsZooming(false);
+                        }}
+                        className={`w-14 h-14 sm:w-16 sm:h-16 aspect-square shrink-0 rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
+                          activeImageIndex === idx
+                            ? 'border-[#183324] ring-2 ring-[#E5A953]/30 scale-105 shadow-sm'
+                            : 'border-[#E5DFD0] opacity-70 hover:opacity-100 hover:border-[#183324]/40'
+                        }`}
+                      >
+                        <img
+                          src={img}
+                          alt=""
+                          className="w-full h-full object-cover pointer-events-none"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right Arrow Icon */}
+                {gallery.length > 4 && (
+                  <button
+                    type="button"
+                    onClick={() => scrollThumbnails('right')}
+                    aria-label="Next thumbnails"
+                    className="w-7 h-7 rounded-full bg-white border border-[#E5DFD0] text-[#14261B] shadow-xs flex items-center justify-center shrink-0 hover:bg-[#F6F3EB] active:scale-95 transition-all cursor-pointer"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             )}
           </div>
@@ -387,6 +594,76 @@ export const ProductDetailModal: React.FC = () => {
               </p>
             )}
 
+            {/* Pack Size Selection (Dynamic: 1 Bottle, 3 Bottles, 5 Bottles according to available stock) */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-[#14261B] uppercase tracking-wider flex items-center gap-1.5">
+                  <Package className="w-3.5 h-3.5 text-[#E5A953]" />
+                  <span>Select Pack Size</span>
+                </span>
+                <span className="text-[11px] text-[#7A8C7F]">
+                  {availableStock > 0 ? (
+                    <span className="text-[#246138] font-semibold">{availableStock} in stock</span>
+                  ) : (
+                    <span className="text-[#8B2525] font-semibold">Out of stock</span>
+                  )}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-2">
+                {packOptions.map((opt, idx) => {
+                  const isSelected = selectedPackIndex === idx;
+                  const isPackAvailable = availableStock >= opt.count && !isEffectiveOutOfStock;
+
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={!isPackAvailable}
+                      onClick={() => setSelectedPackIndex(idx)}
+                      className={`p-2.5 rounded-2xl border text-left transition-all relative cursor-pointer flex flex-col justify-between ${
+                        !isPackAvailable
+                          ? 'opacity-40 bg-[#F4F0E8] border-[#E5DFD0] cursor-not-allowed'
+                          : isSelected
+                          ? 'border-[#183324] bg-[#183324] text-white shadow-soft-sm scale-[1.02]'
+                          : 'border-[#E6E0D2] bg-white text-[#1C3224] hover:border-[#183324]/40 hover:bg-[#FAF8F5]'
+                      }`}
+                    >
+                      {opt.savings && isPackAvailable && (
+                        <span
+                          className={`absolute -top-2 right-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold shadow-xs ${
+                            isSelected ? 'bg-[#E5A953] text-[#14261B]' : 'bg-[#EAF3ED] text-[#246138]'
+                          }`}
+                        >
+                          {opt.savings}
+                        </span>
+                      )}
+
+                      <div>
+                        <div className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-[#14261B]'}`}>
+                          {opt.label}
+                        </div>
+                        <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/75' : 'text-[#7A8C7F]'}`}>
+                          {opt.count === 1 ? 'Single unit' : `${opt.count} bottles`}
+                        </div>
+                      </div>
+
+                      <div className="mt-2 pt-1.5 border-t border-black/5 dark:border-white/10">
+                        <div className={`text-xs font-bold ${isSelected ? 'text-[#E5A953]' : 'text-[#183122]'}`}>
+                          €{opt.price.toFixed(2)}
+                        </div>
+                        {!isPackAvailable && (
+                          <div className="text-[9px] text-[#8B2525] font-semibold mt-0.5">
+                            Max {availableStock} left
+                          </div>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Tasting Notes (rendered only if actual notes exist) */}
             {product.notes && (
               <div className="bg-[#FAF7EF] rounded-2xl p-3 border border-[#E9E0CE] flex items-start gap-2.5">
@@ -394,46 +671,6 @@ export const ProductDetailModal: React.FC = () => {
                 <div className="text-xs">
                   <div className="font-bold text-[#183122]">{t.detail.tastingNotes}</div>
                   <div className="text-[#718576] mt-0.5">{product.notes}</div>
-                </div>
-              </div>
-            )}
-
-            {/* Pack Size / Format Selector (rendered only if pack options are defined) */}
-            {packOptions && packOptions.length > 0 && (
-              <div className="pt-2">
-                <span className="text-xs font-bold text-[#14261B] uppercase tracking-wider block mb-2">
-                  {t.detail.selectFormat}
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  {packOptions.map((opt, idx) => {
-                    const isSelected = selectedPackIndex === idx;
-                    return (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setSelectedPackIndex(idx)}
-                        className={`p-2.5 rounded-2xl border text-left transition-all relative cursor-pointer ${
-                          isSelected
-                            ? 'border-[#183324] bg-[#183324] text-white shadow-soft-sm'
-                            : 'border-[#E6E0D2] bg-white text-[#1C3224] hover:border-[#D0C4B0]'
-                        }`}
-                      >
-                        {opt.savings && (
-                          <span className={`absolute -top-2 right-2 px-1.5 py-0.2 rounded-full text-[9px] font-bold ${
-                            isSelected ? 'bg-[#E5A953] text-[#14261B]' : 'bg-[#EAF3ED] text-[#246138]'
-                          }`}>
-                            {opt.savings}
-                          </span>
-                        )}
-                        <div className="text-xs font-bold truncate">{opt.label}</div>
-                        <div className={`text-xs mt-1 font-semibold ${
-                          isSelected ? 'text-[#E5A953]' : 'text-[#183122]'
-                        }`}>
-                          €{opt.price.toFixed(2)}
-                        </div>
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
             )}

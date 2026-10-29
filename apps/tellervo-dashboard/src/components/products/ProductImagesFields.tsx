@@ -3,6 +3,7 @@ import { ImageIcon, Plus, Trash2, Star, UploadCloud, Loader2 } from "lucide-reac
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 interface ProductImagesFieldsProps {
   images: string[]
@@ -11,6 +12,26 @@ interface ProductImagesFieldsProps {
   isUploading?: boolean
   disabled?: boolean
   error?: string
+}
+
+// Client-side validator for 1:1 square aspect ratio
+const validateSquareImageFile = (file: File): Promise<{ isSquare: boolean; width: number; height: number }> => {
+  return new Promise((resolve) => {
+    const img = new Image()
+    const objectUrl = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(objectUrl)
+      const diff = Math.abs(img.naturalWidth - img.naturalHeight)
+      // Allow minor 1-2px tolerance for subtle rounding
+      const maxDiff = Math.max(2, Math.round(Math.max(img.naturalWidth, img.naturalHeight) * 0.01))
+      resolve({ isSquare: diff <= maxDiff, width: img.naturalWidth, height: img.naturalHeight })
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl)
+      resolve({ isSquare: false, width: 0, height: 0 })
+    }
+    img.src = objectUrl
+  })
 }
 
 export const ProductImagesFields: React.FC<ProductImagesFieldsProps> = ({
@@ -25,13 +46,54 @@ export const ProductImagesFields: React.FC<ProductImagesFieldsProps> = ({
   const [isDragging, setIsDragging] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-  const handleAddUrl = () => {
+  const processAndUploadFile = async (file: File) => {
+    // 1:1 Square Dimension Validation for any image format
+    const { isSquare, width, height } = await validateSquareImageFile(file)
+    if (!isSquare) {
+      toast.error(
+        `Only 1:1 square images are allowed (e.g. 1000×1000px). Selected image is ${width}×${height}px.`
+      )
+      if (fileInputRef.current) fileInputRef.current.value = ""
+      return
+    }
+
+    await onUploadFile(file)
+    if (fileInputRef.current) fileInputRef.current.value = ""
+  }
+
+  const handleAddUrl = async () => {
     const trimmed = urlInput.trim()
     if (!trimmed) return
-    if (!images.includes(trimmed)) {
-      onChange([...images, trimmed])
+    if (images.includes(trimmed)) {
+      setUrlInput("")
+      return
     }
+
+    // 1:1 Square validation for URL image
+    const checkResult = await new Promise<{ isSquare: boolean; width: number; height: number }>((resolve) => {
+      const img = new Image()
+      img.onload = () => {
+        const diff = Math.abs(img.naturalWidth - img.naturalHeight)
+        const maxDiff = Math.max(2, Math.round(Math.max(img.naturalWidth, img.naturalHeight) * 0.01))
+        resolve({ isSquare: diff <= maxDiff, width: img.naturalWidth, height: img.naturalHeight })
+      }
+      img.onerror = () => {
+        // Allow URL if cross-origin policy prevents inspection
+        resolve({ isSquare: true, width: 0, height: 0 })
+      }
+      img.src = trimmed
+    })
+
+    if (!checkResult.isSquare && checkResult.width > 0) {
+      toast.error(
+        `Image URL must be a 1:1 square ratio (e.g. 1000×1000px). Detected: ${checkResult.width}×${checkResult.height}px.`
+      )
+      return
+    }
+
+    onChange([...images, trimmed])
     setUrlInput("")
+    toast.success("1:1 Square image added to gallery")
   }
 
   const handleRemoveImage = (indexToRemove: number) => {
@@ -48,8 +110,7 @@ export const ProductImagesFields: React.FC<ProductImagesFieldsProps> = ({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
-      await onUploadFile(file)
-      if (fileInputRef.current) fileInputRef.current.value = ""
+      await processAndUploadFile(file)
     }
   }
 
@@ -60,13 +121,18 @@ export const ProductImagesFields: React.FC<ProductImagesFieldsProps> = ({
           <ImageIcon className="w-3.5 h-3.5 text-primary" />
           <span>Product Gallery ({images.length} Image{images.length !== 1 ? "s" : ""})</span>
         </label>
-        <span className="text-[11px] text-muted-foreground">First image is primary</span>
+        <div className="flex items-center gap-2">
+          <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold border border-emerald-500/20">
+            1:1 Square Only
+          </span>
+          <span className="text-[11px] text-muted-foreground">First image is primary</span>
+        </div>
       </div>
 
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/png,image/jpeg,image/webp,image/gif"
+        accept="image/*"
         onChange={handleFileChange}
         className="hidden"
       />
@@ -105,7 +171,7 @@ export const ProductImagesFields: React.FC<ProductImagesFieldsProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSetPrimary(idx)}
-                      className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/60 hover:bg-black/80 text-white text-[9px] font-medium opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="absolute top-1.5 left-1.5 px-1.5 py-0.5 rounded-md bg-black/60 hover:bg-black/80 text-white text-[9px] font-medium opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                     >
                       Set Primary
                     </button>
@@ -117,7 +183,7 @@ export const ProductImagesFields: React.FC<ProductImagesFieldsProps> = ({
                   <button
                     type="button"
                     onClick={() => handleRemoveImage(idx)}
-                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-md bg-rose-600/90 hover:bg-rose-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xs"
+                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-md bg-rose-600/90 hover:bg-rose-700 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xs cursor-pointer"
                     title="Remove image"
                   >
                     <Trash2 className="w-3 h-3" />
@@ -147,7 +213,7 @@ export const ProductImagesFields: React.FC<ProductImagesFieldsProps> = ({
               e.preventDefault()
               setIsDragging(false)
               const file = e.dataTransfer.files?.[0]
-              if (file) await onUploadFile(file)
+              if (file) await processAndUploadFile(file)
             }}
             className={cn(
               "border-2 border-dashed rounded-xl p-3.5 flex items-center justify-center gap-2 cursor-pointer transition-colors text-center text-xs font-medium",
@@ -162,9 +228,14 @@ export const ProductImagesFields: React.FC<ProductImagesFieldsProps> = ({
                 <span>Uploading image to Supabase Storage...</span>
               </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <UploadCloud className="w-4 h-4 text-primary" />
-                <span>Click or drop image to upload</span>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-1.5 text-xs">
+                <div className="flex items-center gap-1.5">
+                  <UploadCloud className="w-4 h-4 text-primary" />
+                  <span>Click or drop image to upload</span>
+                </div>
+                <span className="text-[11px] text-muted-foreground font-normal">
+                  (1:1 square required, any file format)
+                </span>
               </div>
             )}
           </div>
@@ -174,7 +245,7 @@ export const ProductImagesFields: React.FC<ProductImagesFieldsProps> = ({
             <Input
               value={urlInput}
               onChange={(e) => setUrlInput(e.target.value)}
-              placeholder="Or paste image URL (https://...)"
+              placeholder="Or paste 1:1 image URL (https://...)"
               className="h-9 text-xs bg-card border-border rounded-xl"
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
@@ -189,7 +260,7 @@ export const ProductImagesFields: React.FC<ProductImagesFieldsProps> = ({
               size="sm"
               onClick={handleAddUrl}
               disabled={!urlInput.trim()}
-              className="h-9 px-3 rounded-xl border-border text-xs shrink-0"
+              className="h-9 px-3 rounded-xl border-border text-xs shrink-0 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5 mr-1" />
               Add
@@ -202,4 +273,3 @@ export const ProductImagesFields: React.FC<ProductImagesFieldsProps> = ({
     </div>
   )
 }
-
