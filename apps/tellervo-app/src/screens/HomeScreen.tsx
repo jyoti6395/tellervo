@@ -1033,11 +1033,7 @@ export const HomeScreen: React.FC = () => {
 
                       {/* Badges on Card */}
                       <div className="absolute top-2 left-2 z-10 pointer-events-none flex flex-col gap-1">
-                        {isOutOfStock ? (
-                          <span className="px-2 py-0.5 bg-[#8B2525]/95 backdrop-blur-sm text-white text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs">
-                            Out of Stock
-                          </span>
-                        ) : isLowStock ? (
+                        {isLowStock ? (
                           <span className="px-2 py-0.5 bg-[#C97B1A]/95 backdrop-blur-sm text-white text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs">
                             Limited Stock
                           </span>
@@ -1122,6 +1118,15 @@ export const HomeScreen: React.FC = () => {
                         </button>
                       )}
                     </div>
+
+                    {/* Centered Out of Stock Overlay with subtle card blur */}
+                    {isOutOfStock && (
+                      <div className="absolute inset-0 rounded-3xl bg-white/45 backdrop-blur-[1.5px] z-20 flex items-center justify-center p-3 pointer-events-none select-none">
+                        <span className="px-3.5 py-1.5 bg-[#8B2525] text-white text-[10px] font-bold tracking-widest rounded-full uppercase shadow-md border border-white/40 text-center leading-none">
+                          Out of Stock
+                        </span>
+                      </div>
+                    )}
                   </div>
                 );
               })}

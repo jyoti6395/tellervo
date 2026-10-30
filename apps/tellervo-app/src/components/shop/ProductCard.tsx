@@ -91,14 +91,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div
-      className={`flex flex-col justify-between group transition-all ${
+      className={`bg-white rounded-3xl border border-[#EAE4D7] shadow-soft-sm flex flex-col justify-between group hover:border-[#D6CEBF] hover:shadow-soft transition-all relative overflow-hidden ${
         isOutOfStock ? 'opacity-90' : ''
       }`}
     >
-      {/* Image & Badges */}
+      {/* Image & Badges (Edge-to-Edge full space) */}
       <div
         onClick={() => onProductClick(product)}
-        className="relative rounded-2xl overflow-hidden aspect-square mb-2.5 bg-[#F6F3EB] cursor-pointer"
+        className="relative w-full aspect-square bg-[#F6F3EB] cursor-pointer overflow-hidden"
       >
         <img
           src={product.imageUrl}
@@ -107,13 +107,14 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             e.currentTarget.src =
               'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80';
           }}
-          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? 'grayscale-[30%]' : ''
-            }`}
+          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
+            isOutOfStock ? 'grayscale-[30%]' : ''
+          }`}
         />
 
-        {/* Top-Left Image Badge: Status directly from Supabase (hidden when status is Active, formatted as Limited Stock) */}
+        {/* Top-Left Image Badge */}
         <div className="absolute top-2 left-2 z-10 pointer-events-none flex flex-col gap-1">
-          {product.status && product.status.toLowerCase().trim() !== 'active' ? (
+          {!isOutOfStock && product.status && product.status.toLowerCase().trim() !== 'active' ? (
             <span
               className={`px-2 py-0.5 backdrop-blur-sm text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs ${getStatusBadgeStyle(
                 product.status
@@ -124,13 +125,13 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           ) : null}
         </div>
 
-        {/* Favorite Heart Button (No White BG, Smooth Zoom-up Pop Effect) */}
+        {/* Favorite Heart Button */}
         <button
           type="button"
           onClick={handleFavoriteClick}
           onAnimationEnd={() => setIsPumping(false)}
           aria-label={isFav ? "Remove from favorites" : "Save to favorites"}
-          className="absolute top-2.5 right-2.5 z-10 p-1 flex items-center justify-center cursor-pointer transition-transform duration-150 active:scale-90 select-none focus:outline-none"
+          className="absolute top-2.5 right-2.5 z-30 p-1 flex items-center justify-center cursor-pointer transition-transform duration-150 active:scale-90 select-none focus:outline-none"
         >
           <Heart
             className={`w-5 h-5 transition-colors duration-200 ${
@@ -144,70 +145,79 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         </button>
       </div>
 
-      {/* Subtitle / Category Notes */}
-      <div
-        onClick={() => onProductClick(product)}
-        className="flex-1 cursor-pointer"
-      >
-        <div className="text-[9px] font-bold tracking-wider text-[#988151] uppercase mb-0.5 truncate">
-          {product.category || product.notes}
-        </div>
-
-        <h3 className="font-editorial text-sm font-semibold text-[#14261B] leading-tight line-clamp-2 hover:text-[#285737] transition-colors">
-          {product.name}
-        </h3>
-
-        {/* Size / Volume and Small Badge */}
-        <div className="flex items-center justify-between gap-1.5 mt-1 min-h-[20px]">
-          <span className="text-[11px] text-[#7C8D80] truncate font-medium shrink-0">
-            {product.size}
-          </span>
-
-          {badgeText && (
-            <span
-              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase border shadow-2xs shrink-0 max-w-[65%] truncate ${getBadgeStyleClass(
-                product.badgeType
-              )}`}
-            >
-              <Sparkles className="w-2.5 h-2.5 shrink-0" />
-              <span className="truncate">{badgeText}</span>
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Price & Add / Purchase Button */}
-      <div className="flex items-center justify-between pt-2 mt-1 border-t border-[#F0EBE0] min-h-[36px]">
+      {/* Content Details & Actions */}
+      <div className="p-3 sm:p-3.5 flex flex-col flex-1 justify-between">
         <div
           onClick={() => onProductClick(product)}
-          className="flex items-baseline gap-1.5 cursor-pointer"
+          className="flex-1 cursor-pointer"
         >
-          <span className="font-editorial text-sm font-bold text-[#14261B]">
-            €{product.price.toFixed(2)}
-          </span>
-          {product.originalPrice && (
-            <span className="text-[10px] text-[#9EAFA2] line-through">
-              €{product.originalPrice.toFixed(2)}
+          <div className="text-[9px] font-bold tracking-wider text-[#988151] uppercase mb-0.5 truncate">
+            {product.category || product.notes}
+          </div>
+
+          <h3 className="font-editorial text-sm font-semibold text-[#14261B] leading-tight line-clamp-2 hover:text-[#285737] transition-colors">
+            {product.name}
+          </h3>
+
+          {/* Size / Volume and Small Badge */}
+          <div className="flex items-center justify-between gap-1.5 mt-1 min-h-[20px]">
+            <span className="text-[11px] text-[#7C8D80] truncate font-medium shrink-0">
+              {product.size}
             </span>
-          )}
+
+            {badgeText && (
+              <span
+                className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase border shadow-2xs shrink-0 max-w-[65%] truncate ${getBadgeStyleClass(
+                  product.badgeType
+                )}`}
+              >
+                <Sparkles className="w-2.5 h-2.5 shrink-0" />
+                <span className="truncate">{badgeText}</span>
+              </span>
+            )}
+          </div>
         </div>
 
-        {/* Action Button / Out of Stock Badge */}
-        {isOutOfStock ? (
-          <span className="inline-flex items-center justify-center px-2 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase bg-[#FBF0F0] text-[#932323] border border-[#F5CACA] shadow-2xs whitespace-nowrap">
+        {/* Price & Add / Purchase Button */}
+        <div className="flex items-center justify-between pt-2 mt-1 border-t border-[#F0EBE0] min-h-[36px]">
+          <div
+            onClick={() => onProductClick(product)}
+            className="flex items-baseline gap-1.5 cursor-pointer"
+          >
+            <span className="font-editorial text-sm font-bold text-[#14261B]">
+              €{product.price.toFixed(2)}
+            </span>
+            {product.originalPrice && (
+              <span className="text-[10px] text-[#9EAFA2] line-through">
+                €{product.originalPrice.toFixed(2)}
+              </span>
+            )}
+          </div>
+
+          {/* Action Button */}
+          {isOutOfStock ? (
+            <div className="w-8 h-8" />
+          ) : (
+            <button
+              type="button"
+              onClick={() => addToCart(product)}
+              aria-label={`Add ${product.name} to cart`}
+              className="w-8 h-8 rounded-full bg-[#183324] text-[#FAF8F3] flex items-center justify-center hover:bg-[#284B36] active:scale-95 transition-all shadow-sm cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Centered Out of Stock Overlay with subtle card blur */}
+      {isOutOfStock && (
+        <div className="absolute inset-0 rounded-3xl bg-white/45 backdrop-blur-[1.5px] z-20 flex items-center justify-center p-3 pointer-events-none select-none">
+          <span className="px-3.5 py-1.5 bg-[#8B2525] text-white text-[10px] font-bold tracking-widest rounded-full uppercase shadow-md border border-white/40 text-center leading-none">
             Out of Stock
           </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => addToCart(product)}
-            aria-label={`Add ${product.name} to cart`}
-            className="w-8 h-8 rounded-full bg-[#183324] text-[#FAF8F3] flex items-center justify-center hover:bg-[#284B36] active:scale-95 transition-all shadow-sm cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 };

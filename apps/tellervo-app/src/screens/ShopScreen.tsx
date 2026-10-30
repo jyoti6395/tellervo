@@ -381,7 +381,7 @@ export const ShopScreen: React.FC = () => {
 
       {/* 5. Shimmer Loading Skeleton (Initial load or DB searching) */}
       {(isLoadingProducts && products.length === 0) || isSearchingDb ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-x-6 sm:gap-x-8 md:gap-x-10 gap-y-8 sm:gap-y-10 animate-pulse">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 animate-pulse">
           {[1, 2, 3, 4, 5, 6].map((n) => (
             <div
               key={n}
@@ -399,7 +399,7 @@ export const ShopScreen: React.FC = () => {
         <ShopEmptyState onReset={handleResetFilters} />
       ) : (
         /* 7. Product Grid */
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-x-6 sm:gap-x-8 md:gap-x-10 gap-y-8 sm:gap-y-10">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5">
           {sortedProducts.map((product) => (
             <ProductCard
               key={product.id}
