@@ -8,6 +8,42 @@ interface QuickAccessGridProps {
   onOpenPayments: () => void;
 }
 
+// Determine if an order is active (placed and in-between, not delivered/completed or cancelled/refunded)
+const isOrderActive = (order: { status?: string; statusType?: string }): boolean => {
+  const norm = (order.status || '').toLowerCase().trim();
+
+  // Cancelled, refunded, delivered/completed are terminal states — not active
+  if (
+    norm === 'cancelled' ||
+    norm === 'canceled' ||
+    norm === 'refunded' ||
+    norm === 'completed' ||
+    norm === 'delivered'
+  ) {
+    return false;
+  }
+
+  if (order.statusType === 'delivered') {
+    return false;
+  }
+
+  // Active in-between states: placed and in progress / processing / in transit / shipped / pending
+  if (
+    norm === 'in progress' ||
+    norm === 'processing' ||
+    norm === 'in_progress' ||
+    norm === 'shipments' ||
+    norm === 'shipped' ||
+    norm === 'in transit' ||
+    norm === 'in-transit' ||
+    norm === 'pending'
+  ) {
+    return true;
+  }
+
+  return order.statusType === 'in-transit';
+};
+
 export const QuickAccessGrid: React.FC<QuickAccessGridProps> = ({
   onSelectOrders,
   onOpenAddresses,
@@ -15,7 +51,7 @@ export const QuickAccessGrid: React.FC<QuickAccessGridProps> = ({
 }) => {
   const { favorites, setActiveTab, user, orders } = useApp();
 
-  const activeOrdersCount = orders.filter(o => o.statusType === 'in-transit').length;
+  const activeOrdersCount = orders.filter(isOrderActive).length;
 
   return (
     <div className="grid grid-cols-2 gap-3">

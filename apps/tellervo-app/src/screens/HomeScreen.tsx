@@ -4,7 +4,7 @@ import { useNavigation } from '../routes/hooks/useNavigation';
 import { HERO_FEATURED } from '../data/mockData';
 import { productService } from '@tellervo/supabase';
 import { mapRecordToProduct } from '../lib/productMapper';
-import { Product } from '../types';
+import { Product, OrderItem } from '../types';
 import { ProductCard } from '../components/shop/ProductCard';
 import {
   Search,
@@ -41,6 +41,9 @@ export const HomeScreen: React.FC = () => {
     setActiveTab,
     setIsQuizOpen,
     setSelectedProduct,
+    showToast,
+    orders,
+    setIsCartOpen,
     t
   } = useApp();
 
@@ -51,6 +54,120 @@ export const HomeScreen: React.FC = () => {
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
   const [isExploreOpen, setIsExploreOpen] = useState(false);
   const { navigate } = useNavigation();
+  const [reorderingOrderId, setReorderingOrderId] = useState<string | null>(null);
+
+  // Helper to find live product in memory or from database
+  const findLiveProduct = async (item: { name: string }): Promise<Product | null> => {
+    const inMem = products.find(
+      (p) => p.name.trim().toLowerCase() === item.name.trim().toLowerCase()
+    );
+    if (inMem) return inMem;
+
+    try {
+      const { data, error } = await productService.fetchProducts({ search: item.name.trim() });
+      if (!error && data && data.length > 0) {
+        const exact = data.find(
+          (r) => r.name.trim().toLowerCase() === item.name.trim().toLowerCase()
+        );
+        if (exact) {
+          return mapRecordToProduct(exact);
+        }
+      }
+    } catch (err) {
+      console.error('[HomeScreen] Error checking product availability:', err);
+    }
+    return null;
+  };
+
+  const handleOneTapReorder = async (order: OrderItem) => {
+    if (!order.items || order.items.length === 0) {
+      showToast('No items found in this order to reorder', 'info');
+      return;
+    }
+
+    try {
+      setReorderingOrderId(order.id);
+      let addedCount = 0;
+      let unavailableCount = 0;
+      let priceIncreasedCount = 0;
+
+      for (const item of order.items) {
+        const liveProduct = await findLiveProduct(item);
+
+        // 1. Check if product exists in store catalog
+        if (!liveProduct) {
+          unavailableCount++;
+          continue;
+        }
+
+        // 2. Check stock
+        if (isProductOutOfStock(liveProduct)) {
+          unavailableCount++;
+          continue;
+        }
+
+        // 3. Price check
+        const currentPrice = liveProduct.discountPrice ?? liveProduct.price;
+        const oldPrice = item.price;
+        if (currentPrice > oldPrice + 0.009) {
+          priceIncreasedCount++;
+        }
+
+        addToCart({ ...liveProduct, price: currentPrice }, item.qty || 1);
+        addedCount++;
+      }
+
+      if (addedCount > 0) {
+        setIsCartOpen(true);
+        if (order.items.length === 1) {
+          const singleItem = order.items[0];
+          if (priceIncreasedCount > 0) {
+            showToast(
+              'Price updated to current catalog pricing • Added to cart',
+              'info'
+            );
+          } else {
+            showToast(`Added ${singleItem.name} to Forest Box`);
+          }
+        } else {
+          if (unavailableCount > 0 && priceIncreasedCount > 0) {
+            showToast(
+              `Added ${addedCount} item(s) at updated pricing (${unavailableCount} unavailable skipped)`,
+              'info'
+            );
+          } else if (unavailableCount > 0) {
+            showToast(
+              `Added ${addedCount} available item(s) (${unavailableCount} out-of-stock skipped)`,
+              'info'
+            );
+          } else if (priceIncreasedCount > 0) {
+            showToast('Added items with updated catalog pricing to Forest Box', 'info');
+          } else {
+            showToast(`Added items from ${order.orderNumber} to Forest Box`);
+          }
+        }
+      } else {
+        if (order.items.length === 1) {
+          showToast(`${order.items[0].name} is not available in stock`, 'info');
+        } else {
+          showToast('Provisions from this order are not available in stock', 'info');
+        }
+      }
+    } finally {
+      setReorderingOrderId(null);
+    }
+  };
+
+  const handleGoToOrderHistory = () => {
+    try {
+      sessionStorage.setItem('tellervo_scroll_to_orders', 'true');
+    } catch {
+      // ignore
+    }
+    setActiveTab('profile');
+  };
+
+  const recentTwoOrders = (orders || []).slice(0, 2);
 
   const handleProductClick = (product: any) => {
     setSelectedProduct(product);
@@ -869,8 +986,8 @@ export const HomeScreen: React.FC = () => {
                 <h2 className="font-editorial text-lg font-medium text-[#14261B]">{t.home.orderAgain}</h2>
               </div>
               <button
-                onClick={() => setActiveTab('profile')}
-                className="text-xs font-semibold text-[#8C7443] hover:underline"
+                onClick={handleGoToOrderHistory}
+                className="text-xs font-semibold text-[#8C7443] hover:underline cursor-pointer"
               >
                 {t.home.orderHistory}
               </button>
@@ -878,63 +995,76 @@ export const HomeScreen: React.FC = () => {
 
             {/* Horizontal scroll cards */}
             <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1">
-              {/* Card 1 */}
-              <div className="w-64 shrink-0 bg-white rounded-2xl p-3 border border-[#E9E3D6] shadow-soft-sm flex flex-col justify-between">
-                <div className="flex items-center gap-3 mb-2.5">
-                  <img
-                    src="https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=300&q=80"
-                    alt="Arctic Juniper Tonic"
-                    className="w-14 h-14 rounded-xl object-cover border border-[#EAE4D7]"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[9px] font-bold tracking-wider text-[#988151] uppercase block">
-                      {t.home.lastOrdered5d}
-                    </span>
-                    <h4 className="font-editorial text-sm font-semibold text-[#183122] truncate">
-                      Arctic Juniper Tonic
-                    </h4>
-                    <p className="text-[11px] text-[#768779]">4-pack • €14.50</p>
-                  </div>
-                </div>
-                <button
-                  onClick={() => {
-                    const p = products.find(prod => prod.id === 'arctic-juniper-tonic') || products[0];
-                    if (p) addToCart(p);
-                  }}
-                  className="w-full py-2 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#234330] transition-colors"
-                >
-                  <span>{t.home.oneTapReorder}</span>
-                </button>
-              </div>
+              {recentTwoOrders.length > 0 ? (
+                recentTwoOrders.map((order) => {
+                  const primaryItem = order.items && order.items.length > 0 ? order.items[0] : null;
+                  const matchingProduct = primaryItem
+                    ? products.find((p) => p.name.trim().toLowerCase() === primaryItem.name.trim().toLowerCase())
+                    : null;
+                  const itemImage =
+                    primaryItem?.imageUrl ||
+                    matchingProduct?.imageUrl ||
+                    'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=300&q=80';
 
-              {/* Card 2 */}
-              <div className="w-64 shrink-0 bg-white rounded-2xl p-3 border border-[#E9E3D6] shadow-soft-sm flex flex-col justify-between">
-                <div className="flex items-center gap-3 mb-2.5">
-                  <img
-                    src="https://images.unsplash.com/photo-1536935338788-846bb9981813?auto=format&fit=crop&w=300&q=80"
-                    alt="Wild Cloudberry"
-                    className="w-14 h-14 rounded-xl object-cover border border-[#EAE4D7]"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[9px] font-bold tracking-wider text-[#988151] uppercase block">
-                      {t.home.lastOrdered18d}
-                    </span>
-                    <h4 className="font-editorial text-sm font-semibold text-[#183122] truncate">
-                      Cloudberry Golden
-                    </h4>
-                    <p className="text-[11px] text-[#768779]">4-pack • €18.00</p>
-                  </div>
+                  const itemTitle = primaryItem
+                    ? order.items.length > 1
+                      ? `${primaryItem.name} +${order.items.length - 1} more`
+                      : primaryItem.name
+                    : order.orderNumber;
+
+                  const packText = primaryItem?.size || (order.items && order.items.length > 1 ? `${order.items.reduce((acc, it) => acc + it.qty, 0)} items` : `${primaryItem?.qty || 1} pack`);
+                  const subtitle = `${packText} • €${order.total.toFixed(2)}`;
+                  const dateLabel = order.date ? `ORDERED • ${order.date.toUpperCase()}` : 'RECENT DISPATCH';
+
+                  return (
+                    <div
+                      key={order.id}
+                      onClick={() => navigate(`/orders/${order.id}`)}
+                      className="w-64 shrink-0 bg-white rounded-2xl p-3 border border-[#E9E3D6] shadow-soft-sm flex flex-col justify-between cursor-pointer hover:border-[#183324]/30 hover:shadow-soft transition-all"
+                    >
+                      <div className="flex items-center gap-3 mb-2.5">
+                        <img
+                          src={itemImage}
+                          alt={itemTitle}
+                          className="w-14 h-14 rounded-xl object-cover border border-[#EAE4D7] shrink-0"
+                          onError={(e) => {
+                            e.currentTarget.src = 'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=300&q=80';
+                          }}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <span className="text-[9px] font-bold tracking-wider text-[#988151] uppercase block truncate">
+                            {dateLabel}
+                          </span>
+                          <h4 className="font-editorial text-sm font-semibold text-[#183122] truncate">
+                            {itemTitle}
+                          </h4>
+                          <p className="text-[11px] text-[#768779] truncate">{subtitle}</p>
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOneTapReorder(order);
+                        }}
+                        disabled={reorderingOrderId === order.id}
+                        className="w-full py-2 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#234330] transition-colors cursor-pointer disabled:opacity-60 active:scale-[0.98]"
+                      >
+                        {reorderingOrderId === order.id ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#E5A953]" />
+                        ) : (
+                          <span>{t.home.oneTapReorder}</span>
+                        )}
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="w-full py-5 text-center bg-white rounded-2xl border border-[#E9E3D6] text-xs text-[#718274]">
+                  No previous orders found. Discover our botanical range below!
                 </div>
-                <button
-                  onClick={() => {
-                    const p = products.find(prod => prod.id === 'cloudberry-golden-sparkler') || products[1] || products[0];
-                    if (p) addToCart(p);
-                  }}
-                  className="w-full py-2 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#234330] transition-colors"
-                >
-                  <span>{t.home.oneTapReorder}</span>
-                </button>
-              </div>
+              )}
             </div>
           </div>
 
