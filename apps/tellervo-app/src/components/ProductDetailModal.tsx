@@ -5,7 +5,6 @@ import { stockService } from '@tellervo/supabase';
 import {
   Bell, ChevronLeft, ChevronRight,
   Heart,
-  Share2,
   ShoppingBag,
   Star,
   Flame,
@@ -374,20 +373,6 @@ export const ProductDetailModal: React.FC = () => {
     }
   };
 
-  const handleShare = () => {
-    const url = window.location.href;
-    if (navigator.share) {
-      navigator.share({
-        title: product.name,
-        text: product.description,
-        url,
-      }).catch(() => { });
-    } else {
-      navigator.clipboard?.writeText(url);
-      showToast('Link copied to clipboard!');
-    }
-  };
-
   return (
     <div
       onClick={handleBack}
@@ -420,14 +405,6 @@ export const ProductDetailModal: React.FC = () => {
           </div>
 
           <div className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={handleShare}
-              aria-label="Share product"
-              className="w-9 h-9 rounded-full bg-white border border-[#E5DFD0] flex items-center justify-center text-[#1C3224] hover:bg-[#F6F3EB] active:scale-95 transition-all shadow-xs cursor-pointer"
-            >
-              <Share2 className="w-4 h-4" />
-            </button>
             <button
               type="button"
               onClick={() => toggleFavorite(product.id)}

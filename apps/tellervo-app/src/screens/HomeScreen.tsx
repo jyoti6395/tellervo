@@ -49,7 +49,6 @@ export const HomeScreen: React.FC = () => {
 
   const [activeCategory, setActiveCategory] = useState<'all' | 'adaptogenic' | 'spritz'>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [submittedQuery, setSubmittedQuery] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
   const [isExploreOpen, setIsExploreOpen] = useState(false);
@@ -355,78 +354,19 @@ export const HomeScreen: React.FC = () => {
     return result.slice(0, 20);
   }, [searchQuery, products, suggestionProducts]);
 
-  // --- Search Execution (Triggered only on Enter or clicking a suggestion) ---
-  const [dbSearchResults, setDbSearchResults] = useState<Product[]>([]);
-  const [isSearchingDb, setIsSearchingDb] = useState(false);
-
-  const handleSearchSubmit = (term: string) => {
+    const handleSearchSubmit = (term: string) => {
     const q = term.trim();
     if (!q) return;
-    setSearchQuery(q);
-    setSubmittedQuery(q);
     setIsDropdownOpen(false);
     setSelectedSuggestionIndex(-1);
+    navigate(`/shop?search=${encodeURIComponent(q)}`);
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
-    setSubmittedQuery('');
     setIsDropdownOpen(false);
     setSelectedSuggestionIndex(-1);
-    setDbSearchResults([]);
   };
-
-  useEffect(() => {
-    const q = submittedQuery.trim();
-    if (!q) {
-      setDbSearchResults([]);
-      setIsSearchingDb(false);
-      return;
-    }
-
-    let isCancelled = false;
-    setIsSearchingDb(true);
-
-    productService
-      .fetchProducts({ search: q, limit: 20 })
-      .then(({ data, error }) => {
-        if (isCancelled) return;
-        if (!error && data) {
-          setDbSearchResults(data.map(mapRecordToProduct));
-        } else {
-          setDbSearchResults([]);
-        }
-      })
-      .catch(() => {
-        if (!isCancelled) setDbSearchResults([]);
-      })
-      .finally(() => {
-        if (!isCancelled) setIsSearchingDb(false);
-      });
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [submittedQuery]);
-
-  // Combined search results when submitted: loaded products matching first, then DB products (capped to 20)
-  const searchResults = useMemo(() => {
-    const q = submittedQuery.trim();
-    if (!q) return [];
-
-    const localMatches = products.filter((p) => matchesSearch(p, q));
-    const combined: Product[] = [...localMatches];
-    const seenIds = new Set(localMatches.map((p) => p.id));
-
-    for (const item of dbSearchResults) {
-      if (!seenIds.has(item.id)) {
-        seenIds.add(item.id);
-        combined.push(item);
-      }
-    }
-
-    return combined.slice(0, 20);
-  }, [submittedQuery, products, dbSearchResults]);
 
   return (
     <div className="pb-28 px-4 pt-3 w-full space-y-5 animate-in fade-in duration-200 relative">
@@ -447,9 +387,6 @@ export const HomeScreen: React.FC = () => {
               setSearchQuery(e.target.value);
               setSelectedSuggestionIndex(-1);
               setIsDropdownOpen(true);
-              if (submittedQuery && !e.target.value.trim()) {
-                setSubmittedQuery('');
-              }
             }}
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {
@@ -518,7 +455,7 @@ export const HomeScreen: React.FC = () => {
         </div>
 
         {/* Suggestion Dropdown: Up to 20 suggestions */}
-        {isDropdownOpen && searchQuery.trim() && !submittedQuery && (
+        {isDropdownOpen && searchQuery.trim() && (
           <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-2xl border border-[#E5DFD0] shadow-xl overflow-hidden z-40 max-h-80 overflow-y-auto animate-in fade-in slide-in-from-top-1 duration-150">
             {isSearchingSuggestions && suggestions.length === 0 ? (
               <div className="py-6 flex items-center justify-center gap-2 text-xs text-[#7A8C7E]">
@@ -598,72 +535,14 @@ export const HomeScreen: React.FC = () => {
       </div>
 
       {/* Backdrop to close suggestions when clicking outside */}
-      {isDropdownOpen && searchQuery.trim() && !submittedQuery && (
+      {isDropdownOpen && searchQuery.trim() && (
         <div
           className="fixed inset-0 z-20"
           onClick={() => setIsDropdownOpen(false)}
         />
       )}
-
-      {submittedQuery ? (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex items-center gap-2">
-              <h2 className="font-editorial text-lg font-semibold text-[#14261B]">
-                Search Results
-              </h2>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-[#EAE4D7] text-[#4F6354] font-medium">
-                {searchResults.length}
-              </span>
-            </div>
-            <button
-              onClick={handleClearSearch}
-              className="text-xs text-[#8C7443] font-bold hover:underline flex items-center gap-1 cursor-pointer"
-            >
-              <span>Clear</span>
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          {isSearchingDb && searchResults.length === 0 ? (
-            <div className="py-12 flex flex-col items-center justify-center text-center">
-              <Loader2 className="w-6 h-6 text-[#2E5E3B] animate-spin mb-2" />
-              <p className="text-xs text-[#7A8C7E]">Searching botanical cellar for "{submittedQuery}"...</p>
-            </div>
-          ) : searchResults.length === 0 ? (
-            <div className="py-12 flex flex-col items-center justify-center text-center bg-white rounded-3xl border border-[#EAE4D7] p-6 shadow-soft-sm">
-              <div className="w-12 h-12 rounded-2xl bg-[#F6F3EB] flex items-center justify-center text-[#8C9C8F] mb-3">
-                <Search className="w-6 h-6" />
-              </div>
-              <h3 className="font-editorial text-base font-semibold text-[#14261B] mb-1">
-                No infusions found
-              </h3>
-              <p className="text-xs text-[#7A8C7E] max-w-xs mb-4">
-                We couldn't find any drinks matching "{submittedQuery}". Try searching by name (e.g. Chianti, Spritz) or category (e.g. Red Wine, Bear).
-              </p>
-              <button
-                onClick={handleClearSearch}
-                className="px-4 py-2 bg-[#183324] text-white rounded-full text-xs font-semibold hover:bg-[#284B36] active:scale-95 transition-all cursor-pointer"
-              >
-                Clear Search
-              </button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-x-6 sm:gap-x-8 md:gap-x-10 gap-y-8 sm:gap-y-10 pt-2">
-              {searchResults.map((product) => (
-                <ProductCard
-                  key={product.id}
-                  product={product}
-                  onProductClick={handleProductClick}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <>
-          <div>
-            {/* Featured Blend Banner: Lingonberry & Birch Bark Sparkler */}
+      <div>
+        {/* Featured Blend Banner: Lingonberry & Birch Bark Sparkler */}
             <div className="relative rounded-3xl overflow-hidden shadow-soft border border-[#E5DFD1] group mt-4">
               <div className="relative h-64 w-full">
                 <img
@@ -1318,9 +1197,7 @@ export const HomeScreen: React.FC = () => {
               <span>•</span>
               <span>{t.home.arcticFlora}</span>
             </div>
-          </div>
-        </>
-      )}
+        </div>
 
       {/* Explore Blend Modal */}
       {isExploreOpen && (
