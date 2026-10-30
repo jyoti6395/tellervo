@@ -25,7 +25,7 @@ export function useNavigation() {
   const navigate = useCallback((path: string) => {
     if (typeof window === 'undefined') return;
     if (window.location.pathname !== path) {
-      window.history.pushState({}, '', path);
+      window.history.pushState({ isAppNav: true }, '', path);
     }
     window.dispatchEvent(new PopStateEvent('popstate'));
   }, []);
@@ -57,7 +57,7 @@ export function useNavigation() {
 export function navigateTo(path: string) {
   if (typeof window === 'undefined') return;
   if (window.location.pathname !== path) {
-    window.history.pushState({}, '', path);
+    window.history.pushState({ isAppNav: true }, '', path);
   }
   window.dispatchEvent(new PopStateEvent('popstate'));
 }

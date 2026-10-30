@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { TabType, Product, CartItem, UserProfile, RewardItem, OrderItem, Language } from '../types';
 import { PRODUCTS, INITIAL_USER, RECENT_ORDERS } from '../data/mockData';
 import { translations, Translations } from '../i18n/translations';
@@ -682,13 +682,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Toast feedback
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = (message: string, type: 'success' | 'info' | 'reward' = 'success') => {
+  const showToast = useCallback((message: string, type: 'success' | 'info' | 'reward' = 'success') => {
     const id = Math.random().toString(36).substring(2, 9);
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 3200);
-  };
+  }, []);
 
   // Real-time listener for customer account status changes (e.g. administrator deactivation)
   useEffect(() => {

@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useApp } from '../context/AppContext';
+import { useNavigation } from '../routes/hooks/useNavigation';
 import {
   RotateCcw,
   ShoppingBag,
@@ -32,6 +33,14 @@ export const FavoritesScreen: React.FC = () => {
   const [autoRefillInterval, setAutoRefillInterval] = useState('Every 3 weeks');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const { navigate } = useNavigation();
+
+  const handleProductClick = (product: any) => {
+    setSelectedProduct(product);
+    if (product.id) {
+      navigate(`/shop/${product.id}`);
+    }
+  };
 
   // Filter saved items matching populated products
   const savedItems = products.filter(p => favorites.includes(p.id));
@@ -229,7 +238,7 @@ export const FavoritesScreen: React.FC = () => {
                   >
                     {/* Left Column: Proportioned Image with volume badge */}
                     <div
-                      onClick={() => setSelectedProduct(item)}
+                      onClick={() => handleProductClick(item)}
                       className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 bg-[#F6F3EB] border border-[#EFE9DC] cursor-pointer"
                     >
                       <img
@@ -252,7 +261,7 @@ export const FavoritesScreen: React.FC = () => {
                       {/* Row 1: Title and Favorite Heart */}
                       <div className="flex items-start justify-between gap-2">
                         <h4
-                          onClick={() => setSelectedProduct(item)}
+                          onClick={() => handleProductClick(item)}
                           className="font-editorial text-base sm:text-lg font-bold text-[#14261B] leading-tight truncate cursor-pointer hover:text-[#285739] transition-colors"
                         >
                           {item.name}

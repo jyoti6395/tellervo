@@ -169,11 +169,9 @@ export const ProductDetailModal: React.FC = () => {
 
   const handleBack = () => {
     setSelectedProduct(null);
-    if (currentPath.startsWith('/shop/')) {
-      navigate('/shop');
-    } else if (typeof window !== 'undefined' && window.history.length > 1) {
+    if (window.history.state?.isAppNav) {
       window.history.back();
-    } else {
+    } else if (currentPath.startsWith('/shop/')) {
       navigate('/shop');
     }
   };

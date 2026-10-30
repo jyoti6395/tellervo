@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { useNavigation } from '../routes/hooks/useNavigation';
 import { Product } from '../types';
 import { 
   X, 
@@ -38,6 +39,7 @@ export const ChatbotDrawer: React.FC = () => {
     language,
     t
   } = useApp();
+  const { navigate } = useNavigation();
 
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
@@ -288,6 +290,9 @@ export const ChatbotDrawer: React.FC = () => {
                             onClick={() => {
                               setIsChatbotOpen(false);
                               setSelectedProduct(prod);
+                              if (prod.id) {
+                                navigate(`/shop/${prod.id}`);
+                              }
                             }}
                             className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer"
                           >
