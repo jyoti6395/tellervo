@@ -12,7 +12,11 @@ interface DummyPaymentModalProps {
   processingMessage?: string;
 }
 
-const generateRandomPaymentId = () => `PAY-FI-${Math.floor(100000 + Math.random() * 900000)}`;
+const generateRandomPaymentId = () => {
+  const timestampPart = Date.now().toString().slice(-4);
+  const randomPart = Math.floor(10 + Math.random() * 90);
+  return `PAY-FI-${timestampPart}${randomPart}`;
+};
 
 export const DummyPaymentModal: React.FC<DummyPaymentModalProps> = ({
   isOpen,
@@ -24,8 +28,16 @@ export const DummyPaymentModal: React.FC<DummyPaymentModalProps> = ({
   isProcessing,
   processingMessage = 'Verifying with Supabase...',
 }) => {
-  const [paymentId] = useState<string>(generateRandomPaymentId);
+  const [paymentId, setPaymentId] = useState<string>(generateRandomPaymentId);
   const [copied, setCopied] = useState<boolean>(false);
+
+  // Generate a fresh unique payment ID every time the modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setPaymentId(generateRandomPaymentId());
+      setCopied(false);
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 

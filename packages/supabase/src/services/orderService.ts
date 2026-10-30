@@ -31,12 +31,37 @@ export class OrderService {
     paymentId: string
   ): Promise<{ data: SimulationOrderResult | null; error: Error | null }> {
     try {
-      const { data, error } = await this.client.rpc('create_order_with_simulation', {
+      let { data, error } = await this.client.rpc('create_order_with_simulation', {
         p_order_payload: orderPayload,
         p_items_payload: itemsPayload,
         p_payment_outcome: outcome,
         p_payment_id: paymentId,
       });
+
+      // If duplicate payment_id or unique constraint error occurs, retry once with a freshly generated unique payment reference
+      if (
+        error &&
+        (error.message.includes('unique constraint') ||
+          error.message.includes('duplicate key') ||
+          error.message.includes('payments_provider_payment_id_key') ||
+          error.message.includes('provider_payment_id'))
+      ) {
+        const retryPaymentId = `PAY-FI-${Date.now().toString().slice(-4)}${Math.floor(10 + Math.random() * 90)}`;
+        console.warn(`[OrderService] Duplicate payment ID detected (${paymentId}). Retrying with fresh ID: ${retryPaymentId}`);
+        const retryResult = await this.client.rpc('create_order_with_simulation', {
+          p_order_payload: orderPayload,
+          p_items_payload: itemsPayload,
+          p_payment_outcome: outcome,
+          p_payment_id: retryPaymentId,
+        });
+
+        if (!retryResult.error && retryResult.data) {
+          data = retryResult.data;
+          error = null;
+        } else {
+          error = retryResult.error;
+        }
+      }
 
       if (error) {
         console.error('[OrderService] RPC create_order_with_simulation error:', error);

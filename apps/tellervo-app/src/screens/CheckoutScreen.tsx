@@ -996,16 +996,18 @@ export const CheckoutScreen: React.FC = () => {
       />
 
       {/* Dummy Payment Simulation Modal for QA */}
-      <DummyPaymentModal
-        isOpen={isDummyPaymentModalOpen}
-        onClose={() => setIsDummyPaymentModalOpen(false)}
-        amount={finalTotal}
-        currency="EUR"
-        onAccept={handleAcceptPayment}
-        onDecline={handleDeclinePayment}
-        isProcessing={isProcessing}
-        processingMessage={processingStatusText}
-      />
+      {isDummyPaymentModalOpen && (
+        <DummyPaymentModal
+          isOpen={isDummyPaymentModalOpen}
+          onClose={() => setIsDummyPaymentModalOpen(false)}
+          amount={finalTotal}
+          currency="EUR"
+          onAccept={handleAcceptPayment}
+          onDecline={handleDeclinePayment}
+          isProcessing={isProcessing}
+          processingMessage={processingStatusText}
+        />
+      )}
     </div>
   );
 };

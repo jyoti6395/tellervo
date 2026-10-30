@@ -9,6 +9,7 @@ import {
   FileText,
   LogOut,
   ChevronRight,
+  ChevronDown,
   RotateCcw,
   Package,
   Truck,
@@ -121,6 +122,7 @@ export const ProfileScreen: React.FC = () => {
   const [isEditFlavorsOpen, setIsEditFlavorsOpen] = useState(false);
   const [isImpactOpen, setIsImpactOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [visibleOrdersCount, setVisibleOrdersCount] = useState<number>(6);
 
   // Modular Modals State
   const [isPersonalInfoOpen, setIsPersonalInfoOpen] = useState(false);
@@ -148,7 +150,14 @@ export const ProfileScreen: React.FC = () => {
   const handleScrollToOrders = () => {
     const el = document.getElementById('recent-orders-section');
     if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
+      const header = document.querySelector('header');
+      const headerHeight = header ? header.offsetHeight : 68;
+      const elementPosition = el.getBoundingClientRect().top;
+      const offsetPosition = elementPosition + (window.scrollY || window.pageYOffset || document.documentElement.scrollTop) - headerHeight - 16;
+      window.scrollTo({
+        top: Math.max(0, offsetPosition),
+        behavior: 'smooth',
+      });
     }
   };
 
@@ -236,7 +245,7 @@ export const ProfileScreen: React.FC = () => {
         onOpenPayments={() => setIsPaymentsOpen(true)}
       />
 
-      {/* Active Subscription Section */}
+      {/* Active Subscription Section (Commented out)
       <div>
         <div className="flex items-center justify-between mb-2">
           <h3 className="font-editorial text-xl font-medium text-[#14261B]">
@@ -273,7 +282,7 @@ export const ProfileScreen: React.FC = () => {
             </div>
           </div>
 
-          {/* Curated items pill */}
+          // Curated items pill
           <div className="bg-[#FAF7F0] rounded-xl p-2.5 border border-[#ECE4D5] flex items-center justify-between text-xs text-[#5D6F61]">
             <span className="flex items-center gap-1.5 truncate">
               <Package className="w-3.5 h-3.5 text-[#183324] shrink-0" />
@@ -284,7 +293,7 @@ export const ProfileScreen: React.FC = () => {
             </span>
           </div>
 
-          {/* Buttons row */}
+          // Buttons row
           <div className="grid grid-cols-3 gap-2 pt-1">
             <button
               type="button"
@@ -316,113 +325,7 @@ export const ProfileScreen: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Recent Orders Section */}
-      <div id="recent-orders-section">
-        <div className="flex items-baseline justify-between mb-2">
-          <h3 className="font-editorial text-xl font-medium text-[#14261B]">Recent Orders</h3>
-          <button
-            type="button"
-            onClick={() => showToast('Displaying all past orders', 'info')}
-            className="text-xs font-semibold text-[#8C7443] hover:underline"
-          >
-            Full Archive
-          </button>
-        </div>
-
-        {orders && orders.length > 0 ? (
-          <div className="space-y-3">
-            {orders.map((order, idx) => (
-              <div key={order.id || idx} onClick={() => navigate(`/orders/${order.id}`)} className="bg-white rounded-3xl p-4 border border-[#E8E2D5] shadow-soft-sm space-y-3 cursor-pointer hover:border-[#183324]/30 hover:shadow-soft transition-all">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <span className="text-xs font-bold text-[#183122]">
-                      {order.orderNumber} • {order.date}
-                    </span>
-                    <p className="text-[11px] text-[#718274] mt-0.5">
-                      {order.summary}
-                    </p>
-                  </div>
-                  <span className="font-editorial text-base font-bold text-[#14261B]">
-                    €{order.total.toFixed(2)}
-                  </span>
-                </div>
-
-                {(() => {
-                  const badge = getOrderStatusBadge(order.status);
-                  const BadgeIcon = badge.icon;
-                  return (
-                    <div className={`border rounded-xl px-3 py-2 flex items-center justify-between text-xs ${badge.containerClass}`}>
-                      <span className="flex items-center gap-1.5 font-medium truncate">
-                        <BadgeIcon className="w-3.5 h-3.5 shrink-0" />
-                        <span className="truncate">{badge.description}</span>
-                      </span>
-                      <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 uppercase tracking-wider ${badge.badgeClass}`}>
-                        {badge.label}
-                      </span>
-                    </div>
-                  );
-                })()}
-
-                <div className="flex items-center justify-between pt-0.5">
-                  <div className="flex gap-2 flex-1">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/orders/${order.id}`);
-                      }}
-                      className="py-2 px-3 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#254632] transition-colors cursor-pointer"
-                    >
-                      <MapPin className="w-3.5 h-3.5 text-[#E5A953]" />
-                      <span>Track Order</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        navigate(`/orders/${order.id}`);
-                      }}
-                      className="px-3 py-2 bg-[#F5F2EB] text-[#293E30] text-xs font-semibold rounded-xl hover:bg-[#ECE7DC] transition-colors cursor-pointer"
-                    >
-                      Receipt
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={async (e) => {
-                      e.stopPropagation();
-                      if (window.confirm('Hide this order from your active history? Your financial receipt and transaction records will remain safely archived.')) {
-                        if (authUser?.id) {
-                          await orderService.hideOrderFromHistory(order.id, authUser.id);
-                          await refreshOrders();
-                          showToast('Order hidden from your active history.', 'info');
-                        }
-                      }
-                    }}
-                    className="flex items-center gap-1 text-[11px] text-[#8C7443] hover:text-[#5B4928] hover:underline px-2 py-1 cursor-pointer ml-2"
-                    title="Hide this order from view"
-                  >
-                    <EyeOff className="w-3 h-3" />
-                    <span>Hide</span>
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <div className="bg-white rounded-3xl p-6 border border-[#E8E2D5] shadow-soft-sm text-center space-y-2">
-            <div className="w-10 h-10 rounded-2xl bg-[#F5F2EB] flex items-center justify-center text-lg mx-auto">
-              📦
-            </div>
-            <div className="text-xs font-bold text-[#183122]">No orders placed yet</div>
-            <p className="text-[11px] text-[#718274] max-w-xs mx-auto">
-              Your dispatched botanical deliveries and subscription dispatches will appear here.
-            </p>
-          </div>
-        )}
-      </div>
+      */}
 
       {/* Account & Settings Section */}
       <div>
@@ -610,19 +513,132 @@ export const ProfileScreen: React.FC = () => {
             </div>
             <ChevronRight className="w-4 h-4 text-[#8C9C90]" />
           </div>
+
+          {/* 8. Log Out Button */}
+          <div className="p-4">
+            <button
+              type="button"
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="w-full py-3.5 bg-[#F6F3EB] hover:bg-[#ECE6DA] text-[#9E3E3E] rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors border border-[#E5DFD1]"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Log Out of Tellervo</span>
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Log Out Button */}
-      <button
-        type="button"
-        onClick={handleLogout}
-        disabled={isLoggingOut}
-        className="w-full py-3.5 bg-[#F6F3EB] hover:bg-[#ECE6DA] text-[#9E3E3E] rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors border border-[#E5DFD1]"
-      >
-        <LogOut className="w-4 h-4" />
-        <span>Log Out of Tellervo</span>
-      </button>
+      {/* Recent Orders Section */}
+      <div id="recent-orders-section" className="scroll-mt-24">
+        <div className="flex items-baseline justify-between mb-2">
+          <h3 className="font-editorial text-xl font-medium text-[#14261B]">Recent Orders</h3>
+        </div>
+
+        {orders && orders.length > 0 ? (
+          <div className="space-y-3">
+            {orders.slice(0, visibleOrdersCount).map((order, idx) => (
+              <div key={order.id || idx} onClick={() => navigate(`/orders/${order.id}`)} className="bg-white rounded-3xl p-4 border border-[#E8E2D5] shadow-soft-sm space-y-3 cursor-pointer hover:border-[#183324]/30 hover:shadow-soft transition-all">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-[#183122]">
+                      {order.orderNumber} • {order.date}
+                    </span>
+                    <p className="text-[11px] text-[#718274] mt-0.5">
+                      {order.summary}
+                    </p>
+                  </div>
+                  <span className="font-editorial text-base font-bold text-[#14261B]">
+                    €{order.total.toFixed(2)}
+                  </span>
+                </div>
+
+                {(() => {
+                  const badge = getOrderStatusBadge(order.status);
+                  const BadgeIcon = badge.icon;
+                  return (
+                    <div className={`border rounded-xl px-3 py-2 flex items-center justify-between text-xs ${badge.containerClass}`}>
+                      <span className="flex items-center gap-1.5 font-medium truncate">
+                        <BadgeIcon className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{badge.description}</span>
+                      </span>
+                      <span className={`px-2 py-0.5 rounded-md font-bold text-[10px] shrink-0 uppercase tracking-wider ${badge.badgeClass}`}>
+                        {badge.label}
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                <div className="flex items-center justify-between pt-0.5">
+                  <div className="flex gap-2 flex-1">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/orders/${order.id}`);
+                      }}
+                      className="py-2 px-3 bg-[#183324] text-[#FAF8F3] text-xs font-semibold rounded-xl flex items-center justify-center gap-1.5 hover:bg-[#254632] transition-colors cursor-pointer"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-[#E5A953]" />
+                      <span>Track Order</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/orders/${order.id}`);
+                      }}
+                      className="px-3 py-2 bg-[#F5F2EB] text-[#293E30] text-xs font-semibold rounded-xl hover:bg-[#ECE7DC] transition-colors cursor-pointer"
+                    >
+                      Receipt
+                    </button>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      if (window.confirm('Hide this order from your active history? Your financial receipt and transaction records will remain safely archived.')) {
+                        if (authUser?.id) {
+                          await orderService.hideOrderFromHistory(order.id, authUser.id);
+                          await refreshOrders();
+                          showToast('Order hidden from your active history.', 'info');
+                        }
+                      }
+                    }}
+                    className="flex items-center gap-1 text-[11px] text-[#8C7443] hover:text-[#5B4928] hover:underline px-2 py-1 cursor-pointer ml-2"
+                    title="Hide this order from view"
+                  >
+                    <EyeOff className="w-3 h-3" />
+                    <span>Hide</span>
+                  </button>
+                </div>
+              </div>
+            ))}
+
+            {orders.length > visibleOrdersCount && (
+              <button
+                type="button"
+                onClick={() => setVisibleOrdersCount(prev => prev + 6)}
+                className="w-full py-3.5 bg-white hover:bg-[#FAF8F3] text-[#183122] border border-[#E8E2D5] rounded-2xl text-xs font-semibold flex items-center justify-center gap-2 transition-all shadow-soft-sm hover:border-[#183324]/30 cursor-pointer active:scale-[0.99]"
+              >
+                <span>View More Orders</span>
+                <ChevronDown className="w-4 h-4 text-[#8C9C90]" />
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-3xl p-6 border border-[#E8E2D5] shadow-soft-sm text-center space-y-2">
+            <div className="w-10 h-10 rounded-2xl bg-[#F5F2EB] flex items-center justify-center text-lg mx-auto">
+              📦
+            </div>
+            <div className="text-xs font-bold text-[#183122]">No orders placed yet</div>
+            <p className="text-[11px] text-[#718274] max-w-xs mx-auto">
+              Your dispatched botanical deliveries and subscription dispatches will appear here.
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Brand Footer */}
       <div className="text-center pt-2 pb-4 text-[10px] font-bold tracking-widest text-[#8A7955] uppercase">
