@@ -15,10 +15,11 @@ import {
   ChevronDown,
   X,
   MapPin,
-  Mail,
+
   Phone,
   CreditCard,
   Check,
+  Loader2,
 } from "lucide-react"
 
 import { Input } from "@/components/ui/input"
@@ -54,8 +55,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { toast } from "sonner"
+import { orderService } from "@tellervo/supabase"
 
-export type OrderStatus = "Pending" | "In Progress" | "Completed" | "Cancelled" | "Refunded"
+export type OrderStatus = "Pending" | "In Progress" | "Shipments" | "Completed" | "Cancelled" | "Refunded"
 
 export interface OrderItemProduct {
   name: string
@@ -80,262 +82,17 @@ export interface OrderRecord {
   }
   items: OrderItemProduct[]
   date: string
+  rawDate?: string
   amount: number
   status: OrderStatus
   paymentMethod: string
 }
 
-const INITIAL_ORDERS: OrderRecord[] = [
-  {
-    id: "ord-1",
-    orderCode: "#11852",
-    customer: {
-      name: "Novshad Khan",
-      email: "novshad.khan@example.com",
-      phone: "+358 40 123 4567",
-      address: "Mannerheimintie 12 B 4, 00100 Helsinki, Finland",
-    },
-    primaryProduct: {
-      name: "Wild Berry Spritz",
-      image: "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=120&auto=format&fit=crop&q=80",
-      additionalCount: 2,
-    },
-    items: [
-      {
-        name: "Wild Berry Spritz",
-        quantity: 2,
-        price: 15.5,
-        image: "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=120&auto=format&fit=crop&q=80",
-      },
-      {
-        name: "Berry Bloom Spritz",
-        quantity: 2,
-        price: 15.5,
-        image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=120&auto=format&fit=crop&q=80",
-      },
-      {
-        name: "Forest Berry Elixir",
-        quantity: 1,
-        price: 16.2,
-        image: "https://images.unsplash.com/photo-1556881286-fc6915169721?w=120&auto=format&fit=crop&q=80",
-      },
-    ],
-    date: "24 Dec 2025",
-    amount: 300.0,
-    status: "Pending",
-    paymentMethod: "Credit Card (Stripe)",
-  },
-  {
-    id: "ord-2",
-    orderCode: "#11851",
-    customer: {
-      name: "Khalid Rehman",
-      email: "khalid.rehman@example.com",
-      phone: "+358 50 987 6543",
-      address: "Aleksanterinkatu 15, 00170 Helsinki, Finland",
-    },
-    primaryProduct: {
-      name: "Citrus Blossom Tonic",
-      image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=120&auto=format&fit=crop&q=80",
-      additionalCount: 3,
-    },
-    items: [
-      {
-        name: "Citrus Blossom Tonic",
-        quantity: 4,
-        price: 13.9,
-        image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=120&auto=format&fit=crop&q=80",
-      },
-      {
-        name: "Pine Forest Tonic",
-        quantity: 6,
-        price: 14.5,
-        image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=120&auto=format&fit=crop&q=80",
-      },
-    ],
-    date: "24 Dec 2025",
-    amount: 500.0,
-    status: "Pending",
-    paymentMethod: "Apple Pay",
-  },
-  {
-    id: "ord-3",
-    orderCode: "#11850",
-    customer: {
-      name: "Ashraf Ali",
-      email: "ashraf.ali@example.com",
-      phone: "+358 45 321 7890",
-      address: "Bulevardi 8, 00120 Helsinki, Finland",
-    },
-    primaryProduct: {
-      name: "Pine Forest Tonic",
-      image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=120&auto=format&fit=crop&q=80",
-      additionalCount: 1,
-    },
-    items: [
-      {
-        name: "Pine Forest Tonic",
-        quantity: 4,
-        price: 14.5,
-        image: "https://images.unsplash.com/photo-1551024709-8f23befc6f87?w=120&auto=format&fit=crop&q=80",
-      },
-      {
-        name: "Golden Glow Tonic",
-        quantity: 2,
-        price: 14.0,
-        image: "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=120&auto=format&fit=crop&q=80",
-      },
-    ],
-    date: "24 Dec 2025",
-    amount: 400.0,
-    status: "In Progress",
-    paymentMethod: "PayPal",
-  },
-  {
-    id: "ord-4",
-    orderCode: "#11849",
-    customer: {
-      name: "Ratul Rezwan",
-      email: "ratul.rezwan@example.com",
-      phone: "+358 40 765 4321",
-      address: "Hämeenkatu 22, 33200 Tampere, Finland",
-    },
-    primaryProduct: {
-      name: "Coconut Dream Botanical",
-      image: "https://images.unsplash.com/photo-1546173159-315724a31696?w=120&auto=format&fit=crop&q=80",
-      additionalCount: 2,
-    },
-    items: [
-      {
-        name: "Coconut Dream Botanical",
-        quantity: 3,
-        price: 11.9,
-        image: "https://images.unsplash.com/photo-1546173159-315724a31696?w=120&auto=format&fit=crop&q=80",
-      },
-      {
-        name: "Elderberry Nightcap",
-        quantity: 2,
-        price: 16.5,
-        image: "https://images.unsplash.com/photo-1556881286-fc6915169721?w=120&auto=format&fit=crop&q=80",
-      },
-    ],
-    date: "24 Dec 2025",
-    amount: 290.0,
-    status: "In Progress",
-    paymentMethod: "Klarna Invoice",
-  },
-  {
-    id: "ord-5",
-    orderCode: "#11848",
-    customer: {
-      name: "Elena Rostova",
-      email: "elena.rostova@example.com",
-      phone: "+358 50 111 2233",
-      address: "Kauppakatu 5, 20100 Turku, Finland",
-    },
-    primaryProduct: {
-      name: "Golden Glow Tonic",
-      image: "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=120&auto=format&fit=crop&q=80",
-      additionalCount: 1,
-    },
-    items: [
-      {
-        name: "Golden Glow Tonic",
-        quantity: 3,
-        price: 14.0,
-        image: "https://images.unsplash.com/photo-1544145945-f90425340c7e?w=120&auto=format&fit=crop&q=80",
-      },
-    ],
-    date: "23 Dec 2025",
-    amount: 142.5,
-    status: "Completed",
-    paymentMethod: "Credit Card (Stripe)",
-  },
-  {
-    id: "ord-6",
-    orderCode: "#11847",
-    customer: {
-      name: "Sophia Lindqvist",
-      email: "sophia.l@example.com",
-      phone: "+358 40 555 6677",
-      address: "Torikatu 14, 90100 Oulu, Finland",
-    },
-    primaryProduct: {
-      name: "Forest Berry Elixir",
-      image: "https://images.unsplash.com/photo-1556881286-fc6915169721?w=120&auto=format&fit=crop&q=80",
-      additionalCount: 0,
-    },
-    items: [
-      {
-        name: "Forest Berry Elixir",
-        quantity: 4,
-        price: 16.2,
-        image: "https://images.unsplash.com/photo-1556881286-fc6915169721?w=120&auto=format&fit=crop&q=80",
-      },
-    ],
-    date: "23 Dec 2025",
-    amount: 64.8,
-    status: "Completed",
-    paymentMethod: "Credit Card (Stripe)",
-  },
-  {
-    id: "ord-7",
-    orderCode: "#11846",
-    customer: {
-      name: "Marcus Vance",
-      email: "marcus.vance@example.com",
-      phone: "+358 50 444 3322",
-      address: "Kirkkokatu 3, 70100 Kuopio, Finland",
-    },
-    primaryProduct: {
-      name: "Elderberry Nightcap",
-      image: "https://images.unsplash.com/photo-1556881286-fc6915169721?w=120&auto=format&fit=crop&q=80",
-      additionalCount: 2,
-    },
-    items: [
-      {
-        name: "Elderberry Nightcap",
-        quantity: 2,
-        price: 16.5,
-        image: "https://images.unsplash.com/photo-1556881286-fc6915169721?w=120&auto=format&fit=crop&q=80",
-      },
-    ],
-    date: "22 Dec 2025",
-    amount: 198.0,
-    status: "Completed",
-    paymentMethod: "Apple Pay",
-  },
-  {
-    id: "ord-8",
-    orderCode: "#11845",
-    customer: {
-      name: "Liam O'Connor",
-      email: "liam.oc@example.com",
-      phone: "+358 45 888 9900",
-      address: "Satamakatu 19, 65100 Vaasa, Finland",
-    },
-    primaryProduct: {
-      name: "Spruce Tip Soda",
-      image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=120&auto=format&fit=crop&q=80",
-      additionalCount: 0,
-    },
-    items: [
-      {
-        name: "Spruce Tip Soda",
-        quantity: 1,
-        price: 12.0,
-        image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=120&auto=format&fit=crop&q=80",
-      },
-    ],
-    date: "21 Dec 2025",
-    amount: 12.0,
-    status: "Cancelled",
-    paymentMethod: "Credit Card (Refunded)",
-  },
-]
+const INITIAL_ORDERS: OrderRecord[] = []
 
 export function OrderManagement() {
   const [orders, setOrders] = React.useState<OrderRecord[]>(INITIAL_ORDERS)
+  const [isLoading, setIsLoading] = React.useState<boolean>(true)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [dateFilter, setDateFilter] = React.useState<string>("all")
@@ -344,11 +101,171 @@ export function OrderManagement() {
   const [currentPage, setCurrentPage] = React.useState(1)
   const pageSize = 5
 
-  // KPI Calculations
-  const totalOrdersCount = 5000
-  const pendingOrdersCount = 400
-  const inProgressOrdersCount = 500
-  const completedOrdersCount = 4000
+  // Fetch live orders from Supabase (orders, order_items, address.user_id, order_status_history)
+  React.useEffect(() => {
+    let isMounted = true
+
+    async function loadOrders() {
+      try {
+        setIsLoading(true)
+        const liveOrders = await orderService.fetchAllOrdersAdmin()
+        if (isMounted) {
+          setOrders(liveOrders || [])
+        }
+      } catch (err) {
+        console.warn("Failed to load live orders from Supabase:", err)
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    loadOrders()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+    // Dynamic KPI Calculations from live orders
+  const totalOrdersCount = orders.length
+  const pendingOrdersCount = React.useMemo(
+    () => orders.filter((o) => o.status === "Pending").length,
+    [orders]
+  )
+  const inProgressOrdersCount = React.useMemo(
+    () => orders.filter((o) => o.status === "In Progress").length,
+    [orders]
+  )
+  const completedOrdersCount = React.useMemo(
+    () => orders.filter((o) => o.status === "Completed").length,
+    [orders]
+  )
+
+  // Dynamic Week-over-Week trends
+  const weeklyTrends = React.useMemo(() => {
+    const now = new Date()
+    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
+
+    const thisWeek = orders.filter((o) => o.rawDate && new Date(o.rawDate) >= oneWeekAgo)
+    const prevWeek = orders.filter(
+      (o) =>
+        o.rawDate &&
+        new Date(o.rawDate) >= twoWeeksAgo &&
+        new Date(o.rawDate) < oneWeekAgo
+    )
+
+    const calcTrend = (cur: number, prev: number) => {
+      if (prev === 0) {
+        if (cur > 0) return { text: `+${cur * 10}%`, isPositive: true }
+        return { text: "+0%", isPositive: true }
+      }
+      const pct = Math.round(((cur - prev) / prev) * 100)
+      return {
+        text: `${pct >= 0 ? "+" : ""}${pct}%`,
+        isPositive: pct >= 0,
+      }
+    }
+
+    return {
+      total: calcTrend(thisWeek.length, prevWeek.length),
+      pending: calcTrend(
+        thisWeek.filter((o) => o.status === "Pending").length,
+        prevWeek.filter((o) => o.status === "Pending").length
+      ),
+      inProgress: calcTrend(
+        thisWeek.filter((o) => o.status === "In Progress").length,
+        prevWeek.filter((o) => o.status === "In Progress").length
+      ),
+      completed: calcTrend(
+        thisWeek.filter((o) => o.status === "Completed").length,
+        prevWeek.filter((o) => o.status === "Completed").length
+      ),
+    }
+  }, [orders])
+
+  // Dynamic chart filtering by time range
+  const chartOrders = React.useMemo(() => {
+    if (chartTimeRange === "all") return orders
+    const now = new Date()
+    if (chartTimeRange === "7d") {
+      const cut = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+      return orders.filter((o) => !o.rawDate || new Date(o.rawDate) >= cut)
+    }
+    if (chartTimeRange === "30d") {
+      const cut = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+      return orders.filter((o) => !o.rawDate || new Date(o.rawDate) >= cut)
+    }
+    if (chartTimeRange === "month") {
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      return orders.filter((o) => !o.rawDate || new Date(o.rawDate) >= startOfMonth)
+    }
+    return orders
+  }, [orders, chartTimeRange])
+
+  // Dynamic Order Status percentages & donut SVG segments
+  const statusStats = React.useMemo(() => {
+    const total = chartOrders.length
+    const getCount = (st: OrderStatus) => chartOrders.filter((o) => o.status === st).length
+
+    const list: {
+      key: OrderStatus
+      label: string
+      color: string
+      count: number
+      pct: number
+    }[] = [
+      { key: "In Progress", label: "In Progress", color: "#3b82f6", count: getCount("In Progress"), pct: 0 },
+      { key: "Shipments", label: "Shipments", color: "#6366f1", count: getCount("Shipments"), pct: 0 },
+      { key: "Pending", label: "Pending", color: "#f97316", count: getCount("Pending"), pct: 0 },
+      { key: "Completed", label: "Completed", color: "#10b981", count: getCount("Completed"), pct: 0 },
+      { key: "Cancelled", label: "Cancelled", color: "#f43f5e", count: getCount("Cancelled"), pct: 0 },
+      { key: "Refunded", label: "Refunded", color: "#a855f7", count: getCount("Refunded"), pct: 0 },
+    ]
+
+    if (total > 0) {
+      list.forEach((item) => {
+        item.pct = Math.round((item.count / total) * 100)
+      })
+    }
+
+    const circumference = 213.628 // 2 * PI * 34
+    let accOffset = 0
+    let accAngle = 0
+
+    const segments = list
+      .filter((item) => item.count > 0)
+      .map((item) => {
+        const ratio = item.count / total
+        const strokeDash = ratio * circumference
+        const offset = -accOffset
+        accOffset += strokeDash
+
+        const angleSpan = ratio * 360
+        const midAngle = accAngle + angleSpan / 2
+        accAngle += angleSpan
+
+        return {
+          ...item,
+          strokeDash: `${strokeDash.toFixed(2)} ${circumference.toFixed(2)}`,
+          strokeOffset: offset.toFixed(2),
+          midAngle,
+        }
+      })
+
+    return { total, list, segments }
+  }, [chartOrders])
+
+  // Dynamic available dates for filter
+  const availableDates = React.useMemo(() => {
+    const dates = new Set<string>()
+    orders.forEach((o) => {
+      if (o.date) dates.add(o.date)
+    })
+    return Array.from(dates)
+  }, [orders])
 
   // Filtered Orders
   const filteredOrders = React.useMemo(() => {
@@ -362,11 +279,7 @@ export function OrderManagement() {
       const matchesStatus =
         statusFilter === "all" || ord.status.toLowerCase() === statusFilter.toLowerCase()
 
-      const matchesDate =
-        dateFilter === "all" ||
-        (dateFilter === "24" && ord.date.includes("24 Dec")) ||
-        (dateFilter === "23" && ord.date.includes("23 Dec")) ||
-        (dateFilter === "22" && ord.date.includes("22 Dec"))
+      const matchesDate = dateFilter === "all" || ord.date === dateFilter
 
       return matchesSearch && matchesStatus && matchesDate
     })
@@ -381,7 +294,7 @@ export function OrderManagement() {
   }, [filteredOrders, safeCurrentPage, pageSize])
 
   // Update Status
-  const handleUpdateStatus = (id: string, newStatus: OrderStatus) => {
+  const handleUpdateStatus = async (id: string, newStatus: OrderStatus) => {
     setOrders((prev) =>
       prev.map((o) => (o.id === id ? { ...o, status: newStatus } : o))
     )
@@ -389,6 +302,20 @@ export function OrderManagement() {
       setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : null))
     }
     toast.success(`Order status updated to ${newStatus}`)
+
+    try {
+      const res = await orderService.updateOrderStatus(
+        id,
+        newStatus,
+        "admin@tellervo.com",
+        "Status updated via Admin Orders Table"
+      )
+      if (!res.success && res.error) {
+        console.warn("Could not sync status with backend:", res.error.message)
+      }
+    } catch (err) {
+      console.warn("Failed to persist order status:", err)
+    }
   }
 
   // Export CSV
@@ -424,6 +351,8 @@ export function OrderManagement() {
         return "bg-amber-50 text-amber-700 hover:bg-amber-100/80"
       case "In Progress":
         return "bg-sky-50 text-sky-700 hover:bg-sky-100/80"
+      case "Shipments":
+        return "bg-indigo-50 text-indigo-700 hover:bg-indigo-100/80 dark:bg-indigo-950/40 dark:text-indigo-300"
       case "Completed":
         return "bg-emerald-50 text-emerald-700 hover:bg-emerald-100/80"
       case "Cancelled":
@@ -488,8 +417,8 @@ export function OrderManagement() {
                   {totalOrdersCount.toLocaleString()}
                 </div>
                 <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground font-medium">
-                  <span className="inline-flex items-center gap-0.5 text-emerald-600 font-semibold">
-                    <TrendingUp className="w-3.5 h-3.5" /> +0.1%
+                  <span className={`inline-flex items-center gap-0.5 font-semibold ${weeklyTrends.total.isPositive ? "text-emerald-600" : "text-rose-500"}`}>
+                    {weeklyTrends.total.isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />} {weeklyTrends.total.text}
                   </span>
                   <span>vs Last Week</span>
                 </div>
@@ -517,8 +446,8 @@ export function OrderManagement() {
                   {pendingOrdersCount.toLocaleString()}
                 </div>
                 <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground font-medium">
-                  <span className="inline-flex items-center gap-0.5 text-emerald-600 font-semibold">
-                    <TrendingUp className="w-3.5 h-3.5" /> +2.4%
+                  <span className={`inline-flex items-center gap-0.5 font-semibold ${weeklyTrends.pending.isPositive ? "text-emerald-600" : "text-rose-500"}`}>
+                    {weeklyTrends.pending.isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />} {weeklyTrends.pending.text}
                   </span>
                   <span>vs Last Week</span>
                 </div>
@@ -546,8 +475,8 @@ export function OrderManagement() {
                   {inProgressOrdersCount.toLocaleString()}
                 </div>
                 <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground font-medium">
-                  <span className="inline-flex items-center gap-0.5 text-emerald-600 font-semibold">
-                    <TrendingUp className="w-3.5 h-3.5" /> +2.4%
+                  <span className={`inline-flex items-center gap-0.5 font-semibold ${weeklyTrends.inProgress.isPositive ? "text-emerald-600" : "text-rose-500"}`}>
+                    {weeklyTrends.inProgress.isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />} {weeklyTrends.inProgress.text}
                   </span>
                   <span>vs Last Week</span>
                 </div>
@@ -575,8 +504,8 @@ export function OrderManagement() {
                   {completedOrdersCount.toLocaleString()}
                 </div>
                 <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground font-medium">
-                  <span className="inline-flex items-center gap-0.5 text-rose-500 font-semibold">
-                    <TrendingDown className="w-3.5 h-3.5" /> -0.6%
+                  <span className={`inline-flex items-center gap-0.5 font-semibold ${weeklyTrends.completed.isPositive ? "text-emerald-600" : "text-rose-500"}`}>
+                    {weeklyTrends.completed.isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />} {weeklyTrends.completed.text}
                   </span>
                   <span>vs Last Week</span>
                 </div>
@@ -606,83 +535,93 @@ export function OrderManagement() {
 
             {/* Pie Chart & Legends */}
             <div className="flex flex-col sm:flex-row items-center justify-around gap-6 my-auto pt-4 pb-2">
-              {/* Clean SVG Donut Chart with percentages inside */}
+              {/* Clean SVG Donut Chart with dynamic segments & percentages */}
               <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                  {/* Segment 1: Completed 48% (Emerald) */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="34"
-                    fill="transparent"
-                    stroke="#10b981"
-                    strokeWidth="32"
-                    strokeDasharray="102.5 213.6"
-                    strokeDashoffset="0"
-                  />
-                  {/* Segment 2: Pending 32% (Orange) */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="34"
-                    fill="transparent"
-                    stroke="#f97316"
-                    strokeWidth="32"
-                    strokeDasharray="68.4 213.6"
-                    strokeDashoffset="-102.5"
-                  />
-                  {/* Segment 3: In Progress 20% (Sky Blue) */}
-                  <circle
-                    cx="50"
-                    cy="50"
-                    r="34"
-                    fill="transparent"
-                    stroke="#3b82f6"
-                    strokeWidth="32"
-                    strokeDasharray="42.7 213.6"
-                    strokeDashoffset="-170.9"
-                  />
+                  {statusStats.total === 0 ? (
+                    <circle
+                      cx="50"
+                      cy="50"
+                      r="34"
+                      fill="transparent"
+                      stroke="currentColor"
+                      className="text-muted/20"
+                      strokeWidth="32"
+                    />
+                  ) : (
+                    statusStats.segments.map((seg) => (
+                      <circle
+                        key={seg.key}
+                        cx="50"
+                        cy="50"
+                        r="34"
+                        fill="transparent"
+                        stroke={seg.color}
+                        strokeWidth="32"
+                        strokeDasharray={seg.strokeDash}
+                        strokeDashoffset={seg.strokeOffset}
+                        className="transition-all duration-500 ease-out"
+                      />
+                    ))
+                  )}
+
+                  {/* Percentage text rendered inside segments having >= 10% */}
+                  {statusStats.total > 0 &&
+                    statusStats.segments.map((seg) => {
+                      if (seg.pct < 10) return null
+                      const rad = (seg.midAngle * Math.PI) / 180
+                      const x = 50 + 34 * Math.cos(rad)
+                      const y = 50 + 34 * Math.sin(rad)
+                      return (
+                        <text
+                          key={`txt-${seg.key}`}
+                          x={x}
+                          y={y}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fill="#ffffff"
+                          fontSize="7"
+                          fontWeight="bold"
+                          transform={`rotate(90 ${x} ${y})`}
+                          className="select-none pointer-events-none drop-shadow-xs"
+                        >
+                          {seg.pct}%
+                        </text>
+                      )
+                    })}
                 </svg>
 
-                {/* Percentage Labels placed over segments */}
-                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                  {/* 48% Label */}
-                  <span className="absolute right-7 top-18 text-xs font-bold text-white drop-shadow-xs">
-                    48%
-                  </span>
-                  {/* 32% Label */}
-                  <span className="absolute left-8 top-12 text-xs font-bold text-white drop-shadow-xs">
-                    32%
-                  </span>
-                  {/* 20% Label */}
-                  <span className="absolute left-13 bottom-9 text-xs font-bold text-white drop-shadow-xs">
-                    20%
-                  </span>
-                </div>
+                {/* If total is 0, show friendly center label */}
+                {statusStats.total === 0 && (
+                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                    <span className="text-xs text-muted-foreground font-medium">0 Orders</span>
+                  </div>
+                )}
               </div>
 
-              {/* Status Legend List (Exact matching Image 1) */}
-              <div className="space-y-2 text-xs font-medium min-w-[120px]">
-                <div className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground transition-colors">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[#3b82f6] shrink-0" />
-                  <span>In Progress</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground transition-colors">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[#f97316] shrink-0" />
-                  <span>Pending</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground transition-colors">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-[#10b981] shrink-0" />
-                  <span>Completed</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground transition-colors">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-rose-500 shrink-0" />
-                  <span>Cancelled</span>
-                </div>
-                <div className="flex items-center gap-2.5 text-muted-foreground hover:text-foreground transition-colors">
-                  <span className="w-2.5 h-2.5 rounded-sm bg-purple-500 shrink-0" />
-                  <span>Refunded</span>
-                </div>
+              {/* Status Legend List (Dynamic matching Image 3) */}
+              <div className="space-y-2 text-xs font-medium min-w-[130px]">
+                {statusStats.list.map((s) => (
+                  <div
+                    key={s.key}
+                    onClick={() => {
+                      setStatusFilter(s.key)
+                      setCurrentPage(1)
+                    }}
+                    className="flex items-center justify-between gap-3 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="w-2.5 h-2.5 rounded-sm shrink-0"
+                        style={{ backgroundColor: s.color }}
+                      />
+                      <span>{s.label}</span>
+                    </div>
+                    <span className="text-[11px] font-semibold text-foreground/80">
+                      {s.pct}%
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -728,14 +667,16 @@ export function OrderManagement() {
                   <SelectTrigger className="h-10 text-xs font-medium bg-card border border-border rounded-full text-foreground px-4 shadow-2xs min-w-[155px]">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
-                      <SelectValue placeholder="12 Sept - 20 Sept" />
+                      <SelectValue placeholder="All Dates" />
                     </div>
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border rounded-xl">
                     <SelectItem value="all">All Dates</SelectItem>
-                    <SelectItem value="24">24 Dec 2025</SelectItem>
-                    <SelectItem value="23">23 Dec 2025</SelectItem>
-                    <SelectItem value="22">22 Dec 2025</SelectItem>
+                    {availableDates.map((date) => (
+                      <SelectItem key={date} value={date}>
+                        {date}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
 
@@ -754,8 +695,10 @@ export function OrderManagement() {
                     <SelectItem value="all">Status: All</SelectItem>
                     <SelectItem value="Pending">Pending</SelectItem>
                     <SelectItem value="In Progress">In Progress</SelectItem>
+                    <SelectItem value="Shipments">Shipments</SelectItem>
                     <SelectItem value="Completed">Completed</SelectItem>
                     <SelectItem value="Cancelled">Cancelled</SelectItem>
+                    <SelectItem value="Refunded">Refunded</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -792,7 +735,19 @@ export function OrderManagement() {
               </TableHeader>
 
               <TableBody>
-                {paginatedOrders.length === 0 ? (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="h-56 text-center">
+                      <div className="flex flex-col items-center justify-center text-muted-foreground gap-3">
+                        <Package className="w-8 h-8 opacity-40 animate-pulse text-primary" />
+                        <div className="flex items-center gap-2 text-sm font-medium">
+                          <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                          <span>Loading orders</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : paginatedOrders.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="h-44 text-center">
                       <div className="flex flex-col items-center justify-center text-muted-foreground gap-2">
@@ -875,11 +830,17 @@ export function OrderManagement() {
                             <DropdownMenuItem onClick={() => handleUpdateStatus(ord.id, "In Progress")}>
                               In Progress
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(ord.id, "Shipments")}>
+                              Shipments
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleUpdateStatus(ord.id, "Completed")}>
                               Completed
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleUpdateStatus(ord.id, "Cancelled")}>
                               Cancelled
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleUpdateStatus(ord.id, "Refunded")}>
+                              Refunded
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -989,10 +950,6 @@ export function OrderManagement() {
               <div className="p-3.5 rounded-xl bg-muted/30 border border-border/80 space-y-2 text-xs">
                 <div className="flex items-center gap-2 font-semibold text-foreground">
                   <span>{selectedOrder.customer.name}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground text-[11px]">
-                  <Mail className="w-3.5 h-3.5" />
-                  <span>{selectedOrder.customer.email}</span>
                 </div>
                 <div className="flex items-center gap-2 text-muted-foreground text-[11px]">
                   <Phone className="w-3.5 h-3.5" />

@@ -1,4 +1,4 @@
-export type OrderStatus = 'Pending' | 'In Progress' | 'Completed' | 'Cancelled' | 'Refunded';
+export type OrderStatus = 'Pending' | 'In Progress' | 'Shipments' | 'Completed' | 'Cancelled' | 'Refunded';
 export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
 export type PaymentSimulationOutcome = 'accept' | 'decline' | 'network_error';
 
@@ -111,5 +111,32 @@ export interface SimulationOrderResult {
 export interface UserOrderWithItems extends OrderRow {
   items: OrderItemRow[];
   payments?: PaymentRow[];
+}
+
+export interface AdminOrderRecord {
+  id: string;
+  orderCode: string;
+  customer: {
+    name: string;
+    email: string;
+    phone: string;
+    address: string;
+  };
+  primaryProduct: {
+    name: string;
+    image: string;
+    additionalCount: number;
+  };
+  items: {
+    name: string;
+    quantity: number;
+    price: number;
+    image: string;
+  }[];
+  date: string;
+  rawDate: string;
+  amount: number;
+  status: OrderStatus;
+  paymentMethod: string;
 }
 
