@@ -2,12 +2,13 @@ import * as React from "react"
 import {
   Search,
   Eye,
-  TrendingUp,
-  TrendingDown,
+  MoreHorizontal,
   Package,
   Clock,
   ArrowUpRight,
   CheckCircle2,
+  Truck,
+  RotateCcw,
   Calendar,
   ChevronLeft,
   ChevronRight,
@@ -44,16 +45,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet"
 import { toast } from "sonner"
 import { orderService } from "@tellervo/supabase"
 
@@ -96,10 +91,9 @@ export function OrderManagement() {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [statusFilter, setStatusFilter] = React.useState<string>("all")
   const [dateFilter, setDateFilter] = React.useState<string>("all")
-  const [chartTimeRange, setChartTimeRange] = React.useState<string>("7d")
   const [selectedOrder, setSelectedOrder] = React.useState<OrderRecord | null>(null)
   const [currentPage, setCurrentPage] = React.useState(1)
-  const pageSize = 5
+  const pageSize = 10
 
   // Fetch live orders from Supabase (orders, order_items, address.user_id, order_status_history)
   React.useEffect(() => {
@@ -138,125 +132,18 @@ export function OrderManagement() {
     () => orders.filter((o) => o.status === "In Progress").length,
     [orders]
   )
+  const shipmentsOrdersCount = React.useMemo(
+    () => orders.filter((o) => o.status === "Shipments").length,
+    [orders]
+  )
   const completedOrdersCount = React.useMemo(
     () => orders.filter((o) => o.status === "Completed").length,
     [orders]
   )
-
-  // Dynamic Week-over-Week trends
-  const weeklyTrends = React.useMemo(() => {
-    const now = new Date()
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-    const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
-
-    const thisWeek = orders.filter((o) => o.rawDate && new Date(o.rawDate) >= oneWeekAgo)
-    const prevWeek = orders.filter(
-      (o) =>
-        o.rawDate &&
-        new Date(o.rawDate) >= twoWeeksAgo &&
-        new Date(o.rawDate) < oneWeekAgo
-    )
-
-    const calcTrend = (cur: number, prev: number) => {
-      if (prev === 0) {
-        if (cur > 0) return { text: `+${cur * 10}%`, isPositive: true }
-        return { text: "+0%", isPositive: true }
-      }
-      const pct = Math.round(((cur - prev) / prev) * 100)
-      return {
-        text: `${pct >= 0 ? "+" : ""}${pct}%`,
-        isPositive: pct >= 0,
-      }
-    }
-
-    return {
-      total: calcTrend(thisWeek.length, prevWeek.length),
-      pending: calcTrend(
-        thisWeek.filter((o) => o.status === "Pending").length,
-        prevWeek.filter((o) => o.status === "Pending").length
-      ),
-      inProgress: calcTrend(
-        thisWeek.filter((o) => o.status === "In Progress").length,
-        prevWeek.filter((o) => o.status === "In Progress").length
-      ),
-      completed: calcTrend(
-        thisWeek.filter((o) => o.status === "Completed").length,
-        prevWeek.filter((o) => o.status === "Completed").length
-      ),
-    }
-  }, [orders])
-
-  // Dynamic chart filtering by time range
-  const chartOrders = React.useMemo(() => {
-    if (chartTimeRange === "all") return orders
-    const now = new Date()
-    if (chartTimeRange === "7d") {
-      const cut = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-      return orders.filter((o) => !o.rawDate || new Date(o.rawDate) >= cut)
-    }
-    if (chartTimeRange === "30d") {
-      const cut = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
-      return orders.filter((o) => !o.rawDate || new Date(o.rawDate) >= cut)
-    }
-    if (chartTimeRange === "month") {
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
-      return orders.filter((o) => !o.rawDate || new Date(o.rawDate) >= startOfMonth)
-    }
-    return orders
-  }, [orders, chartTimeRange])
-
-  // Dynamic Order Status percentages & donut SVG segments
-  const statusStats = React.useMemo(() => {
-    const total = chartOrders.length
-    const getCount = (st: OrderStatus) => chartOrders.filter((o) => o.status === st).length
-
-    const list: {
-      key: OrderStatus
-      label: string
-      color: string
-      count: number
-      pct: number
-    }[] = [
-      { key: "In Progress", label: "In Progress", color: "#3b82f6", count: getCount("In Progress"), pct: 0 },
-      { key: "Shipments", label: "Shipments", color: "#6366f1", count: getCount("Shipments"), pct: 0 },
-      { key: "Pending", label: "Pending", color: "#f97316", count: getCount("Pending"), pct: 0 },
-      { key: "Completed", label: "Completed", color: "#10b981", count: getCount("Completed"), pct: 0 },
-      { key: "Cancelled", label: "Cancelled", color: "#f43f5e", count: getCount("Cancelled"), pct: 0 },
-      { key: "Refunded", label: "Refunded", color: "#a855f7", count: getCount("Refunded"), pct: 0 },
-    ]
-
-    if (total > 0) {
-      list.forEach((item) => {
-        item.pct = Math.round((item.count / total) * 100)
-      })
-    }
-
-    const circumference = 213.628 // 2 * PI * 34
-    let accOffset = 0
-    let accAngle = 0
-
-    const segments = list
-      .filter((item) => item.count > 0)
-      .map((item) => {
-        const ratio = item.count / total
-        const strokeDash = ratio * circumference
-        const offset = -accOffset
-        accOffset += strokeDash
-
-        const angleSpan = ratio * 360
-        const midAngle = accAngle + angleSpan / 2
-        accAngle += angleSpan
-
-        return {
-          ...item,
-          strokeDash: `${strokeDash.toFixed(2)} ${circumference.toFixed(2)}`,
-          strokeOffset: offset.toFixed(2),
-          midAngle,
-        }
-      })
-
-    return { total, list, segments }
-  }, [chartOrders])
+  const refundedOrdersCount = React.useMemo(
+    () => orders.filter((o) => o.status === "Refunded").length,
+    [orders]
+  )
 
   // Dynamic available dates for filter
   const availableDates = React.useMemo(() => {
@@ -392,237 +279,131 @@ export function OrderManagement() {
           </div>
         </div>
 
-        {/* TOP METRICS & ORDER STATUS ROW (2x2 Cards on Left + Pie Chart on Right, matching Image 1) */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          {/* LEFT 4 KPI CARDS (2x2 Grid) */}
-          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Card 1: Total Orders */}
-            <div
-              onClick={() => {
-                setStatusFilter("all")
-                setCurrentPage(1)
-              }}
-              className="cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Total Orders
-                </span>
-                <div className="w-8 h-8 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
-                  <Package className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="text-3xl font-bold font-sans tracking-tight text-foreground">
-                  {totalOrdersCount.toLocaleString()}
-                </div>
-                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground font-medium">
-                  <span className={`inline-flex items-center gap-0.5 font-semibold ${weeklyTrends.total.isPositive ? "text-emerald-600" : "text-rose-500"}`}>
-                    {weeklyTrends.total.isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />} {weeklyTrends.total.text}
-                  </span>
-                  <span>vs Last Week</span>
-                </div>
-              </div>
+        {/* 6 CLEAN KPI CARDS (Matching ProductManagement structure with border-0) */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 sm:gap-4">
+          {/* Card 1: Total Orders */}
+          <div
+            onClick={() => {
+              setStatusFilter("all")
+              setCurrentPage(1)
+            }}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-[#edf5f0] text-[#1e4630] dark:bg-[#1e4630]/20 dark:text-[#6ee7b7] flex items-center justify-center shrink-0">
+              <Package className="w-5 h-5 stroke-[1.75]" />
             </div>
-
-            {/* Card 2: Pending Orders */}
-            <div
-              onClick={() => {
-                setStatusFilter("Pending")
-                setCurrentPage(1)
-              }}
-              className="cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Pending Orders
-                </span>
-                <div className="w-8 h-8 rounded-full bg-amber-50 flex items-center justify-center text-amber-700">
-                  <Clock className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="text-3xl font-bold font-sans tracking-tight text-foreground">
-                  {pendingOrdersCount.toLocaleString()}
-                </div>
-                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground font-medium">
-                  <span className={`inline-flex items-center gap-0.5 font-semibold ${weeklyTrends.pending.isPositive ? "text-emerald-600" : "text-rose-500"}`}>
-                    {weeklyTrends.pending.isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />} {weeklyTrends.pending.text}
-                  </span>
-                  <span>vs Last Week</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 3: In Progress */}
-            <div
-              onClick={() => {
-                setStatusFilter("In Progress")
-                setCurrentPage(1)
-              }}
-              className="cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  In Progress
-                </span>
-                <div className="w-8 h-8 rounded-full bg-sky-50 flex items-center justify-center text-sky-700">
-                  <ArrowUpRight className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="text-3xl font-bold font-sans tracking-tight text-foreground">
-                  {inProgressOrdersCount.toLocaleString()}
-                </div>
-                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground font-medium">
-                  <span className={`inline-flex items-center gap-0.5 font-semibold ${weeklyTrends.inProgress.isPositive ? "text-emerald-600" : "text-rose-500"}`}>
-                    {weeklyTrends.inProgress.isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />} {weeklyTrends.inProgress.text}
-                  </span>
-                  <span>vs Last Week</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Card 4: Completed Orders */}
-            <div
-              onClick={() => {
-                setStatusFilter("Completed")
-                setCurrentPage(1)
-              }}
-              className="cursor-pointer bg-card rounded-2xl border-0 p-5 flex flex-col justify-between shadow-xs hover:shadow-md hover:-translate-y-0.5 transition-all"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-muted-foreground">
-                  Completed Orders
-                </span>
-                <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-700">
-                  <CheckCircle2 className="w-4 h-4" />
-                </div>
-              </div>
-              <div className="mt-4">
-                <div className="text-3xl font-bold font-sans tracking-tight text-foreground">
-                  {completedOrdersCount.toLocaleString()}
-                </div>
-                <div className="flex items-center gap-1.5 mt-1.5 text-xs text-muted-foreground font-medium">
-                  <span className={`inline-flex items-center gap-0.5 font-semibold ${weeklyTrends.completed.isPositive ? "text-emerald-600" : "text-rose-500"}`}>
-                    {weeklyTrends.completed.isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />} {weeklyTrends.completed.text}
-                  </span>
-                  <span>vs Last Week</span>
-                </div>
-              </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-muted-foreground truncate">
+                Total Orders
+              </span>
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground mt-0.5">
+                {totalOrdersCount}
+              </span>
             </div>
           </div>
 
-          {/* RIGHT ORDER STATUS PIE CHART CARD (Exact Match to Image 1) */}
-          <div className="lg:col-span-5 bg-card rounded-2xl border-0 p-5 sm:p-6 flex flex-col justify-between shadow-xs">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold font-sans text-foreground">
-                Order Status
-              </h2>
-
-              <Select value={chartTimeRange} onValueChange={setChartTimeRange}>
-                <SelectTrigger className="h-8 px-3 text-xs bg-muted/30 border border-border/80 rounded-full text-muted-foreground w-auto gap-1.5 font-medium">
-                  <SelectValue placeholder="Last 7 days" />
-                </SelectTrigger>
-                <SelectContent className="bg-card border-border">
-                  <SelectItem value="7d">Last 7 days</SelectItem>
-                  <SelectItem value="30d">Last 30 days</SelectItem>
-                  <SelectItem value="month">This Month</SelectItem>
-                  <SelectItem value="all">All Time</SelectItem>
-                </SelectContent>
-              </Select>
+          {/* Card 2: Pending Orders */}
+          <div
+            onClick={() => {
+              setStatusFilter("Pending")
+              setCurrentPage(1)
+            }}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-[#fef7ee] text-[#b45309] dark:bg-[#b45309]/20 dark:text-[#fcd34d] flex items-center justify-center shrink-0">
+              <Clock className="w-5 h-5 stroke-[1.75]" />
             </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-muted-foreground truncate">
+                Pending Orders
+              </span>
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground mt-0.5">
+                {pendingOrdersCount}
+              </span>
+            </div>
+          </div>
 
-            {/* Pie Chart & Legends */}
-            <div className="flex flex-col sm:flex-row items-center justify-around gap-6 my-auto pt-4 pb-2">
-              {/* Clean SVG Donut Chart with dynamic segments & percentages */}
-              <div className="relative w-44 h-44 shrink-0 flex items-center justify-center">
-                <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                  {statusStats.total === 0 ? (
-                    <circle
-                      cx="50"
-                      cy="50"
-                      r="34"
-                      fill="transparent"
-                      stroke="currentColor"
-                      className="text-muted/20"
-                      strokeWidth="32"
-                    />
-                  ) : (
-                    statusStats.segments.map((seg) => (
-                      <circle
-                        key={seg.key}
-                        cx="50"
-                        cy="50"
-                        r="34"
-                        fill="transparent"
-                        stroke={seg.color}
-                        strokeWidth="32"
-                        strokeDasharray={seg.strokeDash}
-                        strokeDashoffset={seg.strokeOffset}
-                        className="transition-all duration-500 ease-out"
-                      />
-                    ))
-                  )}
+          {/* Card 3: In Progress */}
+          <div
+            onClick={() => {
+              setStatusFilter("In Progress")
+              setCurrentPage(1)
+            }}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-[#f0f9ff] text-[#0284c7] dark:bg-[#0284c7]/20 dark:text-[#7dd3fc] flex items-center justify-center shrink-0">
+              <ArrowUpRight className="w-5 h-5 stroke-[1.75]" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-muted-foreground truncate">
+                In Progress
+              </span>
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground mt-0.5">
+                {inProgressOrdersCount}
+              </span>
+            </div>
+          </div>
 
-                  {/* Percentage text rendered inside segments having >= 10% */}
-                  {statusStats.total > 0 &&
-                    statusStats.segments.map((seg) => {
-                      if (seg.pct < 10) return null
-                      const rad = (seg.midAngle * Math.PI) / 180
-                      const x = 50 + 34 * Math.cos(rad)
-                      const y = 50 + 34 * Math.sin(rad)
-                      return (
-                        <text
-                          key={`txt-${seg.key}`}
-                          x={x}
-                          y={y}
-                          textAnchor="middle"
-                          dominantBaseline="central"
-                          fill="#ffffff"
-                          fontSize="7"
-                          fontWeight="bold"
-                          transform={`rotate(90 ${x} ${y})`}
-                          className="select-none pointer-events-none drop-shadow-xs"
-                        >
-                          {seg.pct}%
-                        </text>
-                      )
-                    })}
-                </svg>
+          {/* Card 4: Shipments */}
+          <div
+            onClick={() => {
+              setStatusFilter("Shipments")
+              setCurrentPage(1)
+            }}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-[#eef2ff] text-[#4f46e5] dark:bg-[#4f46e5]/20 dark:text-[#a5b4fc] flex items-center justify-center shrink-0">
+              <Truck className="w-5 h-5 stroke-[1.75]" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-muted-foreground truncate">
+                Shipments
+              </span>
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground mt-0.5">
+                {shipmentsOrdersCount}
+              </span>
+            </div>
+          </div>
 
-                {/* If total is 0, show friendly center label */}
-                {statusStats.total === 0 && (
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                    <span className="text-xs text-muted-foreground font-medium">0 Orders</span>
-                  </div>
-                )}
-              </div>
+          {/* Card 5: Completed Orders */}
+          <div
+            onClick={() => {
+              setStatusFilter("Completed")
+              setCurrentPage(1)
+            }}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-[#edf5f0] text-[#1e4630] dark:bg-[#1e4630]/20 dark:text-[#6ee7b7] flex items-center justify-center shrink-0">
+              <CheckCircle2 className="w-5 h-5 stroke-[1.75]" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-muted-foreground truncate">
+                Completed
+              </span>
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground mt-0.5">
+                {completedOrdersCount}
+              </span>
+            </div>
+          </div>
 
-              {/* Status Legend List (Dynamic matching Image 3) */}
-              <div className="space-y-2 text-xs font-medium min-w-[130px]">
-                {statusStats.list.map((s) => (
-                  <div
-                    key={s.key}
-                    onClick={() => {
-                      setStatusFilter(s.key)
-                      setCurrentPage(1)
-                    }}
-                    className="flex items-center justify-between gap-3 text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span
-                        className="w-2.5 h-2.5 rounded-sm shrink-0"
-                        style={{ backgroundColor: s.color }}
-                      />
-                      <span>{s.label}</span>
-                    </div>
-                    <span className="text-[11px] font-semibold text-foreground/80">
-                      {s.pct}%
-                    </span>
-                  </div>
-                ))}
-              </div>
+          {/* Card 6: Refunded */}
+          <div
+            onClick={() => {
+              setStatusFilter("Refunded")
+              setCurrentPage(1)
+            }}
+            className="cursor-pointer bg-card rounded-2xl border-0 p-4 sm:p-5 flex items-center gap-3.5 sm:gap-4 transition-all duration-200 shadow-xs hover:shadow-md hover:-translate-y-0.5"
+          >
+            <div className="w-12 h-12 rounded-2xl bg-[#faf5ff] text-[#9333ea] dark:bg-[#9333ea]/20 dark:text-[#d8b4fe] flex items-center justify-center shrink-0">
+              <RotateCcw className="w-5 h-5 stroke-[1.75]" />
+            </div>
+            <div className="flex flex-col min-w-0">
+              <span className="text-xs font-medium text-muted-foreground truncate">
+                Refunded
+              </span>
+              <span className="text-2xl font-bold font-sans tracking-tight text-foreground mt-0.5">
+                {refundedOrdersCount}
+              </span>
             </div>
           </div>
         </div>
@@ -707,28 +488,28 @@ export function OrderManagement() {
 
           {/* Table Container - seamless without separate outer border matching ProductManagement */}
           <div className="relative w-full overflow-x-auto">
-            <Table className="w-full text-left border-collapse text-xs">
+            <Table className="w-full min-w-[760px] text-left border-collapse text-xs table-fixed">
               <TableHeader>
                 <TableRow className="bg-muted/30 hover:bg-muted/30 border-none">
-                  <TableHead className="py-4 px-5 font-medium text-xs text-muted-foreground">
+                  <TableHead className="w-[13%] py-4 px-5 font-medium text-xs text-muted-foreground">
                     Order ID
                   </TableHead>
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
+                  <TableHead className="w-[27%] py-4 px-4 font-medium text-xs text-muted-foreground">
                     Products
                   </TableHead>
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
+                  <TableHead className="w-[18%] py-4 px-4 font-medium text-xs text-muted-foreground">
                     Customer
                   </TableHead>
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
+                  <TableHead className="w-[14%] py-4 px-4 font-medium text-xs text-muted-foreground">
                     Date
                   </TableHead>
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
+                  <TableHead className="w-[11%] py-4 px-4 font-medium text-xs text-muted-foreground">
                     Amount
                   </TableHead>
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
+                  <TableHead className="w-[11%] py-4 px-4 font-medium text-xs text-muted-foreground">
                     Status
                   </TableHead>
-                  <TableHead className="py-4 px-5 text-right font-medium text-xs text-muted-foreground pr-6">
+                  <TableHead className="w-[6%] py-4 px-4 text-center font-medium text-xs text-muted-foreground">
                     Action
                   </TableHead>
                 </TableRow>
@@ -846,18 +627,32 @@ export function OrderManagement() {
                         </DropdownMenu>
                       </TableCell>
 
-                      {/* Action View Eye Button */}
-                      <TableCell className="py-3.5 px-5 text-right pr-6" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setSelectedOrder(ord)}
-                          className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
-                          title="View order details"
-                        >
-                          <Eye className="w-4 h-4" />
-                          <span className="sr-only">View Order</span>
-                        </Button>
+                      {/* Action DropdownMenu (Three dots matching product table) */}
+                      <TableCell className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                              <span className="sr-only">Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 rounded-xl bg-card border border-border shadow-md p-1.5">
+                            <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
+                              Order Options
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() => setSelectedOrder(ord)}
+                              className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted text-foreground gap-2"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span>View Order Details</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))
@@ -924,117 +719,158 @@ export function OrderManagement() {
         </div>
       </div>
 
-      {/* ORDER DETAILS RECEIPT MODAL (Matching Product Page Dialog Style) */}
-      <Dialog open={Boolean(selectedOrder)} onOpenChange={(open) => !open && setSelectedOrder(null)}>
-        <DialogContent className="sm:max-w-lg rounded-2xl bg-card border-border p-6 shadow-xl">
+      {/* RIGHT SLIDE-OVER DRAWER FOR ORDER DETAILS (Matching Product View Detail Structure) */}
+      <Sheet open={Boolean(selectedOrder)} onOpenChange={(open) => !open && setSelectedOrder(null)}>
+        <SheetContent
+          showCloseButton={false}
+          side="right"
+          className="w-full data-[side=right]:sm:max-w-lg data-[side=right]:md:max-w-xl data-[side=right]:lg:max-w-[560px] p-0 flex flex-col gap-0 border-l border-border bg-card shadow-2xl z-50 overflow-hidden h-full"
+        >
           {selectedOrder && (
-            <div className="space-y-5">
-              <DialogHeader>
-                <div className="flex items-center justify-between">
-                  <Badge variant="outline" className={`text-xs border-border font-semibold ${getStatusBadgeClass(selectedOrder.status)}`}>
-                    {selectedOrder.status}
-                  </Badge>
-                  <span className="text-xs font-mono text-muted-foreground">
-                    {selectedOrder.orderCode}
-                  </span>
-                </div>
-                <DialogTitle className="text-lg font-bold text-foreground pt-1">
-                  Order Details
-                </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
-                  Placed on {selectedOrder.date} • {selectedOrder.paymentMethod}
-                </DialogDescription>
-              </DialogHeader>
-
-              {/* Customer Contact Card */}
-              <div className="p-3.5 rounded-xl bg-muted/30 border border-border/80 space-y-2 text-xs">
-                <div className="flex items-center gap-2 font-semibold text-foreground">
-                  <span>{selectedOrder.customer.name}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground text-[11px]">
-                  <Phone className="w-3.5 h-3.5" />
-                  <span>{selectedOrder.customer.phone}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground text-[11px]">
-                  <MapPin className="w-3.5 h-3.5" />
-                  <span>{selectedOrder.customer.address}</span>
-                </div>
-              </div>
-
-              {/* Order Items List */}
-              <div className="space-y-2.5">
-                <span className="text-xs font-bold text-foreground block">
-                  Items ({selectedOrder.items.length})
-                </span>
-                <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
-                  {selectedOrder.items.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className="flex items-center justify-between p-2.5 rounded-xl bg-muted/20 border border-border/40 text-xs"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <img
-                          src={item.image}
-                          alt={item.name}
-                          className="w-9 h-9 rounded-lg object-cover"
-                        />
-                        <div>
-                          <span className="font-semibold text-foreground block">
-                            {item.name}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground">
-                            Qty: {item.quantity} × ${item.price.toFixed(2)}
-                          </span>
-                        </div>
-                      </div>
-                      <span className="font-semibold text-foreground">
-                        ${(item.quantity * item.price).toFixed(2)}
+            <>
+              {/* Header matching product view details: green circle icon, title, order code, status badge, circular X */}
+              <div className="p-5 sm:p-6 border-b border-border flex items-center justify-between bg-card shrink-0">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-100 dark:border-emerald-900/50 flex items-center justify-center text-[#183626] dark:text-emerald-400 shrink-0">
+                    <Package className="w-5 h-5 stroke-[1.75]" />
+                  </div>
+                  <div className="min-w-0">
+                    <SheetTitle className="text-base sm:text-lg font-bold text-foreground font-sans truncate">
+                      Order Details
+                    </SheetTitle>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs font-mono text-muted-foreground">
+                        {selectedOrder.orderCode}
                       </span>
+                      <span className="text-xs text-muted-foreground">•</span>
+                      <Badge
+                        variant="outline"
+                        className={`text-[11px] border-border font-semibold ${getStatusBadgeClass(
+                          selectedOrder.status
+                        )}`}
+                      >
+                        {selectedOrder.status}
+                      </Badge>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
 
-              {/* Total & Payment Summary */}
-              <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
-                <div className="flex items-center gap-1.5 text-muted-foreground">
-                  <CreditCard className="w-4 h-4" />
-                  <span>Paid via {selectedOrder.paymentMethod}</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-xs text-muted-foreground block">Total Amount</span>
-                  <span className="text-lg font-bold font-sans text-foreground">
-                    ${selectedOrder.amount.toFixed(2)}
-                  </span>
-                </div>
-              </div>
-
-              <DialogFooter className="pt-2 flex items-center justify-between sm:justify-between w-full">
-                <Button
-                  variant="outline"
-                  size="sm"
+                <button
+                  type="button"
                   onClick={() => setSelectedOrder(null)}
-                  className="rounded-full border-border text-xs px-4"
+                  className="w-8 h-8 rounded-full border border-border flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer shrink-0"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                  <span className="sr-only">Close</span>
+                </button>
+              </div>
+
+              {/* Scrollable Sheet Content Body */}
+              <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5 min-h-0">
+                {/* Placed On Date & Payment Method */}
+                <div className="text-xs text-muted-foreground font-medium">
+                  Placed on {selectedOrder.date}
+                </div>
+
+                {/* Customer Information Card */}
+                <div className="p-4 rounded-2xl bg-muted/30 border border-border/80 space-y-2.5">
+                  <span className="text-xs font-bold text-foreground uppercase tracking-wider block">
+                    Customer Information
+                  </span>
+                  <div className="space-y-2 text-xs">
+                    <div className="font-semibold text-foreground text-sm">
+                      {selectedOrder.customer.name}
+                    </div>
+                    {selectedOrder.customer.phone && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Phone className="w-3.5 h-3.5 shrink-0" />
+                        <span>{selectedOrder.customer.phone}</span>
+                      </div>
+                    )}
+                    {selectedOrder.customer.address && (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <MapPin className="w-3.5 h-3.5 shrink-0" />
+                        <span>{selectedOrder.customer.address}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Order Items List */}
+                <div className="space-y-3">
+                  <span className="text-xs font-bold text-foreground uppercase tracking-wider block">
+                    Items ({selectedOrder.items.length})
+                  </span>
+                  <div className="space-y-2.5">
+                    {selectedOrder.items.map((item, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center justify-between p-3.5 rounded-2xl bg-muted/20 border border-border/40 text-xs"
+                      >
+                        <div className="flex items-center gap-3 min-w-0">
+                          <img
+                            src={item.image}
+                            alt={item.name}
+                            className="w-11 h-11 rounded-xl object-cover border border-border/40 shrink-0"
+                          />
+                          <div className="min-w-0">
+                            <span className="font-semibold text-foreground block text-xs sm:text-sm truncate">
+                              {item.name}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground mt-0.5 block">
+                              Qty: {item.quantity} × ${item.price.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                        <span className="font-semibold text-foreground text-sm shrink-0 ml-3">
+                          ${(item.quantity * item.price).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Total & Payment Summary Card */}
+                <div className="p-4 rounded-2xl bg-muted/30 border border-border/80 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2 text-muted-foreground font-medium">
+                    <CreditCard className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <span>Paid via {selectedOrder.paymentMethod}</span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-xs text-muted-foreground block">Total Amount</span>
+                    <span className="text-xl font-bold font-sans text-foreground">
+                      ${selectedOrder.amount.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Sheet Footer matching Product view detail */}
+              <div className="p-4 sm:p-5 border-t border-border flex items-center justify-between bg-card shrink-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setSelectedOrder(null)}
+                  className="h-10 px-6 rounded-full border-border text-xs text-foreground hover:bg-muted font-medium cursor-pointer"
                 >
                   Close
                 </Button>
                 {selectedOrder.status !== "Completed" && (
                   <Button
-                    size="sm"
-                    onClick={() => {
-                      handleUpdateStatus(selectedOrder.id, "Completed")
-                    }}
-                    className="rounded-full bg-primary text-primary-foreground text-xs px-4 gap-1.5"
+                    type="button"
+                    onClick={() => handleUpdateStatus(selectedOrder.id, "Completed")}
+                    className="h-10 px-6 rounded-full bg-[#183626] hover:bg-[#12281c] text-white dark:bg-[#dca038] dark:text-[#0d1a14] dark:hover:bg-[#c58d2e] text-xs font-semibold shadow-xs transition-all cursor-pointer gap-2"
                   >
-                    <Check className="w-3.5 h-3.5" />
+                    <Check className="w-4 h-4" />
                     <span>Mark as Completed</span>
                   </Button>
                 )}
-              </DialogFooter>
-            </div>
+              </div>
+            </>
           )}
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

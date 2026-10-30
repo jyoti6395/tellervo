@@ -6,7 +6,8 @@ import {
   UserX,
   Calendar,
   ChevronLeft,
-  ChevronRight,
+  ChevronRight,
+  ChevronDown,
   UploadCloud,
   X,
   MoreHorizontal,
@@ -460,28 +461,28 @@ export function CustomerManagement() {
 
           {/* CUSTOMERS TABLE */}
           <div className="relative w-full overflow-x-auto">
-            <Table className="w-full text-left border-collapse text-xs">
-              <TableHeader>
-                <TableRow className="bg-muted/30 hover:bg-muted/30 border-none">
-                  <TableHead className="py-4 px-5 font-medium text-xs text-muted-foreground">
-                    Customer Name
-                  </TableHead>
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
-                    Email
-                  </TableHead>
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
-                    Phone
-                  </TableHead>
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
-                    Joined Date
-                  </TableHead>
-                  <TableHead className="py-4 px-4 font-medium text-xs text-muted-foreground">
-                    Status
-                  </TableHead>
-                  <TableHead className="py-4 px-5 text-right font-medium text-xs text-muted-foreground pr-6">
-                    Action
-                  </TableHead>
-                </TableRow>
+            <Table className="w-full min-w-[760px] text-left border-collapse text-xs table-fixed">
+              <TableHeader>
+                <TableRow className="bg-muted/30 hover:bg-muted/30 border-none">
+                  <TableHead className="w-[24%] py-4 px-5 font-medium text-xs text-muted-foreground">
+                    Customer Name
+                  </TableHead>
+                  <TableHead className="w-[24%] py-4 px-4 font-medium text-xs text-muted-foreground">
+                    Email
+                  </TableHead>
+                  <TableHead className="w-[18%] py-4 px-4 font-medium text-xs text-muted-foreground">
+                    Phone
+                  </TableHead>
+                  <TableHead className="w-[16%] py-4 px-4 font-medium text-xs text-muted-foreground">
+                    Joined Date
+                  </TableHead>
+                  <TableHead className="w-[12%] py-4 px-4 font-medium text-xs text-muted-foreground">
+                    Status
+                  </TableHead>
+                  <TableHead className="w-[6%] py-4 px-4 text-center font-medium text-xs text-muted-foreground">
+                    Action
+                  </TableHead>
+                </TableRow>
               </TableHeader>
 
               <TableBody>
@@ -511,76 +512,87 @@ export function CustomerManagement() {
                       className="border-b border-border/40 hover:bg-muted/20 transition-colors cursor-pointer group"
                       onClick={() => handleOpenCustomerDetails(cust)}
                     >
-                      {/* Customer Name */}
-                      <TableCell className="py-3.5 px-5 font-medium text-xs text-foreground">
-                        {cust.name}
-                      </TableCell>
-
-                      {/* Email */}
-                      <TableCell className="py-3.5 px-4 text-xs text-muted-foreground">
-                        {cust.email}
-                      </TableCell>
-
-                      {/* Phone */}
-                      <TableCell className="py-3.5 px-4 text-xs text-muted-foreground">
-                        {cust.phone}
-                      </TableCell>
-
-
-                      {/* Joined Date */}
-                      <TableCell className="py-3.5 px-4 text-xs text-muted-foreground">
-                        {cust.joinedDate}
-                      </TableCell>
-
-                      {/* Status */}
-                      <TableCell className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
-                        <span
-                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold shadow-2xs ${
-                            cust.status === "Active"
-                              ? "bg-emerald-50 text-emerald-700"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {cust.status}
-                        </span>
-                      </TableCell>
-
-                      {/* Action Menu (ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¢ÃƒÆ’Ã‚Â¢ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡Ãƒâ€šÃ‚Â¬ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â¢) */}
-                      <TableCell className="py-4 px-4 text-center" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button
-                              type="button"
-                              className="h-8 w-8 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground inline-flex items-center justify-center transition-colors focus:outline-none"
-                            >
-                              <MoreHorizontal className="w-4 h-4" />
-                              <span className="sr-only">Actions</span>
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48 rounded-xl bg-card border border-border shadow-md p-1.5">
-                            <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
-                              Customer Options
-                            </DropdownMenuLabel>
-                            <DropdownMenuItem
-                              onClick={() => handleOpenCustomerDetails(cust)}
-                              className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted text-foreground gap-2"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-muted-foreground" />
-                              <span>View Details</span>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator className="my-1 bg-border" />
-                            <DropdownMenuItem
-                              onClick={() => {
-                                handleToggleStatus(cust.id)
-                              }}
-                              className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted text-foreground gap-2"
-                            >
-                              <UserX className="w-3.5 h-3.5 text-muted-foreground" />
-                              <span>Mark as {cust.status === "Active" ? "Inactive" : "Active"}</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                      {/* Customer Name */}
+                      <TableCell className="py-3.5 px-5 font-medium text-xs text-foreground truncate">
+                        <span className="capitalize">{cust.name}</span>
+                      </TableCell>
+
+                      {/* Email */}
+                      <TableCell className="py-3.5 px-4 text-xs text-muted-foreground truncate">
+                        {cust.email}
+                      </TableCell>
+
+                      {/* Phone */}
+                      <TableCell className="py-3.5 px-4 text-xs text-muted-foreground whitespace-nowrap">
+                        {cust.phone}
+                      </TableCell>
+
+                      {/* Joined Date */}
+                      <TableCell className="py-3.5 px-4 text-xs text-muted-foreground whitespace-nowrap">
+                        {cust.joinedDate}
+                      </TableCell>
+
+                      {/* Interactive Status Pill Badge */}
+                      <TableCell className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold transition-colors shadow-2xs ${
+                                cust.status === "Active"
+                                  ? "bg-emerald-50 text-emerald-700 hover:bg-emerald-100/80"
+                                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                              }`}
+                            >
+                              <span>{cust.status}</span>
+                              <ChevronDown className="w-3 h-3 opacity-60 ml-0.5" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="start" className="bg-card border-border">
+                            <DropdownMenuItem onClick={() => handleToggleStatus(cust.id)}>
+                              {cust.status === "Active" ? "Set to Inactive" : "Set to Active"}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+
+                      {/* Action Menu */}
+                      <TableCell className="py-3.5 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 rounded-full text-muted-foreground hover:text-foreground hover:bg-muted mx-auto"
+                            >
+                              <MoreHorizontal className="w-4 h-4" />
+                              <span className="sr-only">Actions</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 rounded-xl bg-card border border-border shadow-md p-1.5">
+                            <DropdownMenuLabel className="text-[11px] font-semibold text-muted-foreground px-2 py-1">
+                              Customer Options
+                            </DropdownMenuLabel>
+                            <DropdownMenuItem
+                              onClick={() => handleOpenCustomerDetails(cust)}
+                              className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted text-foreground gap-2"
+                            >
+                              <Eye className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span>View Details</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="my-1 bg-border" />
+                            <DropdownMenuItem
+                              onClick={() => {
+                                handleToggleStatus(cust.id)
+                              }}
+                              className="text-xs cursor-pointer rounded-lg px-2 py-1.5 hover:bg-muted text-foreground gap-2"
+                            >
+                              <UserX className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span>Mark as {cust.status === "Active" ? "Inactive" : "Active"}</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))
                 )}
