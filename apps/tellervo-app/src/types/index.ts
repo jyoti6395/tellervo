@@ -47,6 +47,7 @@ export interface Product {
     label: string;
     count: number;
     price: number;
+    originalPrice?: number;
     savings?: string;
   }[];
   reviews?: {

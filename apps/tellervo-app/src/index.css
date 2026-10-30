@@ -129,3 +129,24 @@ body {
   will-change: transform, opacity;
 }
 
+/* Smooth Heart Zoom / Pop Animation */
+@keyframes heartPop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.38);
+  }
+  75% {
+    transform: scale(0.92);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-heart-pop {
+  animation: heartPop 0.42s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  will-change: transform;
+}
+
