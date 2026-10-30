@@ -1,5 +1,5 @@
-import React from 'react';
-import { Heart, Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import { Heart, Plus, Sparkles } from 'lucide-react';
 import { Product } from '../../types';
 import { useApp } from '../../context/AppContext';
 
@@ -8,12 +8,42 @@ interface ProductCardProps {
   onProductClick: (product: Product) => void;
 }
 
+const getBadgeStyleClass = (type?: string) => {
+  switch (type) {
+    case 'bestseller':
+      return 'bg-[#FFF9EE] text-[#8C5D14] border-[#F5DCB1]';
+    case 'seasonal':
+    case 'organic':
+      return 'bg-[#F0F5F1] text-[#1E4A2F] border-[#CFE0D4]';
+    case 'adaptogenic':
+      return 'bg-[#F5F0F8] text-[#5B2E8A] border-[#DECDEB]';
+    case 'new-harvest':
+      return 'bg-[#FAF5EA] text-[#8A6318] border-[#E8D9BD]';
+    case 'zero-proof':
+      return 'bg-[#F0F7FA] text-[#1F5472] border-[#CDE3EE]';
+    case 'exclusive':
+      return 'bg-[#FDF6ED] text-[#8D4A18] border-[#F5D8C0]';
+    default:
+      return 'bg-[#F0F5F1] text-[#1E4A2F] border-[#CFE0D4]';
+  }
+};
+
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onProductClick,
 }) => {
   const { favorites, toggleFavorite, addToCart } = useApp();
   const isFav = favorites.includes(product.id);
+  const [isPumping, setIsPumping] = useState(false);
+
+  const handleFavoriteClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsPumping(false);
+    requestAnimationFrame(() => {
+      setIsPumping(true);
+    });
+    toggleFavorite(product.id);
+  };
 
   // Status checks: Active, Low Stock ("Low Stock"), Out of Stock
   const rawStatus = (product.status || '').toLowerCase().trim();
@@ -35,10 +65,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       product.stockStatus === 'low-stock' ||
       (product.stockCount !== undefined && product.stockCount > 0 && product.stockCount <= 5));
 
+  // Custom Badge (only displayed if badge is set)
+  const badgeText = (product.badge || '').trim();
+
   return (
-    <div className={`bg-white rounded-3xl p-3 sm:p-4 border border-[#EAE4D7] shadow-soft-sm flex flex-col justify-between group hover:border-[#D6CEBF] transition-all hover:shadow-md ${
-      isOutOfStock ? 'opacity-90' : ''
-    }`}>
+    <div
+      className={`flex flex-col justify-between group transition-all ${
+        isOutOfStock ? 'opacity-90' : ''
+      }`}
+    >
       {/* Image & Badges */}
       <div
         onClick={() => onProductClick(product)}
@@ -51,9 +86,8 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             e.currentTarget.src =
               'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80';
           }}
-          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
-            isOutOfStock ? 'grayscale-[30%]' : ''
-          }`}
+          className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? 'grayscale-[30%]' : ''
+            }`}
         />
 
         {/* Badges on Card */}
@@ -66,25 +100,24 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             <span className="px-2 py-0.5 bg-[#C97B1A]/95 backdrop-blur-sm text-white text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs">
               Limited Stock
             </span>
-          ) : (product.badge || product.isMostSelling) ? (
-            <span className="px-2 py-0.5 bg-[#183324]/90 backdrop-blur-sm text-[#FAF8F3] text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs">
-              {product.badge || 'BESTSELLER'}
-            </span>
           ) : null}
         </div>
 
-        {/* Favorite Heart Button */}
+        {/* Favorite Heart Button (No White BG, Smooth Zoom-up Pop Effect) */}
         <button
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleFavorite(product.id);
-          }}
-          aria-label="Save to favorites"
-          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-[#21382A] hover:bg-white shadow-sm transition-transform active:scale-90"
+          type="button"
+          onClick={handleFavoriteClick}
+          onAnimationEnd={() => setIsPumping(false)}
+          aria-label={isFav ? "Remove from favorites" : "Save to favorites"}
+          className="absolute top-2.5 right-2.5 z-10 p-1 flex items-center justify-center cursor-pointer transition-transform duration-150 active:scale-90 select-none focus:outline-none"
         >
           <Heart
-            className={`w-3.5 h-3.5 ${
-              isFav ? 'fill-[#C53D43] text-[#C53D43]' : 'text-[#21382A]'
+            className={`w-5 h-5 transition-colors duration-200 ${
+              isPumping ? 'animate-heart-pop' : ''
+            } ${
+              isFav
+                ? 'fill-[#C53D43] text-[#C53D43] drop-shadow-[0_2px_6px_rgba(197,61,67,0.45)]'
+                : 'text-white/95 fill-black/15 stroke-[2] drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.55)] hover:text-white hover:scale-105'
             }`}
           />
         </button>
@@ -103,7 +136,23 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           {product.name}
         </h3>
 
-        <p className="text-[11px] text-[#7C8D80] mt-0.5">{product.size}</p>
+        {/* Size / Volume and Small Badge */}
+        <div className="flex items-center justify-between gap-1.5 mt-1 min-h-[20px]">
+          <span className="text-[11px] text-[#7C8D80] truncate font-medium shrink-0">
+            {product.size}
+          </span>
+
+          {badgeText && (
+            <span
+              className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase border shadow-2xs shrink-0 max-w-[65%] truncate ${getBadgeStyleClass(
+                product.badgeType
+              )}`}
+            >
+              <Sparkles className="w-2.5 h-2.5 shrink-0" />
+              <span className="truncate">{badgeText}</span>
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Price & Add / Purchase Button */}

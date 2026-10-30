@@ -8,13 +8,8 @@ import { ProductRecord } from './supabase';
  */
 export function mapRecordToProduct(record: ProductRecord): Product {
   // Badges & Badge types (strictly from database fields)
-  let badge: string | undefined = record.badge?.trim() || undefined;
-  let badgeType: Product['badgeType'] = (record.badge_type?.trim() as Product['badgeType']) || undefined;
-
-  if (!badge && (record.is_most_selling || (record as any).most_selling)) {
-    badge = 'BESTSELLER';
-    badgeType = 'bestseller';
-  }
+  const badge: string | undefined = record.badge?.trim() || undefined;
+  const badgeType: Product['badgeType'] = (record.badge_type?.trim() as Product['badgeType']) || undefined;
 
   // Stock status
   let stockStatus: Product['stockStatus'] = 'in-stock';

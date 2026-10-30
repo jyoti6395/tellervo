@@ -404,9 +404,9 @@ export const HomeScreen: React.FC = () => {
                       <span className="px-2 py-0.5 bg-[#C97B1A]/95 backdrop-blur-sm text-white text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs">
                         Limited Stock
                       </span>
-                    ) : (product.badge || product.isMostSelling) ? (
+                    ) : (product.badge || product.isMostSelling || product.isFeatured) ? (
                       <span className="px-2 py-0.5 bg-[#183324]/90 backdrop-blur-sm text-[#FAF8F3] text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs">
-                        {product.badge || 'BESTSELLER'}
+                        {product.badge || (product.isMostSelling ? 'BESTSELLER' : 'FEATURED')}
                       </span>
                     ) : null}
                   </div>

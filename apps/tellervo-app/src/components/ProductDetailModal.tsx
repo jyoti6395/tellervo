@@ -2,30 +2,66 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useNavigation } from '../routes/hooks/useNavigation';
 import { stockService } from '@tellervo/supabase';
-import { Bell, ChevronLeft, ChevronRight, 
-  Heart, 
-  Share2, 
-  ShoppingBag, 
-  Star, 
-  Plus, 
-  Minus, 
-  Compass, 
-  Sparkles, 
-  Wine, 
-  Clock, 
-  Leaf, 
+import {
+  Bell, ChevronLeft, ChevronRight,
+  Heart,
+  Share2,
+  ShoppingBag,
+  Star,
+  Flame,
+  Plus,
+  Minus,
+  Compass,
+  Sparkles,
+  Wine,
+  Clock,
+  Leaf,
   Truck,
   ZoomIn,
   Package,
-  AlertCircle } from 'lucide-react';
+  Sun,
+  AlertCircle
+} from 'lucide-react';
+
+const getAromaticsDescriptor = (val: number) => {
+  if (val <= 1) return 'Delicate & Subtle';
+  if (val === 2) return 'Light Herbal';
+  if (val === 3) return 'Rich Pine & Moss';
+  if (val === 4) return 'Bold Botanical';
+  return 'Intense Forest';
+};
+
+const getEffervescenceDescriptor = (val: number) => {
+  if (val <= 1) return 'Still & Smooth';
+  if (val === 2) return 'Gentle Petillant';
+  if (val === 3) return 'Crisp Sparkle';
+  if (val === 4) return 'Lively Fizz';
+  return 'Vibrant Bubbles';
+};
+
+const getBitternessDescriptor = (val: number) => {
+  if (val <= 1) return 'Soft & Silky';
+  if (val === 2) return 'Mild Tannins';
+  if (val === 3) return 'Structured Grip';
+  if (val === 4) return 'Bold & Earthy';
+  return 'Deeply Tannic';
+};
+
+const getSweetnessDescriptor = (val: number) => {
+  if (val <= 1) return 'Bone Dry (0g)';
+  if (val === 2) return 'Dry & Crisp';
+  if (val === 3) return 'Balanced Semi-Dry';
+  if (val === 4) return 'Subtly Sweet';
+  return 'Lush Honeyed';
+};
 
 export const ProductDetailModal: React.FC = () => {
-  const { 
-    selectedProduct, 
-    setSelectedProduct, 
-    addToCart, 
-    favorites, 
-    toggleFavorite, 
+  const {
+    selectedProduct,
+    setSelectedProduct,
+    addToCart,
+    favorites,
+    toggleFavorite,
     showToast,
     triggerConfetti,
     t,
@@ -153,6 +189,33 @@ export const ProductDetailModal: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentPath]);
 
+  // Auto-switch pack size if currently selected pack option has less stock than needed
+  useEffect(() => {
+    if (!selectedProduct) return;
+    const availStock = typeof selectedProduct.stockCount === 'number' ? selectedProduct.stockCount : 20;
+    const isOut =
+      (selectedProduct.status || '').toLowerCase().trim().replace(/[\s_-]+/g, '') === 'outofstock' ||
+      selectedProduct.stockStatus === 'out-of-stock' ||
+      availStock <= 0;
+    if (availStock > 0 && !isOut && !isStockUnavailable) {
+      const basePrice = selectedProduct.discountPrice ?? selectedProduct.price ?? 0;
+      const opts = selectedProduct.packOptions && selectedProduct.packOptions.length > 0
+        ? selectedProduct.packOptions
+        : [
+            { label: '1 Bottle', count: 1, price: Number(basePrice.toFixed(2)) },
+            { label: '3 Bottles', count: 3, price: Number((basePrice * 3 * 0.95).toFixed(2)) },
+            { label: '5 Bottles', count: 5, price: Number((basePrice * 5 * 0.90).toFixed(2)) },
+          ];
+      const isCurrentAvailable = availStock >= (opts[selectedPackIndex]?.count || 1);
+      if (!isCurrentAvailable) {
+        const firstAvailableIdx = opts.findIndex((opt) => availStock >= opt.count);
+        if (firstAvailableIdx !== -1) {
+          setSelectedPackIndex(firstAvailableIdx);
+        }
+      }
+    }
+  }, [selectedProduct, isStockUnavailable, selectedPackIndex]);
+
   if (!selectedProduct) return null;
 
   const product = selectedProduct;
@@ -161,35 +224,43 @@ export const ProductDetailModal: React.FC = () => {
   // Available stock count
   const availableStock = typeof product.stockCount === 'number' ? product.stockCount : 20;
 
-  // Base unit price (respects discount price if active)
+  // Base unit price & original price (for pack price calculations)
   const baseUnitPrice = product.discountPrice ?? product.price ?? 0;
+  const baseOriginalPrice = product.originalPrice ?? product.price ?? 0;
 
   // Dynamic pack options (1 Bottle, 3 Bottles, 5 Bottles based on available stock)
   const packOptions = product.packOptions && product.packOptions.length > 0
-    ? product.packOptions
+    ? product.packOptions.map((opt) => ({
+        ...opt,
+        originalPrice: opt.originalPrice ?? Number((baseOriginalPrice * opt.count).toFixed(2)),
+      }))
     : [
         {
           label: '1 Bottle',
           count: 1,
           price: Number(baseUnitPrice.toFixed(2)),
+          originalPrice: baseOriginalPrice > baseUnitPrice ? Number(baseOriginalPrice.toFixed(2)) : undefined,
           savings: undefined,
         },
         {
           label: '3 Bottles',
           count: 3,
           price: Number((baseUnitPrice * 3 * 0.95).toFixed(2)),
+          originalPrice: Number((baseOriginalPrice * 3).toFixed(2)),
           savings: 'Save 5%',
         },
         {
           label: '5 Bottles',
           count: 5,
           price: Number((baseUnitPrice * 5 * 0.90).toFixed(2)),
+          originalPrice: Number((baseOriginalPrice * 5).toFixed(2)),
           savings: 'Save 10%',
         },
       ];
 
   const currentOption = packOptions[selectedPackIndex] || packOptions[0];
   const unitPrice = currentOption.price;
+  const currentOriginalPackPrice = currentOption.originalPrice;
   const totalPrice = (unitPrice * quantity).toFixed(2);
 
   // Gallery images (strictly from product data without fake placeholder photos)
@@ -312,7 +383,7 @@ export const ProductDetailModal: React.FC = () => {
         title: product.name,
         text: product.description,
         url,
-      }).catch(() => {});
+      }).catch(() => { });
     } else {
       navigator.clipboard?.writeText(url);
       showToast('Link copied to clipboard!');
@@ -320,11 +391,11 @@ export const ProductDetailModal: React.FC = () => {
   };
 
   return (
-    <div 
+    <div
       onClick={handleBack}
       className="fixed inset-0 z-50 flex justify-center bg-[#0E1D14]/70 backdrop-blur-sm animate-in fade-in duration-200 cursor-pointer"
     >
-      <div 
+      <div
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-md bg-[#FBF9F5] h-full flex flex-col overflow-hidden relative shadow-2xl animate-in slide-in-from-bottom duration-300 cursor-default"
       >
@@ -375,11 +446,10 @@ export const ProductDetailModal: React.FC = () => {
                 onClick={() => toggleRestockNotification(product.id, product.name)}
                 aria-label={isRestockNotified(product.id) ? 'Restock notification set' : 'Notify when in stock'}
                 title={isRestockNotified(product.id) ? 'Restock notification active' : 'Notify when active again'}
-                className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all shadow-xs cursor-pointer active:scale-95 ${
-                  isRestockNotified(product.id)
-                    ? 'bg-[#EBF4EE] border-[#C5DEC9] text-[#245D36]'
-                    : 'bg-[#FAF4E8] border-[#ECD9B7] text-[#9A6218] hover:bg-[#F4ECDA]'
-                }`}
+                className={`w-9 h-9 rounded-full border flex items-center justify-center transition-all shadow-xs cursor-pointer active:scale-95 ${isRestockNotified(product.id)
+                  ? 'bg-[#EBF4EE] border-[#C5DEC9] text-[#245D36]'
+                  : 'bg-[#FAF4E8] border-[#ECD9B7] text-[#9A6218] hover:bg-[#F4ECDA]'
+                  }`}
               >
                 <Bell className={`w-4 h-4 ${isRestockNotified(product.id) ? 'fill-[#245D36]' : 'text-[#C97B1A]'}`} />
               </button>
@@ -391,7 +461,7 @@ export const ProductDetailModal: React.FC = () => {
         <div className="flex-1 overflow-y-auto pb-28">
           {/* Hero Image Showcase with Instant Cursor & Mobile Thumb Magnifier */}
           <div className="relative px-4 pt-3 pb-2">
-            <div 
+            <div
               onMouseEnter={handleImageMouseEnter}
               onMouseLeave={handleImageMouseLeave}
               onMouseMove={handleImageMouseMove}
@@ -436,9 +506,8 @@ export const ProductDetailModal: React.FC = () => {
               {gallery[activeImageIndex] && (
                 <div
                   ref={lensRef}
-                  className={`absolute top-0 left-0 pointer-events-none w-24 h-24 rounded-full border-2 border-white/95 shadow-[0_0_25px_rgba(0,0,0,0.35)] ring-1 ring-black/20 bg-white/10 backdrop-brightness-110 z-20 ${
-                    isZooming ? 'opacity-100' : 'opacity-0'
-                  } transition-opacity duration-150`}
+                  className={`absolute top-0 left-0 pointer-events-none w-24 h-24 rounded-full border-2 border-white/95 shadow-[0_0_25px_rgba(0,0,0,0.35)] ring-1 ring-black/20 bg-white/10 backdrop-brightness-110 z-20 ${isZooming ? 'opacity-100' : 'opacity-0'
+                    } transition-opacity duration-150`}
                   style={{
                     willChange: 'transform',
                     transform: 'translate3d(0, 0, 0) translate(-50%, -50%)',
@@ -464,11 +533,11 @@ export const ProductDetailModal: React.FC = () => {
                   <span className="px-2.5 py-1 bg-[#C97B1A] text-white text-[10px] font-bold tracking-wider rounded-lg uppercase shadow-sm">
                     Limited Stock
                   </span>
-                ) : product.badge ? (
+                ) : null}
+                {/* product.badge ? (
                   <span className="px-2.5 py-1 bg-[#183324] text-white text-[10px] font-bold tracking-wider rounded-lg uppercase shadow-sm">
                     {product.badge}
-                  </span>
-                ) : null}
+                  </span> */}
 
                 {product.harvestLocation && (
                   <span className="px-2.5 py-1 bg-white/90 backdrop-blur-md text-[#22442E] text-[10px] font-bold rounded-lg border border-white/40 flex items-center gap-1 shadow-sm">
@@ -512,11 +581,10 @@ export const ProductDetailModal: React.FC = () => {
                           }
                           setIsZooming(false);
                         }}
-                        className={`w-14 h-14 sm:w-16 sm:h-16 aspect-square shrink-0 rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${
-                          activeImageIndex === idx
-                            ? 'border-[#183324] ring-2 ring-[#E5A953]/30 scale-105 shadow-sm'
-                            : 'border-[#E5DFD0] opacity-70 hover:opacity-100 hover:border-[#183324]/40'
-                        }`}
+                        className={`w-14 h-14 sm:w-16 sm:h-16 aspect-square shrink-0 rounded-2xl overflow-hidden border-2 transition-all cursor-pointer ${activeImageIndex === idx
+                          ? 'border-[#183324] ring-2 ring-[#E5A953]/30 scale-105 shadow-sm'
+                          : 'border-[#E5DFD0] opacity-70 hover:opacity-100 hover:border-[#183324]/40'
+                          }`}
                       >
                         <img
                           src={img}
@@ -543,8 +611,8 @@ export const ProductDetailModal: React.FC = () => {
             )}
           </div>
 
-          {/* Product Header Information */}
-          <div className="px-5 pt-2 space-y-3">
+          {/* Product Header Information & Content Sections */}
+          <div className="px-5 pt-2 space-y-6 sm:space-y-7">
             <div>
               {product.category && (
                 <span className="text-[10px] font-bold tracking-wider text-[#2E683E] uppercase block mb-1">
@@ -561,17 +629,58 @@ export const ProductDetailModal: React.FC = () => {
                 <span className="font-editorial text-2xl font-bold text-[#14261B]">
                   €{unitPrice.toFixed(2)}
                 </span>
-                {product.originalPrice && (
+                {currentOriginalPackPrice && currentOriginalPackPrice > unitPrice && (
                   <span className="text-sm text-[#9EAFA2] line-through">
-                    €{product.originalPrice.toFixed(2)}
+                    €{currentOriginalPackPrice.toFixed(2)}
                   </span>
                 )}
                 {product.size && (
                   <span className="text-xs text-[#7A8C7F] font-medium ml-1">
-                    • {product.size}
+                    • {currentOption.count > 1 ? `${currentOption.count} × ${product.size}` : product.size}
                   </span>
                 )}
               </div>
+
+              {/* Badges below price: Featured, Most Selling, or any custom badge */}
+              {(() => {
+                const isMostSelling = Boolean(product.isMostSelling || (product as any).is_most_selling || (product as any).most_selling);
+                const rawBadge = (product.badge || '').trim();
+                const normalizedBadge = rawBadge.toUpperCase();
+                const showCustomBadge = Boolean(
+                  rawBadge &&
+                  (!isMostSelling || (normalizedBadge !== 'MOST SELLING' && normalizedBadge !== 'BESTSELLER'))
+                );
+
+                if (!isMostSelling && !showCustomBadge) return null;
+
+                return (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                    {/* Featured Badge */}
+                    {/* {isFeatured && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[#FFF9EE] text-[#8C5D14] border border-[#F5DCB1] shadow-2xs">
+                        <Star className="w-3 h-3 text-[#E5A953] fill-[#E5A953]" />
+                        <span>Featured</span>
+                      </span>
+                    )} */}
+
+                    {/* Most Selling Badge */}
+                    {isMostSelling && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[#FDF2F0] text-[#9C2C25] border border-[#F8CEC9] shadow-2xs">
+                        <Flame className="w-3 h-3 text-[#D94F45] fill-[#D94F45]" />
+                        <span>Most Selling</span>
+                      </span>
+                    )}
+
+                    {/* Custom Badge */}
+                    {showCustomBadge && (
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase bg-[#F0F5F1] text-[#1E4A2F] border border-[#CFE0D4] shadow-2xs">
+                        <Sparkles className="w-3 h-3 text-[#2E683E]" />
+                        <span>{rawBadge}</span>
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Rating & Reviews row (rendered only if actual rating exists) */}
               {product.rating ? (
@@ -594,8 +703,8 @@ export const ProductDetailModal: React.FC = () => {
               </p>
             )}
 
-            {/* Pack Size Selection (Dynamic: 1 Bottle, 3 Bottles, 5 Bottles according to available stock) */}
-            <div className="space-y-2 pt-1">
+            {/* Pack Size Selection */}
+            <div className="space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-bold text-[#14261B] uppercase tracking-wider flex items-center gap-1.5">
                   <Package className="w-3.5 h-3.5 text-[#E5A953]" />
@@ -610,7 +719,7 @@ export const ProductDetailModal: React.FC = () => {
                 </span>
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 pt-2">
                 {packOptions.map((opt, idx) => {
                   const isSelected = selectedPackIndex === idx;
                   const isPackAvailable = availableStock >= opt.count && !isEffectiveOutOfStock;
@@ -621,17 +730,18 @@ export const ProductDetailModal: React.FC = () => {
                       type="button"
                       disabled={!isPackAvailable}
                       onClick={() => setSelectedPackIndex(idx)}
-                      className={`p-2.5 rounded-2xl border text-left transition-all relative cursor-pointer flex flex-col justify-between ${
+                      className={`p-2.5 rounded-2xl border text-left transition-all relative flex flex-col justify-between ${
                         !isPackAvailable
-                          ? 'opacity-40 bg-[#F4F0E8] border-[#E5DFD0] cursor-not-allowed'
+                          ? 'border-[#E5DFD0] bg-[#F4F0E8]/80 cursor-not-allowed select-none'
                           : isSelected
-                          ? 'border-[#183324] bg-[#183324] text-white shadow-soft-sm scale-[1.02]'
-                          : 'border-[#E6E0D2] bg-white text-[#1C3224] hover:border-[#183324]/40 hover:bg-[#FAF8F5]'
+                            ? 'border-[#183324] bg-[#183324] text-white shadow-soft-sm scale-[1.02] cursor-pointer'
+                            : 'border-[#E6E0D2] bg-white text-[#1C3224] hover:border-[#183324]/40 hover:bg-[#FAF8F5] cursor-pointer'
                       }`}
                     >
+                      {/* Savings Tag */}
                       {opt.savings && isPackAvailable && (
                         <span
-                          className={`absolute -top-2 right-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold shadow-xs ${
+                          className={`absolute -top-2.5 right-2 px-1.5 py-0.5 rounded-full text-[9px] font-bold shadow-xs z-10 pointer-events-none ${
                             isSelected ? 'bg-[#E5A953] text-[#14261B]' : 'bg-[#EAF3ED] text-[#246138]'
                           }`}
                         >
@@ -639,25 +749,38 @@ export const ProductDetailModal: React.FC = () => {
                         </span>
                       )}
 
-                      <div>
-                        <div className={`text-xs font-bold truncate ${isSelected ? 'text-white' : 'text-[#14261B]'}`}>
+                      {/* Card Info (Faded when Out of Stock) */}
+                      <div className={`transition-opacity duration-200 ${!isPackAvailable ? 'opacity-20' : ''}`}>
+                        <div className={`text-xs font-bold truncate ${isSelected && isPackAvailable ? 'text-white' : 'text-[#14261B]'}`}>
                           {opt.label}
                         </div>
-                        <div className={`text-[10px] mt-0.5 ${isSelected ? 'text-white/75' : 'text-[#7A8C7F]'}`}>
+                        <div className={`text-[10px] mt-0.5 ${isSelected && isPackAvailable ? 'text-white/75' : 'text-[#7A8C7F]'}`}>
                           {opt.count === 1 ? 'Single unit' : `${opt.count} bottles`}
                         </div>
                       </div>
 
-                      <div className="mt-2 pt-1.5 border-t border-black/5 dark:border-white/10">
-                        <div className={`text-xs font-bold ${isSelected ? 'text-[#E5A953]' : 'text-[#183122]'}`}>
-                          €{opt.price.toFixed(2)}
+                      {/* Price Section (Faded when Out of Stock) */}
+                      <div className={`mt-2 pt-1.5 border-t border-black/5 dark:border-white/10 transition-opacity duration-200 ${!isPackAvailable ? 'opacity-20' : ''}`}>
+                        <div className="flex items-baseline gap-1 flex-wrap">
+                          <span className={`text-xs font-bold ${isSelected && isPackAvailable ? 'text-[#E5A953]' : 'text-[#183122]'}`}>
+                            €{opt.price.toFixed(2)}
+                          </span>
+                          {opt.originalPrice && opt.originalPrice > opt.price && (
+                            <span className={`text-[10px] line-through ${isSelected && isPackAvailable ? 'text-white/60' : 'text-[#9EAFA2]'}`}>
+                              €{opt.originalPrice.toFixed(2)}
+                            </span>
+                          )}
                         </div>
-                        {!isPackAvailable && (
-                          <div className="text-[9px] text-[#8B2525] font-semibold mt-0.5">
-                            Max {availableStock} left
-                          </div>
-                        )}
                       </div>
+
+                      {/* Centered Out of Stock Overlay in the Middle */}
+                      {!isPackAvailable && (
+                        <div className="absolute inset-0 rounded-2xl flex items-center justify-center p-1 bg-[#F4F0E8]/60 backdrop-blur-[0.5px] z-10 pointer-events-none">
+                          <span className="px-2 py-0.5 bg-[#8B2525]/95 text-white text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs text-center leading-tight">
+                            Out of Stock
+                          </span>
+                        </div>
+                      )}
                     </button>
                   );
                 })}
@@ -675,31 +798,92 @@ export const ProductDetailModal: React.FC = () => {
               </div>
             )}
 
-            {/* Sensory & Flavor Balance Meters (rendered only if actual flavorProfile exists) */}
+            {/* Sensory & Flavor Profile */}
             {product.flavorProfile && (
-              <div className="bg-white rounded-3xl p-4 border border-[#E8E2D5] shadow-soft-sm space-y-3 pt-4">
-                <h3 className="font-editorial text-base font-semibold text-[#14261B] flex items-center gap-2">
-                  <Wine className="w-4 h-4 text-[#A67C37]" />
-                  <span>{t.detail.sensoryProfile}</span>
-                </h3>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-[#14261B] uppercase tracking-wider flex items-center gap-1.5">
+                    <Wine className="w-3.5 h-3.5 text-[#A67C37]" />
+                    <span>{t.detail.sensoryProfile}</span>
+                  </span>
+                  <span className="text-[10px] text-[#7A8C7F] font-semibold tracking-wider uppercase">
+                    5-Point Tasting Scale
+                  </span>
+                </div>
 
-                <div className="space-y-2 text-xs">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                   {[
-                    { label: t.detail.forestAromatics, value: product.flavorProfile.aromatics, max: 5 },
-                    { label: t.detail.effervescence, value: product.flavorProfile.effervescence, max: 5 },
-                    { label: t.detail.bitterness, value: product.flavorProfile.bitterness, max: 5 },
-                    { label: t.detail.sweetness, value: product.flavorProfile.sweetness, max: 5 },
+                    {
+                      label: t.detail.forestAromatics,
+                      value: Number(product.flavorProfile.aromatics ?? 0),
+                      max: 5,
+                      icon: Compass,
+                      iconColor: 'text-[#2E683E]',
+                      iconBg: 'bg-[#EAF3ED]',
+                      descriptor: getAromaticsDescriptor(Number(product.flavorProfile.aromatics ?? 0)),
+                    },
+                    {
+                      label: t.detail.effervescence,
+                      value: Number(product.flavorProfile.effervescence ?? 0),
+                      max: 5,
+                      icon: Sparkles,
+                      iconColor: 'text-[#D49B4E]',
+                      iconBg: 'bg-[#FFF9EE]',
+                      descriptor: getEffervescenceDescriptor(Number(product.flavorProfile.effervescence ?? 0)),
+                    },
+                    {
+                      label: t.detail.bitterness,
+                      value: Number(product.flavorProfile.bitterness ?? 0),
+                      max: 5,
+                      icon: Wine,
+                      iconColor: 'text-[#8B2525]',
+                      iconBg: 'bg-[#FDF2F0]',
+                      descriptor: getBitternessDescriptor(Number(product.flavorProfile.bitterness ?? 0)),
+                    },
+                    {
+                      label: t.detail.sweetness,
+                      value: Number(product.flavorProfile.sweetness ?? 0),
+                      max: 5,
+                      icon: Sun,
+                      iconColor: 'text-[#B87A14]',
+                      iconBg: 'bg-[#FAF5EA]',
+                      descriptor: getSweetnessDescriptor(Number(product.flavorProfile.sweetness ?? 0)),
+                    },
                   ].map((item, idx) => (
-                    <div key={idx} className="space-y-1">
-                      <div className="flex justify-between text-[11px] text-[#55695C]">
-                        <span>{item.label}</span>
-                        <span className="font-bold text-[#14261B]">{item.value} / {item.max}</span>
+                    <div
+                      key={idx}
+                      className="bg-white rounded-2xl p-3 border border-[#E8E2D5] shadow-soft-sm flex flex-col justify-between hover:border-[#D6CEBF] transition-all"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className={`w-7 h-7 rounded-xl ${item.iconBg} flex items-center justify-center ${item.iconColor} shadow-2xs`}>
+                          <item.icon className="w-3.5 h-3.5" />
+                        </div>
+                        <span className="text-[10px] font-bold text-[#14261B] bg-[#F5F2EB] px-2 py-0.5 rounded-full border border-[#EAE4D7]">
+                          {item.value} / {item.max}
+                        </span>
                       </div>
-                      <div className="w-full h-1.5 bg-[#EFECE3] rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-[#183324] rounded-full transition-all duration-500"
-                          style={{ width: `${(item.value / item.max) * 100}%` }}
-                        />
+
+                      <div className="space-y-0.5 mb-2.5">
+                        <div className="text-xs font-bold text-[#14261B] truncate">
+                          {item.label}
+                        </div>
+                        <div className="text-[10px] text-[#7A8C7F] font-medium truncate">
+                          {item.descriptor}
+                        </div>
+                      </div>
+
+                      {/* 5-step tactile pill segments */}
+                      <div className="flex items-center gap-1 w-full pt-1">
+                        {[1, 2, 3, 4, 5].map((step) => (
+                          <div
+                            key={step}
+                            className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                              step <= item.value
+                                ? 'bg-[#183324]'
+                                : 'bg-[#EFECE3]'
+                            }`}
+                          />
+                        ))}
                       </div>
                     </div>
                   ))}
@@ -832,11 +1016,10 @@ export const ProductDetailModal: React.FC = () => {
                 type="button"
                 onClick={() => toggleRestockNotification(product.id, product.name)}
                 aria-label={isRestockNotified(product.id) ? 'Restock notification set' : 'Notify when active again'}
-                className={`flex-1 py-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98] ${
-                  isRestockNotified(product.id)
-                    ? 'bg-[#EBF4EE] text-[#1B462C] border border-[#C5DEC9]'
-                    : 'bg-[#FAF4E8] text-[#9A6218] border border-[#ECD9B7] hover:bg-[#F4ECDA]'
-                }`}
+                className={`flex-1 py-3.5 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-xs cursor-pointer active:scale-[0.98] ${isRestockNotified(product.id)
+                  ? 'bg-[#EBF4EE] text-[#1B462C] border border-[#C5DEC9]'
+                  : 'bg-[#FAF4E8] text-[#9A6218] border border-[#ECD9B7] hover:bg-[#F4ECDA]'
+                  }`}
               >
                 <Bell className={`w-4 h-4 ${isRestockNotified(product.id) ? 'fill-[#245D36] text-[#245D36]' : 'text-[#C97B1A]'}`} />
                 <span>{isRestockNotified(product.id) ? 'Notification Set • We’ll Notify You' : 'Notify Me When Active Again'}</span>

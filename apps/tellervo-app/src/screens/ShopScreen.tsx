@@ -347,11 +347,11 @@ export const ShopScreen: React.FC = () => {
 
       {/* 5. Shimmer Loading Skeleton */}
       {isLoadingProducts && products.length === 0 && (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-5 animate-pulse">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-x-6 sm:gap-x-8 md:gap-x-10 gap-y-8 sm:gap-y-10 animate-pulse">
           {[1, 2, 3, 4].map((n) => (
             <div
               key={n}
-              className="bg-white rounded-3xl p-3 border border-[#EAE4D7] space-y-2.5"
+              className="space-y-2.5"
             >
               <div className="aspect-square bg-[#EFEAE0] rounded-2xl" />
               <div className="h-3 bg-[#EFEAE0] rounded-md w-3/4" />
@@ -376,7 +376,7 @@ export const ShopScreen: React.FC = () => {
       )}
 
       {/* 7. Product Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-x-6 sm:gap-x-8 md:gap-x-10 gap-y-8 sm:gap-y-10">
         {sortedProducts.map((product) => (
           <ProductCard
             key={product.id}
