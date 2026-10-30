@@ -29,8 +29,7 @@ export function mapRecordToProduct(record: ProductRecord): Product {
     normalizedStatus === 'lowstock' ||
     rawStatus === 'low stock' ||
     rawStatus === 'low_stock' ||
-    rawStatus === 'low-stock' ||
-    (stockCount > 0 && stockCount <= 5)
+    rawStatus === 'low-stock'
   ) {
     stockStatus = 'low-stock';
   }
@@ -67,11 +66,11 @@ export function mapRecordToProduct(record: ProductRecord): Product {
   const flavorProfile =
     flavor && (flavor.bitterness !== undefined || flavor.sweetness !== undefined || flavor.aromatics !== undefined || flavor.effervescence !== undefined)
       ? {
-          bitterness: Number(flavor.bitterness ?? 0),
-          sweetness: Number(flavor.sweetness ?? 0),
-          aromatics: Number(flavor.aromatics ?? 0),
-          effervescence: Number(flavor.effervescence ?? 0),
-        }
+        bitterness: Number(flavor.bitterness ?? 0),
+        sweetness: Number(flavor.sweetness ?? 0),
+        aromatics: Number(flavor.aromatics ?? 0),
+        effervescence: Number(flavor.effervescence ?? 0),
+      }
       : undefined;
 
   return {

@@ -1,39 +1,64 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
 import { HERO_FEATURED } from '../data/mockData';
-import { 
-  CloudSun, 
-  Search, 
-  SlidersHorizontal, 
-  Trees, 
-  Sparkles, 
-  ArrowRight, 
-  ArrowUpRight, 
-  Truck, 
-  RotateCcw, 
-  Heart, 
-  Plus, 
+import {
+  Search,
+  SlidersHorizontal,
+  ArrowRight,
+  ArrowUpRight,
+  RotateCcw,
+  Heart,
+  Plus,
   Star,
   Compass,
-  Check
+  Sparkles,
+  Flame,
 } from 'lucide-react';
 
 export const HomeScreen: React.FC = () => {
-  const { 
-    products, 
-    addToCart, 
-    favorites, 
-    toggleFavorite, 
-    setActiveTab, 
+  const {
+    products,
+    addToCart,
+    favorites,
+    toggleFavorite,
+    setActiveTab,
     setIsQuizOpen,
     setSelectedProduct,
-    showToast,
     t
   } = useApp();
 
   const [activeCategory, setActiveCategory] = useState<'all' | 'adaptogenic' | 'spritz'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [isExploreOpen, setIsExploreOpen] = useState(false);
+
+  // Helpers to check featured and most selling status
+  const isProductFeatured = (p: any) =>
+    Boolean(p.isFeatured || p.is_featured || p.featured);
+  const isProductMostSelling = (p: any) =>
+    Boolean(p.isMostSelling || p.is_most_selling || p.most_selling);
+  const isProductOutOfStock = (p: any) => {
+    const rawStatus = (p.status || '').toLowerCase().trim();
+    const normalizedStatus = rawStatus.replace(/[\s_-]+/g, '');
+    return (
+      normalizedStatus === 'outofstock' ||
+      rawStatus === 'out of stock' ||
+      rawStatus === 'out_of_stock' ||
+      rawStatus === 'out-of-stock' ||
+      p.stockStatus === 'out-of-stock' ||
+      (p.stockCount !== undefined && p.stockCount <= 0) ||
+      (p.stock !== undefined && p.stock <= 0)
+    );
+  };
+
+  // 1. Featured Section: ONLY products with featured: true (most_selling true/false does not matter)
+  const highlightedProducts = products.filter(
+    (p) => isProductFeatured(p)
+  );
+
+  // 2. Trending Section: ONLY products with most_selling: true (and NOT featured)
+  const trendingProducts = products.filter(
+    (p) => isProductMostSelling(p) && !isProductFeatured(p)
+  );
 
   // Filter products for Discover Botanical Range
   const discoverProducts = products.filter(p => {
@@ -44,26 +69,6 @@ export const HomeScreen: React.FC = () => {
 
   return (
     <div className="pb-28 px-4 pt-3 w-full space-y-5 animate-in fade-in duration-200">
-      {/* Location, Weather & Greeting */}
-      <div>
-        <div className="flex items-center justify-between text-[11px] font-semibold tracking-wider text-[#7A8C7D] uppercase mb-1">
-          <span>{t.home.location}</span>
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/80 border border-[#EBE5D8] text-[#34483B] normal-case text-xs shadow-soft-sm">
-            <CloudSun className="w-3.5 h-3.5 text-[#D49B4E]" />
-            <span>{t.home.weather}</span>
-          </div>
-        </div>
-
-        <h1 className="font-editorial text-[34px] leading-tight font-medium text-[#14261B] tracking-tight">
-          {t.home.greeting}
-        </h1>
-
-        <p className="text-xs text-[#5D6F61] flex items-center gap-1.5 mt-1 font-normal">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#96673A]" />
-          <span>{t.home.greetingSub}</span>
-        </p>
-      </div>
-
       {/* Search Bar */}
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
@@ -86,147 +91,322 @@ export const HomeScreen: React.FC = () => {
       </div>
 
       <div>
-        {/* Tellervo Forest Club Card */}
-        <div className="bg-[#12281C] text-white rounded-3xl p-4 shadow-soft border border-[#234230] relative overflow-hidden">
-        {/* Subtle background glow */}
-        <div className="absolute -top-12 -right-12 w-32 h-32 bg-[#E5A953]/10 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="flex items-start justify-between mb-3 relative z-10">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-full bg-[#E5A953] flex items-center justify-center text-[#12281C] shadow">
-              <Trees className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-[10px] font-bold tracking-widest text-[#E5A953] uppercase">
-                {t.home.clubTitle}
-              </div>
-              <div className="text-xs font-semibold text-white">{t.home.clubTier}</div>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="font-editorial text-2xl font-medium text-[#E5A953] leading-none">
-              420 <span className="text-xs tracking-normal font-sans uppercase">PTS</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Progress bar */}
-        <div className="mb-3 relative z-10">
-          <div className="flex items-center justify-between text-[11px] text-[#A2BEAA] mb-1.5">
-            <span>{t.home.ptsToReward}</span>
-            <span className="font-bold text-[#E5A953]">84%</span>
-          </div>
-          <div className="w-full h-1.5 bg-[#254231] rounded-full overflow-hidden">
-            <div className="h-full bg-[#E5A953] rounded-full w-[84%]" />
-          </div>
-        </div>
-
-        {/* Bottom row */}
-        <div className="flex items-center justify-between pt-1 text-xs relative z-10">
-          <span className="text-[#A2BEAA] text-[11px]">{t.home.ptsRate}</span>
-          <button
-            onClick={() => setActiveTab('rewards')}
-            className="px-3.5 py-1.5 bg-[#E5A953] text-[#12281C] rounded-full text-[11px] font-bold flex items-center gap-1 hover:bg-[#F2BA69] transition-colors shadow-sm active:scale-95"
-          >
-            <span>{t.home.redeemPerks}</span>
-            <ArrowRight className="w-3 h-3" />
-          </button>
-        </div>
-      </div>
-
         {/* Featured Blend Banner: Lingonberry & Birch Bark Sparkler */}
         <div className="relative rounded-3xl overflow-hidden shadow-soft border border-[#E5DFD1] group mt-4">
-        <div className="relative h-64 w-full">
-          <img
-            src={HERO_FEATURED.imageUrl}
-            alt={HERO_FEATURED.title}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#0F1E14] via-[#0F1E14]/60 to-transparent" />
-
-          {/* Floating bottle mockup graphic */}
-          <div className="absolute right-4 bottom-14 w-28 h-36 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
+          <div className="relative h-64 w-full">
             <img
-              src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=400&q=80"
-              alt="Sparkler bottle"
-              className="w-full h-full object-cover"
+              src={HERO_FEATURED.imageUrl}
+              alt={HERO_FEATURED.title}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
             />
-          </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-[#0F1E14] via-[#0F1E14]/60 to-transparent" />
 
-          <div className="absolute inset-0 p-5 flex flex-col justify-between text-white">
-            <div className="flex items-center gap-2">
-              <span className="px-2.5 py-1 bg-white/20 backdrop-blur-md text-[10px] font-bold tracking-wider rounded-full text-white uppercase border border-white/20 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#E5A953]" />
-                {HERO_FEATURED.badge}
-              </span>
+            {/* Floating bottle mockup graphic */}
+            <div className="absolute right-4 bottom-14 w-28 h-36 rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl">
+              <img
+                src="https://images.unsplash.com/photo-1551024709-8f23befc6f87?auto=format&fit=crop&w=400&q=80"
+                alt="Sparkler bottle"
+                className="w-full h-full object-cover"
+              />
             </div>
 
-            <div className="max-w-[70%]">
-              <span className="text-[10px] tracking-widest text-[#E5A953] uppercase font-bold block mb-1">
-                {HERO_FEATURED.series}
-              </span>
-              <h3 className="font-editorial text-2xl font-medium leading-tight mb-1.5 text-white">
-                {HERO_FEATURED.title}
-              </h3>
-              <p className="text-[11px] text-[#C4D9CA] line-clamp-2 leading-relaxed">
-                {HERO_FEATURED.description}
-              </p>
-            </div>
-
-            <div className="flex items-center justify-between pt-1">
-              <div>
-                <span className="font-editorial text-xl font-medium text-white">
-                  €{HERO_FEATURED.price.toFixed(2)}
+            <div className="absolute inset-0 p-5 flex flex-col justify-between text-white">
+              <div className="flex items-center gap-2">
+                <span className="px-2.5 py-1 bg-white/20 backdrop-blur-md text-[10px] font-bold tracking-wider rounded-full text-white uppercase border border-white/20 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#E5A953]" />
+                  {HERO_FEATURED.badge}
                 </span>
-                <span className="text-[11px] text-[#A3BEAC] ml-1">{HERO_FEATURED.unit}</span>
               </div>
-              <button
-                onClick={() => setSelectedProduct({
-                  id: 'lingonberry-birch-sparkler',
-                  name: HERO_FEATURED.title,
-                  category: 'WILD HARVEST SERIES',
-                  badge: HERO_FEATURED.badge,
-                  price: HERO_FEATURED.price,
-                  size: '4-pack',
-                  description: HERO_FEATURED.description,
-                  imageUrl: HERO_FEATURED.imageUrl,
-                  notes: 'Wild Lingonberry • Birch Bark Tannin • Effervescent Spring Water',
-                  harvestLocation: 'Inari Wilderness, Lapland • 68°54′N',
-                })}
-                className="px-4 py-1.5 bg-white text-[#12281C] rounded-full text-xs font-bold flex items-center gap-1 shadow-sm hover:bg-[#F7F4EB] transition-colors active:scale-95"
-              >
-                <span>{t.home.exploreBlend}</span>
-                <ArrowUpRight className="w-3.5 h-3.5" />
-              </button>
+
+              <div className="max-w-[70%]">
+                <span className="text-[10px] tracking-widest text-[#E5A953] uppercase font-bold block mb-1">
+                  {HERO_FEATURED.series}
+                </span>
+                <h3 className="font-editorial text-2xl font-medium leading-tight mb-1.5 text-white">
+                  {HERO_FEATURED.title}
+                </h3>
+                <p className="text-[11px] text-[#C4D9CA] line-clamp-2 leading-relaxed">
+                  {HERO_FEATURED.description}
+                </p>
+              </div>
+
+              <div className="flex items-center justify-between pt-1">
+                <div>
+                  <span className="font-editorial text-xl font-medium text-white">
+                    €{HERO_FEATURED.price.toFixed(2)}
+                  </span>
+                  <span className="text-[11px] text-[#A3BEAC] ml-1">{HERO_FEATURED.unit}</span>
+                </div>
+                <button
+                  onClick={() => setSelectedProduct({
+                    id: 'lingonberry-birch-sparkler',
+                    name: HERO_FEATURED.title,
+                    category: 'WILD HARVEST SERIES',
+                    badge: HERO_FEATURED.badge,
+                    price: HERO_FEATURED.price,
+                    size: '4-pack',
+                    description: HERO_FEATURED.description,
+                    imageUrl: HERO_FEATURED.imageUrl,
+                    notes: 'Wild Lingonberry • Birch Bark Tannin • Effervescent Spring Water',
+                    harvestLocation: 'Inari Wilderness, Lapland • 68°54′N',
+                  })}
+                  className="px-4 py-1.5 bg-white text-[#12281C] rounded-full text-xs font-bold flex items-center gap-1 shadow-sm hover:bg-[#F7F4EB] transition-colors active:scale-95"
+                >
+                  <span>{t.home.exploreBlend}</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </div>
 
       </div>
 
-      {/* Member Advantage Card */}
-      <div 
-        onClick={() => setActiveTab('rewards')}
-        className="bg-[#EBF3ED] rounded-2xl p-3 border border-[#CFDFD3] flex items-center justify-between cursor-pointer hover:bg-[#E3EEE6] transition-colors"
-      >
-        <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-[#D2E6D8] flex items-center justify-center text-[#21432E]">
-            <Truck className="w-4 h-4" />
+      {/* Highlighted Section: Live Featured Products (is_featured: true) */}
+      {highlightedProducts.length > 0 && (
+        <div>
+          {/* Section Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-xl bg-[#E5A953]/20 flex items-center justify-center text-[#936622] shadow-2xs">
+                <Sparkles className="w-4 h-4 fill-[#E5A953]/40 text-[#B87A14]" />
+              </div>
+              <div>
+                <h2 className="font-editorial text-lg font-semibold text-[#14261B] leading-tight">
+                  Featured Highlights
+                </h2>
+                <p className="text-[11px] text-[#788A7C]">
+                  Cellar-curated botanical infusions & favorites
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab('shop')}
+              className="text-[11px] font-bold text-[#8C7443] hover:underline flex items-center gap-0.5 shrink-0"
+            >
+              <span>View All</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
           </div>
-          <div>
-            <div className="text-[11px] font-bold text-[#1B3624] flex items-center gap-1.5">
-              <span>{t.home.memberAdvantage}</span>
-              <span className="w-1 h-1 rounded-full bg-[#2A543A]" />
-              <span className="text-[#C78229]">{t.home.weekendSeeds}</span>
-            </div>
-            <div className="text-[11px] text-[#556F5E]">
-              {t.home.deliveryPerk}
-            </div>
+
+          {/* Cards Carousel */}
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 pt-0.5">
+            {highlightedProducts.map((product) => {
+              const isFav = favorites.includes(product.id);
+              return (
+                <div
+                  key={product.id}
+                  className="w-56 sm:w-60 shrink-0 bg-white rounded-2xl p-3 border border-[#EAE3D5] shadow-soft-sm flex flex-col justify-between group hover:border-[#D6CEBF] hover:shadow-md transition-all cursor-pointer"
+                  onClick={() => setSelectedProduct(product)}
+                >
+                  {/* Product Image & Badges */}
+                  <div className="relative rounded-xl overflow-hidden aspect-square mb-2.5 bg-[#F6F3EB]">
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      onError={(e) => {
+                        e.currentTarget.src =
+                          'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80';
+                      }}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+
+                    {/* Featured Gold Badge */}
+                    <div className="absolute top-2 left-2 z-10 pointer-events-none flex flex-col gap-1">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-[#FFF9EE]/95 backdrop-blur-sm text-[#8C5D14] border border-[#F5DCB1] shadow-2xs">
+                        <Star className="w-2.5 h-2.5 text-[#E5A953] fill-[#E5A953]" />
+                        <span>Featured</span>
+                      </span>
+                    </div>
+
+                    {/* Favorite Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(product.id);
+                      }}
+                      aria-label="Save to favorites"
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-[#21382A] hover:bg-white shadow-sm transition-transform active:scale-90"
+                    >
+                      <Heart
+                        className={`w-3.5 h-3.5 ${
+                          isFav ? 'fill-[#C53D43] text-[#C53D43]' : 'text-[#21382A]'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Category & Title */}
+                  <div className="flex-1">
+                    <div className="text-[9px] font-bold tracking-wider text-[#988151] uppercase mb-0.5 truncate">
+                      {product.category || product.notes}
+                    </div>
+                    <h3 className="font-editorial text-sm font-semibold text-[#14261B] leading-tight line-clamp-2 hover:text-[#285737] transition-colors">
+                      {product.name}
+                    </h3>
+                    <p className="text-[11px] text-[#7C8D80] mt-0.5">{product.size}</p>
+                  </div>
+
+                  {/* Price & Add to Cart Button */}
+                  <div className="flex items-center justify-between pt-2 mt-2 border-t border-[#F0EBE0]">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-editorial text-sm font-bold text-[#14261B]">
+                        €{product.price.toFixed(2)}
+                      </span>
+                      {product.originalPrice && (
+                        <span className="text-[10px] text-[#9EAFA2] line-through">
+                          €{product.originalPrice.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    {isProductOutOfStock(product) ? (
+                      <span className="inline-flex items-center justify-center px-2 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase bg-[#FBF0F0] text-[#932323] border border-[#F5CACA] shadow-2xs whitespace-nowrap">
+                        Out of Stock
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToCart(product);
+                        }}
+                        aria-label={`Add ${product.name} to cart`}
+                        className="w-7 h-7 rounded-full bg-[#183324] text-[#FAF8F3] flex items-center justify-center hover:bg-[#284B36] active:scale-95 transition-all shadow-sm"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-        <ArrowRight className="w-4 h-4 text-[#446650] shrink-0" />
-      </div>
+      )}
+
+      {/* Trending Section: Products with is_most_selling === true AND is_featured !== true */}
+      {trendingProducts.length > 0 && (
+        <div>
+          {/* Section Header */}
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-xl bg-[#C84A32]/15 flex items-center justify-center text-[#B23820] shadow-2xs">
+                <Flame className="w-4 h-4 fill-[#C84A32]/40 text-[#B23820]" />
+              </div>
+              <div>
+                <h2 className="font-editorial text-lg font-semibold text-[#14261B] leading-tight">
+                  Trending
+                </h2>
+                <p className="text-[11px] text-[#788A7C]">
+                  Most loved & highly demanded selections
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setActiveTab('shop')}
+              className="text-[11px] font-bold text-[#A8432D] hover:underline flex items-center gap-0.5 shrink-0"
+            >
+              <span>View All</span>
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          </div>
+
+          {/* Cards Carousel */}
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-1 pt-0.5">
+            {trendingProducts.map((product) => {
+              const isFav = favorites.includes(product.id);
+              return (
+                <div
+                  key={product.id}
+                  className="w-56 sm:w-60 shrink-0 bg-white rounded-2xl p-3 border border-[#EAE3D5] shadow-soft-sm flex flex-col justify-between group hover:border-[#D6CEBF] hover:shadow-md transition-all cursor-pointer"
+                  onClick={() => setSelectedProduct(product)}
+                >
+                  {/* Product Image & Badges */}
+                  <div className="relative rounded-xl overflow-hidden aspect-square mb-2.5 bg-[#F6F3EB]">
+                    <img
+                      src={product.imageUrl}
+                      alt={product.name}
+                      onError={(e) => {
+                        e.currentTarget.src =
+                          'https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80';
+                      }}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+
+                    {/* Trending Badge */}
+                    <div className="absolute top-2 left-2 z-10 pointer-events-none flex flex-col gap-1">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase bg-[#FFF4F2]/95 backdrop-blur-sm text-[#A8321D] border border-[#FAD2CB] shadow-2xs">
+                        <Flame className="w-2.5 h-2.5 text-[#C84A32] fill-[#C84A32]" />
+                        <span>Trending</span>
+                      </span>
+                    </div>
+
+                    {/* Favorite Button */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(product.id);
+                      }}
+                      aria-label="Save to favorites"
+                      className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-[#21382A] hover:bg-white shadow-sm transition-transform active:scale-90"
+                    >
+                      <Heart
+                        className={`w-3.5 h-3.5 ${
+                          isFav ? 'fill-[#C53D43] text-[#C53D43]' : 'text-[#21382A]'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Category & Title */}
+                  <div className="flex-1">
+                    <div className="text-[9px] font-bold tracking-wider text-[#A8432D] uppercase mb-0.5 truncate">
+                      {product.category || product.notes}
+                    </div>
+                    <h3 className="font-editorial text-sm font-semibold text-[#14261B] leading-tight line-clamp-2 hover:text-[#285737] transition-colors">
+                      {product.name}
+                    </h3>
+                    <p className="text-[11px] text-[#7C8D80] mt-0.5">{product.size}</p>
+                  </div>
+
+                  {/* Price & Add to Cart Button */}
+                  <div className="flex items-center justify-between pt-2 mt-2 border-t border-[#F0EBE0]">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="font-editorial text-sm font-bold text-[#14261B]">
+                        €{product.price.toFixed(2)}
+                      </span>
+                      {product.originalPrice && (
+                        <span className="text-[10px] text-[#9EAFA2] line-through">
+                          €{product.originalPrice.toFixed(2)}
+                        </span>
+                      )}
+                    </div>
+                    {isProductOutOfStock(product) ? (
+                      <span className="inline-flex items-center justify-center px-2 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase bg-[#FBF0F0] text-[#932323] border border-[#F5CACA] shadow-2xs whitespace-nowrap">
+                        Out of Stock
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          addToCart(product);
+                        }}
+                        aria-label={`Add ${product.name} to cart`}
+                        className="w-7 h-7 rounded-full bg-[#183324] text-[#FAF8F3] flex items-center justify-center hover:bg-[#284B36] active:scale-95 transition-all shadow-sm"
+                      >
+                        <Plus className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Order Again Section */}
       <div>
@@ -321,31 +501,28 @@ export const HomeScreen: React.FC = () => {
         <div className="flex gap-2 overflow-x-auto no-scrollbar mb-4">
           <button
             onClick={() => setActiveCategory('all')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-              activeCategory === 'all'
-                ? 'bg-[#183324] text-white shadow-sm'
-                : 'bg-white border border-[#E5DFD2] text-[#4F6355] hover:bg-[#F7F4EB]'
-            }`}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${activeCategory === 'all'
+              ? 'bg-[#183324] text-white shadow-sm'
+              : 'bg-white border border-[#E5DFD2] text-[#4F6355] hover:bg-[#F7F4EB]'
+              }`}
           >
             {t.home.allBlends}
           </button>
           <button
             onClick={() => setActiveCategory('adaptogenic')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-              activeCategory === 'adaptogenic'
-                ? 'bg-[#183324] text-white shadow-sm'
-                : 'bg-white border border-[#E5DFD2] text-[#4F6355] hover:bg-[#F7F4EB]'
-            }`}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${activeCategory === 'adaptogenic'
+              ? 'bg-[#183324] text-white shadow-sm'
+              : 'bg-white border border-[#E5DFD2] text-[#4F6355] hover:bg-[#F7F4EB]'
+              }`}
           >
             {t.home.adaptogenicTonics}
           </button>
           <button
             onClick={() => setActiveCategory('spritz')}
-            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
-              activeCategory === 'spritz'
-                ? 'bg-[#183324] text-white shadow-sm'
-                : 'bg-white border border-[#E5DFD2] text-[#4F6355] hover:bg-[#F7F4EB]'
-            }`}
+            className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${activeCategory === 'spritz'
+              ? 'bg-[#183324] text-white shadow-sm'
+              : 'bg-white border border-[#E5DFD2] text-[#4F6355] hover:bg-[#F7F4EB]'
+              }`}
           >
             {t.home.wildBerrySpritz}
           </button>
@@ -374,12 +551,11 @@ export const HomeScreen: React.FC = () => {
             return (
               <div
                 key={product.id}
-                className={`bg-white rounded-3xl p-3 border border-[#EAE4D7] shadow-soft-sm flex flex-col justify-between group hover:border-[#D6CEBF] transition-all ${
-                  isOutOfStock ? 'opacity-90' : ''
-                }`}
+                className={`bg-white rounded-3xl p-3 border border-[#EAE4D7] shadow-soft-sm flex flex-col justify-between group hover:border-[#D6CEBF] transition-all ${isOutOfStock ? 'opacity-90' : ''
+                  }`}
               >
                 {/* Product Image & Top Badges */}
-                <div 
+                <div
                   onClick={() => setSelectedProduct(product)}
                   className="relative rounded-2xl overflow-hidden aspect-square mb-2.5 bg-[#F6F3EB] cursor-pointer"
                 >
@@ -389,9 +565,8 @@ export const HomeScreen: React.FC = () => {
                     onError={(e) => {
                       e.currentTarget.src = "https://images.unsplash.com/photo-1514362545857-3bc16c4c7d1b?auto=format&fit=crop&w=600&q=80";
                     }}
-                    className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${
-                      isOutOfStock ? 'grayscale-[30%]' : ''
-                    }`}
+                    className={`w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 ${isOutOfStock ? 'grayscale-[30%]' : ''
+                      }`}
                   />
 
                   {/* Badges on Card */}
@@ -420,16 +595,15 @@ export const HomeScreen: React.FC = () => {
                     className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/80 backdrop-blur-sm flex items-center justify-center text-[#21382A] hover:bg-white shadow-sm transition-transform active:scale-90"
                   >
                     <Heart
-                      className={`w-3.5 h-3.5 ${
-                        isFav ? 'fill-[#C53D43] text-[#C53D43]' : 'text-[#21382A]'
-                      }`}
+                      className={`w-3.5 h-3.5 ${isFav ? 'fill-[#C53D43] text-[#C53D43]' : 'text-[#21382A]'
+                        }`}
                     />
                   </button>
                 </div>
 
                 {/* Rating */}
                 {product.rating && (
-                  <div 
+                  <div
                     onClick={() => setSelectedProduct(product)}
                     className="flex items-center gap-1 text-[11px] text-[#55695C] mb-1 cursor-pointer"
                   >
@@ -440,7 +614,7 @@ export const HomeScreen: React.FC = () => {
                 )}
 
                 {/* Title & Category */}
-                <div 
+                <div
                   onClick={() => setSelectedProduct(product)}
                   className="flex-1 cursor-pointer"
                 >
@@ -471,7 +645,11 @@ export const HomeScreen: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  {!isOutOfStock && (
+                  {isOutOfStock ? (
+                    <span className="inline-flex items-center justify-center px-2 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase bg-[#FBF0F0] text-[#932323] border border-[#F5CACA] shadow-2xs whitespace-nowrap">
+                      Out of Stock
+                    </span>
+                  ) : (
                     <button
                       type="button"
                       onClick={() => addToCart(product)}

@@ -28,6 +28,28 @@ const getBadgeStyleClass = (type?: string) => {
   }
 };
 
+const getStatusBadgeStyle = (status?: string) => {
+  const s = (status || '').toLowerCase().trim();
+  if (s.includes('out of stock') || s.includes('outofstock')) {
+    return 'bg-[#8B2525]/95 text-white';
+  }
+  if (s.includes('low stock') || s.includes('limited')) {
+    return 'bg-[#C97B1A]/95 text-white';
+  }
+  if (s.includes('active')) {
+    return 'bg-[#183324]/90 text-white';
+  }
+  return 'bg-[#183324]/90 text-white';
+};
+
+const formatStatusText = (status: string) => {
+  const s = status.toLowerCase().trim();
+  if (s.includes('low stock') || s.includes('lowstock') || s.includes('limited')) {
+    return 'Limited Stock';
+  }
+  return status;
+};
+
 export const ProductCard: React.FC<ProductCardProps> = ({
   product,
   onProductClick,
@@ -62,8 +84,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       rawStatus === 'low stock' ||
       rawStatus === 'low_stock' ||
       rawStatus === 'low-stock' ||
-      product.stockStatus === 'low-stock' ||
-      (product.stockCount !== undefined && product.stockCount > 0 && product.stockCount <= 5));
+      product.stockStatus === 'low-stock');
 
   // Custom Badge (only displayed if badge is set)
   const badgeText = (product.badge || '').trim();
@@ -90,15 +111,15 @@ export const ProductCard: React.FC<ProductCardProps> = ({
             }`}
         />
 
-        {/* Badges on Card */}
+        {/* Top-Left Image Badge: Status directly from Supabase (hidden when status is Active, formatted as Limited Stock) */}
         <div className="absolute top-2 left-2 z-10 pointer-events-none flex flex-col gap-1">
-          {isOutOfStock ? (
-            <span className="px-2 py-0.5 bg-[#8B2525]/95 backdrop-blur-sm text-white text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs">
-              Out of Stock
-            </span>
-          ) : isLowStock ? (
-            <span className="px-2 py-0.5 bg-[#C97B1A]/95 backdrop-blur-sm text-white text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs">
-              Limited Stock
+          {product.status && product.status.toLowerCase().trim() !== 'active' ? (
+            <span
+              className={`px-2 py-0.5 backdrop-blur-sm text-[9px] font-bold tracking-wider rounded-md uppercase shadow-xs ${getStatusBadgeStyle(
+                product.status
+              )}`}
+            >
+              {formatStatusText(product.status)}
             </span>
           ) : null}
         </div>
@@ -171,8 +192,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
 
-        {/* Action Button: Hidden when out of stock (only shows badge on image) */}
-        {!isOutOfStock && (
+        {/* Action Button / Out of Stock Badge */}
+        {isOutOfStock ? (
+          <span className="inline-flex items-center justify-center px-2 py-1 rounded-full text-[9px] font-bold tracking-wider uppercase bg-[#FBF0F0] text-[#932323] border border-[#F5CACA] shadow-2xs whitespace-nowrap">
+            Out of Stock
+          </span>
+        ) : (
           <button
             type="button"
             onClick={() => addToCart(product)}
