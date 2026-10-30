@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { Header } from '../components/Header';
 import { BottomNav } from '../components/BottomNav';
@@ -42,11 +42,14 @@ export const AppRoutes: React.FC = () => {
     showToast,
   } = useApp();
 
+  const prevProductIdRef = useRef<string | null>(getShopProductId(currentPath));
+
   // Synchronize dynamic /shop/:id URL with selectedProduct
   useEffect(() => {
     const productId = getShopProductId(currentPath);
 
     if (productId) {
+      prevProductIdRef.current = productId;
       if (selectedProduct?.id === productId) {
         return;
       }
@@ -81,9 +84,12 @@ export const AppRoutes: React.FC = () => {
         isCancelled = true;
       };
     } else {
-      // If we returned to a path without an ID and selectedProduct is still open, close it
-      if (selectedProduct) {
-        setSelectedProduct(null);
+      // If we previously had a product ID in the URL and returned to a path without an ID, close it
+      if (prevProductIdRef.current) {
+        prevProductIdRef.current = null;
+        if (selectedProduct) {
+          setSelectedProduct(null);
+        }
       }
     }
   }, [currentPath, products, navigate, showToast]);

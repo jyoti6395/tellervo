@@ -1,6 +1,9 @@
-import React from 'react';
-import { Bell, Package, ShoppingBag } from 'lucide-react';
+import React, { useState } from 'react';
+import { Package, ShoppingBag, Loader2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { productService } from '@tellervo/supabase';
+import { mapRecordToProduct } from '../../lib/productMapper';
+import { Product } from '../../types';
 
 interface OrderItemListProps {
   items: {
@@ -15,9 +18,55 @@ interface OrderItemListProps {
 }
 
 export const OrderItemList: React.FC<OrderItemListProps> = ({ items }) => {
-  const { addToCart, products, showToast, toggleRestockNotification, isRestockNotified } = useApp();
+  const { addToCart, products, showToast, setIsCartOpen } = useApp();
+  const [checkingItemName, setCheckingItemName] = useState<string | null>(null);
 
-  const handleReorderSingleItem = (
+  // Helper to find live store product from in-memory products or Supabase database
+  const findLiveProduct = async (item: {
+    name: string;
+    category?: string;
+  }): Promise<Product | null> => {
+    // 1. Look in loaded products memory first
+    const inMem = products.find(
+      (p) => p.name.trim().toLowerCase() === item.name.trim().toLowerCase()
+    );
+    if (inMem) return inMem;
+
+    // 2. Query Supabase directly if not in current loaded memory
+    try {
+      const { data, error } = await productService.fetchProducts({ search: item.name.trim() });
+      if (!error && data && data.length > 0) {
+        const exact = data.find(
+          (r) => r.name.trim().toLowerCase() === item.name.trim().toLowerCase()
+        );
+        if (exact) {
+          return mapRecordToProduct(exact);
+        }
+      }
+    } catch (err) {
+      console.error('[OrderItemList] Error checking product availability:', err);
+    }
+
+    return null;
+  };
+
+  const isProductOutOfStock = (prod: Product): boolean => {
+    const raw = (prod.status || '').toLowerCase().trim();
+    const norm = raw.replace(/[\s_-]+/g, '');
+    return (
+      norm === 'outofstock' ||
+      raw === 'out of stock' ||
+      raw === 'out_of_stock' ||
+      raw === 'out-of-stock' ||
+      raw === 'draft' ||
+      raw === 'archived' ||
+      raw === 'inactive' ||
+      prod.stockStatus === 'out-of-stock' ||
+      (prod.stockCount !== undefined && prod.stockCount <= 0)
+    );
+  };
+
+  const handleReorderSingleItem = async (
     item: {
       name: string;
       qty: number;
@@ -26,27 +75,49 @@ export const OrderItemList: React.FC<OrderItemListProps> = ({ items }) => {
       imageUrl?: string;
       category?: string;
       size?: string;
-    },
-    isOutOfStock: boolean
-  ) => {
-    if (isOutOfStock) {
-      showToast(`${item.name} is currently out of stock`, 'info');
-      return;
     }
+  ) => {
+    try {
+      setCheckingItemName(item.name);
+      const liveProduct = await findLiveProduct(item);
 
-    const matchingProduct = products.find(
-      (p) => p.name.toLowerCase() === item.name.toLowerCase()
-    ) || {
-      id: `reorder-${item.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
-      name: item.name,
-      category: item.category || 'Cellar Drop',
-      price: item.price,
-      size: item.size || 'Standard Pack',
-      description: `Reordered provision: ${item.name}`,
-      imageUrl: item.imageUrl || '',
-    };
+      // 1. Check if the product exists in the catalog
+      if (!liveProduct) {
+        showToast(`${item.name} is not available in stock`, 'info');
+        return;
+      }
 
-    addToCart(matchingProduct, item.qty || 1);
+      // 2. Check if product is out of stock
+      if (isProductOutOfStock(liveProduct)) {
+        showToast(`${liveProduct.name} is not available in stock`, 'info');
+        return;
+      }
+
+      // 3. Price check: use current live catalog price
+      const currentPrice = liveProduct.discountPrice ?? liveProduct.price;
+      const oldPrice = item.price;
+      const isPriceIncreased = currentPrice > oldPrice + 0.009;
+
+      // Add to cart with current active catalog price
+      const productToAdd: Product = {
+        ...liveProduct,
+        price: currentPrice,
+      };
+
+      addToCart(productToAdd, item.qty || 1);
+      setIsCartOpen(true);
+
+      if (isPriceIncreased) {
+        showToast(
+          `${liveProduct.name} price increased to €${currentPrice.toFixed(2)} (was €${oldPrice.toFixed(2)}) • Added to cart at updated price`,
+          'info'
+        );
+      } else {
+        showToast(`Added ${liveProduct.name} to Forest Box`);
+      }
+    } finally {
+      setCheckingItemName(null);
+    }
   };
 
   return (
@@ -70,27 +141,7 @@ export const OrderItemList: React.FC<OrderItemListProps> = ({ items }) => {
 
           const itemImageUrl = item.imageUrl || matchingProduct?.imageUrl;
 
-          // Determine stock status from matching product or item.status
-          const rawStatus = (item.status || matchingProduct?.status || '').toLowerCase().trim();
-          const normalizedStatus = rawStatus.replace(/[\s_-]+/g, '');
-          const isOutOfStock =
-            normalizedStatus === 'outofstock' ||
-            rawStatus === 'out of stock' ||
-            rawStatus === 'out_of_stock' ||
-            rawStatus === 'out-of-stock' ||
-            matchingProduct?.stockStatus === 'out-of-stock' ||
-            (matchingProduct?.stockCount !== undefined && matchingProduct.stockCount <= 0);
-
-          const isLowStock =
-            !isOutOfStock &&
-            (normalizedStatus === 'lowstock' ||
-              rawStatus === 'low stock' ||
-              rawStatus === 'low_stock' ||
-              rawStatus === 'low-stock' ||
-              matchingProduct?.stockStatus === 'low-stock' ||
-              (matchingProduct?.stockCount !== undefined &&
-                matchingProduct.stockCount > 0 &&
-                matchingProduct.stockCount <= 5));
+          
 
           return (
             <div key={idx} className="py-3 flex items-center justify-between gap-3">
@@ -114,15 +165,6 @@ export const OrderItemList: React.FC<OrderItemListProps> = ({ items }) => {
                   <h4 className="text-xs font-bold text-[#14261B] truncate">
                     {item.name}
                   </h4>
-                  {isOutOfStock ? (
-                    <span className="px-1.5 py-0.5 bg-[#8B2525]/10 text-[#8B2525] border border-[#8B2525]/30 text-[9px] font-bold rounded uppercase tracking-wider">
-                      Out of Stock
-                    </span>
-                  ) : isLowStock ? (
-                    <span className="px-1.5 py-0.5 bg-[#C97B1A]/10 text-[#C97B1A] border border-[#C97B1A]/30 text-[9px] font-bold rounded uppercase tracking-wider">
-                      Limited Stock
-                    </span>
-                  ) : null}
                 </div>
                 <div className="text-[11px] text-[#718274] mt-0.5">
                   {item.qty} × €{item.price.toFixed(2)}
@@ -134,28 +176,15 @@ export const OrderItemList: React.FC<OrderItemListProps> = ({ items }) => {
                 <span className="font-editorial text-xs font-bold text-[#14261B]">
                   €{lineTotal.toFixed(2)}
                 </span>
-                {isOutOfStock ? (
-                  <button
-                    type="button"
-                    onClick={() => toggleRestockNotification(matchingProduct?.id || item.name, item.name)}
-                    aria-label={`Notify when ${item.name} is in stock`}
-                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold flex items-center gap-1 transition-all shadow-xs cursor-pointer active:scale-95 ${
-                      isRestockNotified(matchingProduct?.id || item.name)
-                        ? 'bg-[#EBF4EE] text-[#1D4E31] border border-[#C5DEC9]'
-                        : 'bg-[#FAF4E8] text-[#9A6218] border border-[#ECD9B7] hover:bg-[#F4ECDA]'
-                    }`}
-                  >
-                    <Bell className={`w-3 h-3 ${isRestockNotified(matchingProduct?.id || item.name) ? 'fill-[#245D36] text-[#245D36]' : 'text-[#C97B1A]'}`} />
-                    <span>{isRestockNotified(matchingProduct?.id || item.name) ? 'Notified' : 'Notify'}</span>
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleReorderSingleItem(item, isOutOfStock)}
-                    className="text-[10px] font-bold text-[#2A5E3A] hover:underline cursor-pointer"
-                  >
-                    Buy Again
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => handleReorderSingleItem(item)}
+                  disabled={checkingItemName === item.name}
+                  className="text-[10px] font-bold text-[#2A5E3A] hover:underline cursor-pointer disabled:opacity-50 flex items-center gap-1 active:scale-95 transition-transform"
+                >
+                  {checkingItemName === item.name && <Loader2 className="w-3 h-3 animate-spin" />}
+                  <span>Buy Again</span>
+                </button>
               </div>
             </div>
           );

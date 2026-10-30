@@ -11,6 +11,8 @@ interface ShopActiveFiltersProps {
   onClearPrice?: () => void;
   onOpenFilter: () => void;
   onClearAll: () => void;
+  submittedQuery?: string;
+  onClearSearch?: () => void;
 }
 
 export const ShopActiveFilters: React.FC<ShopActiveFiltersProps> = ({
@@ -23,14 +25,37 @@ export const ShopActiveFilters: React.FC<ShopActiveFiltersProps> = ({
   onClearPrice,
   onOpenFilter,
   onClearAll,
+  submittedQuery,
+  onClearSearch,
 }) => {
-  const hasActiveFilters = selectedTags.length > 0 || activeCategory !== 'all' || (Boolean(priceFilter) && priceFilter !== 'all');
+  const hasActiveFilters =
+    Boolean(submittedQuery?.trim()) ||
+    selectedTags.length > 0 ||
+    activeCategory !== 'all' ||
+    (Boolean(priceFilter) && priceFilter !== 'all');
+
   if (!hasActiveFilters) return null;
 
   return (
     <div className="flex items-center justify-between gap-2 pt-0.5 pb-1 animate-in fade-in duration-150">
       {/* Left-aligned selected filters with horizontal scroll */}
       <div className="flex items-center gap-1.5 min-w-0 overflow-x-auto no-scrollbar whitespace-nowrap py-0.5">
+        {submittedQuery?.trim() && (
+          <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-[#183324]/20 bg-[#183324]/10 py-0.5 pl-2.5 pr-1 text-[11px] text-[#183324] transition-colors">
+            <span className="font-semibold">"{submittedQuery.trim()}"</span>
+            {onClearSearch && (
+              <button
+                type="button"
+                onClick={onClearSearch}
+                aria-label="Remove search filter"
+                className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[#183324]/70 transition-colors hover:bg-[#183324]/20 hover:text-[#183324]"
+              >
+                <X className="h-2.5 w-2.5" />
+              </button>
+            )}
+          </span>
+        )}
+
         {activeCategory !== 'all' && (
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50/80 py-0.5 pl-2.5 pr-1 text-[11px] text-gray-800 transition-colors hover:border-amber-300">
             <span className="font-semibold">{categoryLabel || activeCategory}</span>
@@ -89,7 +114,7 @@ export const ShopActiveFilters: React.FC<ShopActiveFiltersProps> = ({
         <button
           type="button"
           onClick={onOpenFilter}
-          className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[11px] font-medium text-gray-700 transition-colors hover:border-gray-500 hover:bg-gray-50"
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[11px] font-medium text-gray-700 transition-colors hover:border-gray-500 hover:bg-gray-50 cursor-pointer"
         >
           <SlidersHorizontal className="h-3 w-3" />
           All filters
@@ -98,7 +123,7 @@ export const ShopActiveFilters: React.FC<ShopActiveFiltersProps> = ({
         <button
           type="button"
           onClick={onClearAll}
-          className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[11px] font-medium text-gray-700 transition-colors hover:border-gray-500 hover:bg-gray-50"
+          className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-2 py-0.5 text-[11px] font-medium text-gray-700 transition-colors hover:border-gray-500 hover:bg-gray-50 cursor-pointer"
         >
           <RotateCcw className="h-3 w-3" />
           Clear all
@@ -107,4 +132,3 @@ export const ShopActiveFilters: React.FC<ShopActiveFiltersProps> = ({
     </div>
   );
 };
-

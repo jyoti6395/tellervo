@@ -21,7 +21,6 @@ export const ShopScreen: React.FC = () => {
   const {
     products,
     setSelectedProduct,
-    showToast,
     t,
     isLoadingProducts,
     isFetchingMore,
@@ -37,7 +36,7 @@ export const ShopScreen: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [priceFilter, setPriceFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isListening, setIsListening] = useState(false);
+  const [submittedQuery, setSubmittedQuery] = useState('');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<SortOption>('popular');
@@ -49,6 +48,26 @@ export const ShopScreen: React.FC = () => {
   const [hasMoreDbResults, setHasMoreDbResults] = useState(false);
   const [isFetchingMoreDb, setIsFetchingMoreDb] = useState(false);
   const [dbAllCategories, setDbAllCategories] = useState<string[]>([]);
+
+  // Synchronize search query from URL parameter (e.g. /shop?search=wine)
+  useEffect(() => {
+    const syncFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const query = params.get('search');
+      if (query !== null) {
+        const decoded = decodeURIComponent(query).trim();
+        setSearchQuery(decoded);
+        setSubmittedQuery(decoded);
+      }
+    };
+
+    syncFromUrl();
+    window.addEventListener('popstate', syncFromUrl);
+    return () => {
+      window.removeEventListener('popstate', syncFromUrl);
+    };
+  }, []);
+
 
   // Fetch all distinct categories directly from database on mount
   useEffect(() => {
@@ -74,15 +93,15 @@ export const ShopScreen: React.FC = () => {
   }, [dbAllCategories, products, t.shop]);
 
   const isFilterActive =
-    searchQuery.trim().length > 0 ||
+    submittedQuery.trim().length > 0 ||
     activeCategory !== 'all' ||
     selectedTags.length > 0 ||
     priceFilter !== 'all';
 
   // Matcher for any product against active filters
   const matchesFilter = useCallback((product: Product): boolean => {
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+    if (submittedQuery.trim()) {
+      const q = submittedQuery.toLowerCase();
       const match =
         product.name.toLowerCase().includes(q) ||
         product.category.toLowerCase().includes(q) ||
@@ -117,7 +136,7 @@ export const ShopScreen: React.FC = () => {
     }
 
     return true;
-  }, [searchQuery, activeCategory, selectedTags, priceFilter]);
+  }, [submittedQuery, activeCategory, selectedTags, priceFilter]);
 
   // Query database whenever any filter changes
   useEffect(() => {
@@ -136,7 +155,7 @@ export const ShopScreen: React.FC = () => {
         const filters: ProductFilters = {
           category: activeCategory !== 'all' ? activeCategory : undefined,
           volume: selectedTags.length > 0 ? selectedTags : undefined,
-          search: searchQuery.trim() || undefined,
+          search: submittedQuery.trim() || undefined,
           priceRange: priceFilter as any,
           limit: 20,
           offset: 0,
@@ -163,13 +182,13 @@ export const ShopScreen: React.FC = () => {
           setIsSearchingDb(false);
         }
       }
-    }, searchQuery.trim() ? 250 : 0);
+    }, 0);
 
     return () => {
       isCancelled = true;
       clearTimeout(timer);
     };
-  }, [isFilterActive, searchQuery, activeCategory, selectedTags, priceFilter, matchesFilter]);
+  }, [isFilterActive, submittedQuery, activeCategory, selectedTags, priceFilter, matchesFilter]);
 
   // Load next 20 items from database for active filter
   const fetchMoreFilteredProducts = async () => {
@@ -179,7 +198,7 @@ export const ShopScreen: React.FC = () => {
       const filters: ProductFilters = {
         category: activeCategory !== 'all' ? activeCategory : undefined,
         volume: selectedTags.length > 0 ? selectedTags : undefined,
-        search: searchQuery.trim() || undefined,
+        search: submittedQuery.trim() || undefined,
         priceRange: priceFilter as any,
         limit: 20,
         offset: dbSearchResults.length,
@@ -200,7 +219,6 @@ export const ShopScreen: React.FC = () => {
       setIsFetchingMoreDb(false);
     }
   };
-
 
   // Infinite Scroll Sentinel Observer
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -232,19 +250,30 @@ export const ShopScreen: React.FC = () => {
     return () => observer.disconnect();
   }, [hasMoreProducts, isFetchingMore, isLoadingProducts, fetchMoreProducts, isFilterActive, hasMoreDbResults, isFetchingMoreDb, dbSearchResults.length]);
 
-  const handleVoiceSearch = () => {
-    setIsListening(true);
-    showToast('Listening for botanical infusions...', 'info');
-    setTimeout(() => {
-      setIsListening(false);
-      setSearchQuery('Coconut');
-      showToast('Found "Coconut" infusions', 'success');
-    }, 1500);
-  };
-
   const handleProductClick = (product: Product) => {
     setSelectedProduct(product);
     navigate(`/shop/${product.id}`);
+  };
+
+  const handleSearchSubmit = (term: string) => {
+    const q = term.trim();
+    if (!q) return;
+    setSearchQuery(q);
+    setSubmittedQuery(q);
+    const url = new URL(window.location.href);
+    url.searchParams.set('search', q);
+    window.history.replaceState({}, '', url.pathname + url.search);
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setSubmittedQuery('');
+    setDbSearchResults([]);
+    if (window.location.search) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('search');
+      window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+    }
   };
 
   const handleResetFilters = () => {
@@ -252,6 +281,8 @@ export const ShopScreen: React.FC = () => {
     setPriceFilter('all');
     setSelectedTags([]);
     setSearchQuery('');
+    setSubmittedQuery('');
+    setDbSearchResults([]);
   };
 
   // Combine products: Shown matching products FIRST, then searched data from DB
@@ -304,7 +335,7 @@ export const ShopScreen: React.FC = () => {
           </div>
           <button
             onClick={() => refetchProducts()}
-            className="text-[11px] font-bold underline shrink-0 hover:text-black ml-2"
+            className="text-[11px] font-bold underline shrink-0 hover:text-black ml-2 cursor-pointer"
           >
             Retry
           </button>
@@ -315,8 +346,9 @@ export const ShopScreen: React.FC = () => {
       <ShopSearchBar
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
-        isListening={isListening}
-        onVoiceSearch={handleVoiceSearch}
+        submittedQuery={submittedQuery}
+        onSearchSubmit={handleSearchSubmit}
+        onClearSearch={handleClearSearch}
         onOpenFilter={() => setIsFilterOpen(true)}
         activeFilterCount={activeFilterCount}
       />
@@ -334,6 +366,8 @@ export const ShopScreen: React.FC = () => {
         onClearPrice={() => setPriceFilter('all')}
         onOpenFilter={() => setIsFilterOpen(true)}
         onClearAll={handleResetFilters}
+        submittedQuery={submittedQuery}
+        onClearSearch={handleClearSearch}
       />
 
       {/* 4. Products Count & Sort Selector */}
@@ -345,10 +379,10 @@ export const ShopScreen: React.FC = () => {
         setIsOpen={setIsSortDropdownOpen}
       />
 
-      {/* 5. Shimmer Loading Skeleton */}
-      {isLoadingProducts && products.length === 0 && (
+      {/* 5. Shimmer Loading Skeleton (Initial load or DB searching) */}
+      {(isLoadingProducts && products.length === 0) || isSearchingDb ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-x-6 sm:gap-x-8 md:gap-x-10 gap-y-8 sm:gap-y-10 animate-pulse">
-          {[1, 2, 3, 4].map((n) => (
+          {[1, 2, 3, 4, 5, 6].map((n) => (
             <div
               key={n}
               className="space-y-2.5"
@@ -360,31 +394,21 @@ export const ShopScreen: React.FC = () => {
             </div>
           ))}
         </div>
-      )}
-
-      {/* Database Searching Indicator */}
-      {isSearchingDb && (
-        <div className="flex items-center justify-center gap-2 py-3 px-4 bg-emerald-50/70 border border-emerald-100/80 rounded-2xl text-xs font-medium text-[#183324] animate-in fade-in duration-150">
-          <Loader2 className="w-3.5 h-3.5 animate-spin text-[#2E7D32]" />
-          <span>Searching database for matching botanical infusions...</span>
+      ) : sortedProducts.length === 0 ? (
+        /* 6. Empty State */
+        <ShopEmptyState onReset={handleResetFilters} />
+      ) : (
+        /* 7. Product Grid */
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-x-6 sm:gap-x-8 md:gap-x-10 gap-y-8 sm:gap-y-10">
+          {sortedProducts.map((product) => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onProductClick={handleProductClick}
+            />
+          ))}
         </div>
       )}
-
-      {/* 6. Empty State */}
-      {sortedProducts.length === 0 && !isLoadingProducts && !isSearchingDb && (
-        <ShopEmptyState onReset={handleResetFilters} />
-      )}
-
-      {/* 7. Product Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 gap-x-6 sm:gap-x-8 md:gap-x-10 gap-y-8 sm:gap-y-10">
-        {sortedProducts.map((product) => (
-          <ProductCard
-            key={product.id}
-            product={product}
-            onProductClick={handleProductClick}
-          />
-        ))}
-      </div>
 
       {/* 8. Infinite Scroll Sentinel */}
       <div ref={sentinelRef} className="h-4 w-full pointer-events-none" />
