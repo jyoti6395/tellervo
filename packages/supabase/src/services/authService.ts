@@ -88,8 +88,8 @@ export class AuthService {
       const profile = await this.fetchUserProfile(supabaseUser.id);
 
       // Account Status Check on session restoration:
-      // If customer is deactivated, revoke the persisted session and return null
-      if (profile?.status !== 'active') {
+      // Only revoke persisted session if profile is loaded and explicitly confirms deactivated state
+      if (profile && profile.status === 'deactive') {
         await this.client.auth.signOut();
         return null;
       }

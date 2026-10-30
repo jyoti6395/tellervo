@@ -145,15 +145,6 @@ export function OrderManagement() {
     [orders]
   )
 
-  // Dynamic available dates for filter
-  const availableDates = React.useMemo(() => {
-    const dates = new Set<string>()
-    orders.forEach((o) => {
-      if (o.date) dates.add(o.date)
-    })
-    return Array.from(dates)
-  }, [orders])
-
   // Filtered Orders
   const filteredOrders = React.useMemo(() => {
     return orders.filter((ord) => {
@@ -166,7 +157,27 @@ export function OrderManagement() {
       const matchesStatus =
         statusFilter === "all" || ord.status.toLowerCase() === statusFilter.toLowerCase()
 
-      const matchesDate = dateFilter === "all" || ord.date === dateFilter
+      let matchesDate = true
+      if (dateFilter !== "all") {
+        if (dateFilter === "today") {
+          const today = new Date().toISOString().slice(0, 10)
+          matchesDate = ord.rawDate ? ord.rawDate.slice(0, 10) === today : false
+        } else if (dateFilter === "this-week") {
+          const now = new Date()
+          const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+          matchesDate = ord.rawDate ? new Date(ord.rawDate) >= weekAgo : false
+        } else if (dateFilter === "this-month") {
+          const now = new Date()
+          const monthAgo = new Date(now.getFullYear(), now.getMonth(), 1)
+          matchesDate = ord.rawDate ? new Date(ord.rawDate) >= monthAgo : false
+        } else if (dateFilter === "last-30") {
+          const now = new Date()
+          const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+          matchesDate = ord.rawDate ? new Date(ord.rawDate) >= thirtyDaysAgo : false
+        } else {
+          matchesDate = ord.date.toLowerCase().includes(dateFilter.toLowerCase())
+        }
+      }
 
       return matchesSearch && matchesStatus && matchesDate
     })
@@ -437,7 +448,7 @@ export function OrderManagement() {
 
               {/* Right Filter Pills */}
               <div className="flex flex-wrap items-center gap-2.5">
-                {/* Date Filter Pill Button */}
+                {/* Date Filter Pill Button (Matching CustomerManagement) */}
                 <Select
                   value={dateFilter}
                   onValueChange={(val) => {
@@ -445,7 +456,7 @@ export function OrderManagement() {
                     setCurrentPage(1)
                   }}
                 >
-                  <SelectTrigger className="h-10 text-xs font-medium bg-card border border-border rounded-full text-foreground px-4 shadow-2xs min-w-[155px]">
+                  <SelectTrigger className="h-10 text-xs font-medium bg-card border border-border rounded-full text-foreground px-4 shadow-2xs min-w-[130px]">
                     <div className="flex items-center gap-2">
                       <Calendar className="w-3.5 h-3.5 text-muted-foreground" />
                       <SelectValue placeholder="All Dates" />
@@ -453,11 +464,10 @@ export function OrderManagement() {
                   </SelectTrigger>
                   <SelectContent className="bg-card border-border rounded-xl">
                     <SelectItem value="all">All Dates</SelectItem>
-                    {availableDates.map((date) => (
-                      <SelectItem key={date} value={date}>
-                        {date}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="today">Today</SelectItem>
+                    <SelectItem value="this-week">This Week</SelectItem>
+                    <SelectItem value="this-month">This Month</SelectItem>
+                    <SelectItem value="last-30">Last 30 Days</SelectItem>
                   </SelectContent>
                 </Select>
 

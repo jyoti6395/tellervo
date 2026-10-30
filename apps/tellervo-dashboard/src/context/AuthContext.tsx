@@ -69,10 +69,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(mappedUser);
       setRole('admin');
     } catch {
-      // On any failure, clear state to be safe
-      setSession(null);
-      setUser(null);
-      setRole(null);
+      // If user is already verified via JWT metadata, preserve admin session during transient DB errors
+      const isJwtAdmin =
+        sbUser.app_metadata?.role === 'admin' ||
+        sbUser.user_metadata?.role === 'admin';
+
+      if (isJwtAdmin) {
+        const fallbackUser = profileService.mapToAuthUser(sbUser, null);
+        fallbackUser.role = 'admin';
+        setSession(currentSession);
+        setUser(fallbackUser);
+        setRole('admin');
+      } else {
+        setSession(null);
+        setUser(null);
+        setRole(null);
+      }
     } finally {
       setLoading(false);
     }
@@ -90,8 +102,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Listen for auth state changes (sign-in, sign-out, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (mounted) applySession(session);
+      (event, newSession) => {
+        if (!mounted) return;
+
+        if (event === 'SIGNED_OUT' || !newSession) {
+          setSession(null);
+          setUser(null);
+          setRole(null);
+          setLoading(false);
+        } else if (event === 'TOKEN_REFRESHED') {
+          // Token silently rotated by Supabase: update session in memory without evicting active admin
+          setSession(newSession);
+        } else if (event === 'SIGNED_IN' || event === 'USER_UPDATED') {
+          applySession(newSession);
+        }
       }
     );
 
